@@ -448,16 +448,16 @@ add_arc (struct graph *p_graph, int rowid, int id_from, int id_to,
     if (pN2)
       {
 	  printf ("ERROR: arc ROWID=%d; nodeFrom coord inconsistency\n", rowid);
-	  printf ("\twas: x=%1.6lf y=%1.6lf\n", pN2->x, pN2->y);
-	  printf ("\tnow: x=%1.6lf y=%1.6lf\n", node_from_x, node_from_y);
+	  printf ("\twas: x=%1.6f y=%1.6f\n", pN2->x, pN2->y);
+	  printf ("\tnow: x=%1.6f y=%1.6f\n", node_from_x, node_from_y);
 	  p_graph->error = 1;
       }
     pTo = process_node (p_graph, id_to, code_to, node_to_x, node_to_y, &pN2);
     if (pN2)
       {
 	  printf ("ERROR: arc ROWID=%d; nodeTo coord inconsistency\n", rowid);
-	  printf ("\twas: x=%1.6lf y=%1.6lf\n", pN2->x, pN2->y);
-	  printf ("\tnow: x=%1.6lf y=%1.6lf\n", node_to_x, node_to_y);
+	  printf ("\twas: x=%1.6f y=%1.6f\n", pN2->x, pN2->y);
+	  printf ("\tnow: x=%1.6f y=%1.6f\n", node_to_x, node_to_y);
 	  p_graph->error = 1;
       }
     if (!pFrom)
@@ -1562,7 +1562,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		if (cost <= 0.0)
 		  {
 		      printf
-			  ("ERROR: arc ROWID=%d has NEGATIVE or NULL cost [%1.6lf]\n",
+			  ("ERROR: arc ROWID=%d has NEGATIVE or NULL cost [%1.6f]\n",
 			   rowid, cost);
 		      p_graph->error = 1;
 		  }

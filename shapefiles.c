@@ -733,7 +733,7 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 			  continue;
 		      if (sqlite3_column_type (stmt, i) == SQLITE_NULL)
 			{
-			    // handling NULL values
+			    /* handling NULL values */
 			    gaiaSetNullValue (dbf_field);
 			}
 		      else
@@ -787,20 +787,20 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
   sql_error:
 /* some SQL error occurred */
     sqlite3_finalize (stmt);
-    if (dbf_export_list);
-    gaiaFreeDbfList (dbf_export_list);
-    if (dbf_list);
-    gaiaFreeDbfList (dbf_list);
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
     if (shp)
 	gaiaFreeShapefile (shp);
     fprintf (stderr, "SELECT failed: %s", sqlite3_errmsg (sqlite));
     return 0;
   no_file:
 /* shapefile can't be created/opened */
-    if (dbf_export_list);
-    gaiaFreeDbfList (dbf_export_list);
-    if (dbf_list);
-    gaiaFreeDbfList (dbf_list);
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
     if (shp)
 	gaiaFreeShapefile (shp);
     fprintf (stderr, "ERROR: unable to open '%s' for writing", shp_path);
@@ -808,10 +808,10 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
   empty_result_set:
 /* the result set is empty - nothing to do */
     sqlite3_finalize (stmt);
-    if (dbf_export_list);
-    gaiaFreeDbfList (dbf_export_list);
-    if (dbf_list);
-    gaiaFreeDbfList (dbf_list);
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
     if (shp)
 	gaiaFreeShapefile (shp);
     fprintf (stderr,

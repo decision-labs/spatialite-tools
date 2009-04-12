@@ -201,9 +201,9 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
     shp_maxy = gaiaImport64 (buf_shp + 60, GAIA_LITTLE_ENDIAN, endian_arch);
     if (!ignore_extent)
       {
-	  printf ("shape-extent:\tMIN(x=%1.6lf y=%1.6lf)\n", shp_minx,
+	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx,
 		  shp_miny);
-	  printf ("\t\tMAX(x=%1.6lf y=%1.6lf)\n\n", shp_maxx, shp_maxy);
+	  printf ("\t\tMAX(x=%1.6f y=%1.6f)\n\n", shp_maxx, shp_maxy);
       }
 /* reading DBF file header */
     rd = fread (bf, sizeof (unsigned char), 32, fl_dbf);
@@ -365,7 +365,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			    printf
 				("WARNING: coords outside shp-extent (entity #%d)\n",
 				 current_row + 1);
-			    printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+			    printf ("\tx=%1.6f y=%1.6f\n", x, y);
 			}
 		  }
 	    }
@@ -415,7 +415,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 					printf
 					    ("WARNING: coords outside shp-extent (entity #%d)\n",
 					     current_row + 1);
-					printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+					printf ("\tx=%1.6f y=%1.6f\n", x, y);
 					first_coord_err = 0;
 				    }
 			      }
@@ -470,7 +470,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 					printf
 					    ("WARNING: coords outside shp-extent (entity #%d)\n",
 					     current_row + 1);
-					printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+					printf ("\tx=%1.6f y=%1.6f\n", x, y);
 					first_coord_err = 0;
 				    }
 			      }
@@ -513,7 +513,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 				  printf
 				      ("WARNING: coords outside shp-extent (entity #%d)\n",
 				       current_row + 1);
-				  printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+				  printf ("\tx=%1.6f y=%1.6f\n", x, y);
 				  first_coord_err = 0;
 			      }
 			}
@@ -733,9 +733,9 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
     shp_maxy = gaiaImport64 (buf_shp + 60, GAIA_LITTLE_ENDIAN, endian_arch);
     if (!ignore_extent)
       {
-	  printf ("shape-extent:\tMIN(x=%1.6lf y=%1.6lf)\n", shp_minx,
+	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx,
 		  shp_miny);
-	  printf ("\t\tMAX(x=%1.6lf y=%1.6lf)\n\n", shp_maxx, shp_maxy);
+	  printf ("\t\tMAX(x=%1.6f y=%1.6f)\n\n", shp_maxx, shp_maxy);
       }
 /* reading DBF file header */
     rd = fread (bf, sizeof (unsigned char), 32, fl_dbf);
@@ -891,7 +891,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			    printf
 				("WARNING: coords outside shp-extent (entity #%d)\n",
 				 current_row + 1);
-			    printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+			    printf ("\tx=%1.6f y=%1.6f\n", x, y);
 			}
 		  }
 	    }
@@ -941,7 +941,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 					printf
 					    ("WARNING: coords outside shp-extent (entity #%d)\n",
 					     current_row + 1);
-					printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+					printf ("\tx=%1.6f y=%1.6f\n", x, y);
 					first_coord_err = 0;
 				    }
 			      }
@@ -996,7 +996,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 					printf
 					    ("WARNING: coords outside shp-extent (entity #%d)\n",
 					     current_row + 1);
-					printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+					printf ("\tx=%1.6f y=%1.6f\n", x, y);
 					first_coord_err = 0;
 				    }
 			      }
@@ -1039,7 +1039,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 				  printf
 				      ("WARNING: coords outside shp-extent (entity #%d)\n",
 				       current_row + 1);
-				  printf ("\tx=%1.6lf y=%1.6lf\n", x, y);
+				  printf ("\tx=%1.6f y=%1.6f\n", x, y);
 				  first_coord_err = 0;
 			      }
 			}

@@ -464,7 +464,7 @@ create_utf8_converter (char *charset)
       }
 /* creating new converters */
     locale_to_utf8 = iconv_open ("UTF-8", charset);
-    if (locale_to_utf8 == (iconv_t) - 1)
+    if (locale_to_utf8 == (iconv_t)(-1))
       {
 	  locale_to_utf8 = NULL;
 	  fprintf (stderr,
@@ -474,7 +474,7 @@ create_utf8_converter (char *charset)
 	  return;
       }
     utf8_to_locale = iconv_open (charset, "UTF-8");
-    if (utf8_to_locale == (iconv_t) - 1)
+    if (utf8_to_locale == (iconv_t)(-1))
       {
 	  utf8_to_locale = NULL;
 	  fprintf (stderr,
@@ -499,7 +499,7 @@ create_input_utf8_converter (char *charset)
       }
 /* creating new converter */
     in_charset_to_utf8 = iconv_open ("UTF-8", charset);
-    if (in_charset_to_utf8 == (iconv_t) - 1)
+    if (in_charset_to_utf8 == (iconv_t)(-1))
       {
 	  in_charset_to_utf8 = NULL;
 	  fprintf (stderr,
@@ -537,7 +537,7 @@ convert_from_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (utf8_to_locale, &pBuf, &len, &pUtf8buf, &utf8len) < 0)
+    if (iconv (utf8_to_locale, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -576,7 +576,7 @@ convert_to_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (locale_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) < 0)
+    if (iconv (locale_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -615,7 +615,7 @@ convert_input_to_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (in_charset_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) < 0)
+    if (iconv (in_charset_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -1993,8 +1993,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  if (nArg != 3)
 	    {
 		fprintf (stderr,
-			 "invalid arguments: .read script_path charset\n",
-			 azArg[0]);
+			 "invalid arguments: .read script_path charset\n");
 		return rc;
 	    }
 	  alt = fopen (azArg[1], "rb");
