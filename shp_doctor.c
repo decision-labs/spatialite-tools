@@ -201,8 +201,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
     shp_maxy = gaiaImport64 (buf_shp + 60, GAIA_LITTLE_ENDIAN, endian_arch);
     if (!ignore_extent)
       {
-	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx,
-		  shp_miny);
+	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx, shp_miny);
 	  printf ("\t\tMAX(x=%1.6f y=%1.6f)\n\n", shp_maxx, shp_maxy);
       }
 /* reading DBF file header */
@@ -266,6 +265,14 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 		if (*(bf + 16) != 8)
 		  {
 		      printf ("\t\tERROR: expected length is 8 !!!\n");
+		      err_dbf = 1;
+		  }
+		break;
+	    case 'F':
+		printf (" FLOAT\n");
+		if (*(bf + 16) != 20)
+		  {
+		      printf ("\t\tERROR: expected length is 20 !!!\n");
 		      err_dbf = 1;
 		  }
 		break;
@@ -733,8 +740,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
     shp_maxy = gaiaImport64 (buf_shp + 60, GAIA_LITTLE_ENDIAN, endian_arch);
     if (!ignore_extent)
       {
-	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx,
-		  shp_miny);
+	  printf ("shape-extent:\tMIN(x=%1.6f y=%1.6f)\n", shp_minx, shp_miny);
 	  printf ("\t\tMAX(x=%1.6f y=%1.6f)\n\n", shp_maxx, shp_maxy);
       }
 /* reading DBF file header */
@@ -798,6 +804,14 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 		if (*(bf + 16) != 8)
 		  {
 		      printf ("\t\tERROR: expected length is 8 !!!\n");
+		      err_dbf = 1;
+		  }
+		break;
+	    case 'F':
+		printf (" FLOAT\n");
+		if (*(bf + 16) != 20)
+		  {
+		      printf ("\t\tERROR: expected length is 20 !!!\n");
 		      err_dbf = 1;
 		  }
 		break;

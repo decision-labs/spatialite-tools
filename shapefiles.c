@@ -248,6 +248,9 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 	    case 'D':
 		strcat (sql, " DOUBLE");
 		break;
+	    case 'F':
+		strcat (sql, " DOUBLE");
+		break;
 	    case 'L':
 		strcat (sql, " INTEGER");
 		break;
