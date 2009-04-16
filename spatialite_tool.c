@@ -35,7 +35,7 @@
 #include <spatialite.h>
 
 #if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	stricmp
+#define strcasecmp	_stricmp
 #endif /* not WIN32 */
 
 #define ARG_NONE		0

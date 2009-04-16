@@ -67,6 +67,8 @@
 
 #if defined(_WIN32) || defined(WIN32)
 # include <io.h>
+#define isatty	_isatty
+#define access	_access
 #else
 /* Make sure isatty() has a prototype.
 */
@@ -1185,7 +1187,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 			  w = 10;
 		      }
 		    if (p->mode == MODE_Explain && azArg[i]
-			&& strlen (azArg[i]) > w)
+			&& (int)strlen (azArg[i]) > w)
 		      {
 			  w = strlen (azArg[i]);
 		      }

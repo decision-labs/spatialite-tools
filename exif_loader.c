@@ -35,6 +35,7 @@
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include <io.h>
+#include <direct.h>
 #else
 #include <dirent.h>
 #endif
@@ -50,7 +51,7 @@
 #define ARG_FILE			3
 
 #if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	stricmp
+#define strcasecmp	_stricmp
 #endif /* not WIN32 */
 
 static sqlite3_int64

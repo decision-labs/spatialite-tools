@@ -53,7 +53,7 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <spatialite.h>
 
 #if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	stricmp
+#define strcasecmp	_stricmp
 #endif
 
 static gaiaDbfFieldPtr
