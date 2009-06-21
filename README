@@ -69,9 +69,9 @@ you can alter the standard behaviour using:
 
 Building 'spatialite-tools' under Linux does not require any special 
 setting; we'll suppose you have unpacked the sources as 
-./spatialite-tools-2.3.0
+./spatialite-tools-2.3.1
 
-# cd spatialite-tools-2.3.0
+# cd spatialite-tools-2.3.1
 # ./configure
 # make
 # sudo make install
@@ -85,9 +85,9 @@ Building 'spatialite-tools' on MacOsX is quite the same as for
 Linux; simply an --target=macosx is required because the libs
 layout on MacOsX is a little bit peculiar.
 We'll suppose you have unpacked the sources as 
-./spatialite-tools-2.3.0
+./spatialite-tools-2.3.1
 
-# cd spatialite-tools-2.3.0
+# cd spatialite-tools-2.3.1
 # ./configure --target=macosx
 # make
 # sudo make install
@@ -118,9 +118,9 @@ Building 'spatialite-tools' under Windows is then more or less like building
 on any other UNIX-like system; simply an --target=mingw32 is required to
 sane any specific Windows idiosyncrasy.
 We'll suppose you have unpacked the sources as 
-C:\spatialite-tools-2.3.0
+C:\spatialite-tools-2.3.1
 
-$ cd c:/spatialite-tool-2.3.0
+$ cd c:/spatialite-tool-2.3.1
 $ export "CFLAGS=-I/usr/local/include"
 $ export "LDFLAGS=-L/usr/local/lib"
 $ ./configure --target=mingw32
@@ -136,9 +136,9 @@ $ make install-strip
 We suppose you have already installed Visual Studio enabling the command
 line tools [you are expected to use the command prompt shell].
 We'll suppose you have unpacked the sources as 
-C:\spatialite-tools-2.3.0
+C:\spatialite-tools-2.3.1
 
-> cd c:\spatialite-tools-2.3.0
+> cd c:\spatialite-tools-2.3.1
 > nmake /f makefile.vc
 > nmake /f makefile.vc install
 
