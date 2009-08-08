@@ -37,6 +37,12 @@
 #define strcasecmp	_stricmp
 #endif /* not WIN32 */
 
+#if defined(_WIN32) || defined (__MINGW32__)
+#define FORMAT_64	"%I64d"
+#else
+#define FORMAT_64	"%lld"
+#endif
+
 #define ARG_NONE			0
 #define ARG_DB_PATH			1
 #define ARG_TABLE			2
@@ -44,16 +50,17 @@
 #define ARG_TO_COLUMN		4
 #define ARG_COST_COLUMN		5
 #define ARG_GEOM_COLUMN		6
-#define ARG_ONEWAY_TOFROM	7
-#define ARG_ONEWAY_FROMTO	8
-#define ARG_OUT_TABLE		9
+#define ARG_NAME_COLUMN		7
+#define ARG_ONEWAY_TOFROM	8
+#define ARG_ONEWAY_FROMTO	9
+#define ARG_OUT_TABLE		10
 
 #define MAX_BLOCK	1048576
 
 struct pre_node
 {
 /* a preliminary node */
-    int id;
+    sqlite3_int64 id;
     char code[32];
     struct pre_node *next;
 };
@@ -62,7 +69,7 @@ struct node
 {
 /* a NODE */
     int internal_index;
-    int id;
+    sqlite3_int64 id;
     char code[32];
     double x;
     double y;
@@ -76,7 +83,7 @@ struct node
 struct arc
 {
 /* an ARC */
-    int rowid;
+    sqlite3_int64 rowid;
     struct node *from;
     struct node *to;
     double cost;
@@ -214,11 +221,15 @@ cmp_nodes2_id (const void *p1, const void *p2)
 /* compares two nodes  by ID [for BSEARCH] */
     struct node *pN1 = (struct node *) p1;
     struct node *pN2 = *((struct node **) p2);
-    return pN1->id - pN2->id;
+    if (pN1->id == pN2->id)
+	return 0;
+    if (pN1->id > pN2->id)
+	return 1;
+    return -1;
 }
 
 static struct node *
-find_node (struct graph *p_graph, int id, char *code)
+find_node (struct graph *p_graph, sqlite3_int64 id, char *code)
 {
 /* searching a Node into the sorted list */
     struct node **ret;
@@ -266,7 +277,11 @@ cmp_nodes1_id (const void *p1, const void *p2)
 /* compares two nodes  by ID [for QSORT] */
     struct node *pN1 = *((struct node **) p1);
     struct node *pN2 = *((struct node **) p2);
-    return pN1->id - pN2->id;
+    if (pN1->id == pN2->id)
+	return 0;
+    if (pN1->id > pN2->id)
+	return 1;
+    return -1;
 }
 
 static void
@@ -313,7 +328,7 @@ sort_nodes (struct graph *p_graph)
 }
 
 static void
-insert_node (struct graph *p_graph, int id, char *code, int node_code)
+insert_node (struct graph *p_graph, sqlite3_int64 id, char *code, int node_code)
 {
 /* inserts a Node into the preliminary list */
     struct pre_node *pP = malloc (sizeof (struct pre_node));
@@ -345,7 +360,7 @@ insert_node (struct graph *p_graph, int id, char *code, int node_code)
 }
 
 static void
-add_node (struct graph *p_graph, int id, char *code)
+add_node (struct graph *p_graph, sqlite3_int64 id, char *code)
 {
 /* inserts a Node into the final list */
     int len;
@@ -380,8 +395,8 @@ add_node (struct graph *p_graph, int id, char *code)
 }
 
 static struct node *
-process_node (struct graph *p_graph, int id, char *code, double x, double y,
-	      struct node **pOther)
+process_node (struct graph *p_graph, sqlite3_int64 id, char *code, double x,
+	      double y, struct node **pOther)
 {
 /* inserts a new node or retrieves an already defined one */
     struct node *pN = find_node (p_graph, id, code);
@@ -433,21 +448,25 @@ add_outcoming_arc (struct node *pN, struct arc *pA)
 }
 
 static void
-add_arc (struct graph *p_graph, int rowid, int id_from, int id_to,
-	 char *code_from, char *code_to, double node_from_x, double node_from_y,
-	 double node_to_x, double node_to_y, double cost)
+add_arc (struct graph *p_graph, sqlite3_int64 rowid, sqlite3_int64 id_from,
+	 sqlite3_int64 id_to, char *code_from, char *code_to,
+	 double node_from_x, double node_from_y, double node_to_x,
+	 double node_to_y, double cost)
 {
 /* inserting an arc into the memory structures */
     struct node *pFrom;
     struct node *pTo;
     struct node *pN2;
     struct arc *pA;
+    char xRowid[128];
+    sprintf (xRowid, FORMAT_64, rowid);
     pFrom =
 	process_node (p_graph, id_from, code_from, node_from_x, node_from_y,
 		      &pN2);
     if (pN2)
       {
-	  printf ("ERROR: arc ROWID=%d; nodeFrom coord inconsistency\n", rowid);
+	  printf ("ERROR: arc ROWID=%s; nodeFrom coord inconsistency\n",
+		  xRowid);
 	  printf ("\twas: x=%1.6f y=%1.6f\n", pN2->x, pN2->y);
 	  printf ("\tnow: x=%1.6f y=%1.6f\n", node_from_x, node_from_y);
 	  p_graph->error = 1;
@@ -455,26 +474,26 @@ add_arc (struct graph *p_graph, int rowid, int id_from, int id_to,
     pTo = process_node (p_graph, id_to, code_to, node_to_x, node_to_y, &pN2);
     if (pN2)
       {
-	  printf ("ERROR: arc ROWID=%d; nodeTo coord inconsistency\n", rowid);
+	  printf ("ERROR: arc ROWID=%s; nodeTo coord inconsistency\n", xRowid);
 	  printf ("\twas: x=%1.6f y=%1.6f\n", pN2->x, pN2->y);
 	  printf ("\tnow: x=%1.6f y=%1.6f\n", node_to_x, node_to_y);
 	  p_graph->error = 1;
       }
     if (!pFrom)
       {
-	  printf ("ERROR: arc ROWID=%d internal error: missing NodeFrom\n",
-		  rowid);
+	  printf ("ERROR: arc ROWID=%s internal error: missing NodeFrom\n",
+		  xRowid);
 	  p_graph->error = 1;
       }
     if (!pTo)
       {
-	  printf ("ERROR: arc ROWID=%d internal error: missing NodeTo\n",
-		  rowid);
+	  printf ("ERROR: arc ROWID=%s internal error: missing NodeTo\n",
+		  xRowid);
 	  p_graph->error = 1;
       }
     if (pFrom == pTo)
       {
-	  printf ("ERROR: arc ROWID=%d is a closed ring\n", rowid);
+	  printf ("ERROR: arc ROWID=%s is a closed ring\n", xRowid);
 	  p_graph->error = 1;
       }
     if (p_graph->error)
@@ -510,14 +529,18 @@ cmp_prenodes_id (const void *p1, const void *p2)
 /* compares two preliminary nodes  by ID [for QSORT] */
     struct pre_node *pP1 = *((struct pre_node **) p1);
     struct pre_node *pP2 = *((struct pre_node **) p2);
-    return pP1->id - pP2->id;
+    if (pP1->id == pP2->id)
+	return 0;
+    if (pP1->id > pP2->id)
+	return 1;
+    return -1;
 }
 
 static void
 init_nodes (struct graph *p_graph)
 {
 /* prepares the final Nodes list */
-    int last_id;
+    sqlite3_int64 last_id;
     char last_code[32];
     int i;
     struct pre_node *pP;
@@ -723,8 +746,8 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
     else
       {
 	  /* Nodes are identified by an INTEGER Id */
-	  gaiaExport32 (out, pN->id, 1, endian_arch);	/* the Node ID */
-	  out += 4;
+	  gaiaExportI64 (out, pN->id, 1, endian_arch);	/* the Node ID */
+	  out += 8;
       }
     arc_array = prepareOutcomings (pN, &n_star);
     gaiaExport16 (out, n_star, 1, endian_arch);	/* # of outcoming arcs */
@@ -734,8 +757,8 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
 	  /* exporting the outcoming arcs */
 	  pA = *(arc_array + i);
 	  *out++ = GAIA_NET_ARC;
-	  gaiaExport32 (out, pA->rowid, 1, endian_arch);	/* the Arc rowid */
-	  out += 4;
+	  gaiaExportI64 (out, pA->rowid, 1, endian_arch);	/* the Arc rowid */
+	  out += 8;
 	  gaiaExport32 (out, pA->to->internal_index, 1, endian_arch);	/* the ToNode internal index */
 	  out += 4;
 	  gaiaExport64 (out, pA->cost, 1, endian_arch);	/* the Arc Cost */
@@ -751,7 +774,7 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
 static int
 create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 		     struct graph *p_graph, char *table, char *from_column,
-		     char *to_column, char *geom_column)
+		     char *to_column, char *geom_column, char *name_column)
 {
 /* creates the NETWORK-DATA table */
     int ret;
@@ -817,7 +840,7 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
       {
 	  /* preparing the HEADER block */
 	  out = buf;
-	  *out++ = GAIA_NET_START;
+	  *out++ = GAIA_NET64_START;
 	  *out++ = GAIA_NET_HEADER;
 	  gaiaExport32 (out, p_graph->n_nodes, 1, endian_arch);	/* how many Nodes are there */
 	  out += 4;
@@ -860,6 +883,18 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 	  out += 2;
 	  memset (out, '\0', len);
 	  strcpy ((char *) out, geom_column);
+	  out += len;
+	  /* inserting the Name column name - may be empty */
+	  *out++ = GAIA_NET_NAME;
+	  if (!name_column)
+	      len = 1;
+	  else
+	      len = strlen (name_column) + 1;
+	  gaiaExport16 (out, len, 1, endian_arch);	/* the Name column Name length, including last '\0' */
+	  out += 2;
+	  memset (out, '\0', len);
+	  if (name_column)
+	      strcpy ((char *) out, name_column);
 	  out += len;
 	  *out++ = GAIA_NET_END;
 	  /* INSERTing the Header block */
@@ -964,9 +999,9 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 
 static void
 validate (char *path, char *table, char *from_column, char *to_column,
-	  char *cost_column, char *geom_column, char *oneway_tofrom,
-	  char *oneway_fromto, int bidirectional, char *out_table,
-	  int force_creation)
+	  char *cost_column, char *geom_column, char *name_column,
+	  char *oneway_tofrom, char *oneway_fromto, int bidirectional,
+	  char *out_table, int force_creation)
 {
 /* performs all the actual network validation */
     int ret;
@@ -986,6 +1021,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
     int ok_to_column = 0;
     int ok_cost_column = 0;
     int ok_geom_column = 0;
+    int ok_name_column = 0;
     int ok_oneway_tofrom = 0;
     int ok_oneway_fromto = 0;
     int from_null = 0;
@@ -1019,9 +1055,9 @@ validate (char *path, char *table, char *from_column, char *to_column,
     int cost_n;
     int fromto_n;
     int tofrom_n;
-    int rowid;
-    int id_from;
-    int id_to;
+    sqlite3_int64 rowid;
+    sqlite3_int64 id_from;
+    sqlite3_int64 id_to;
     char code_from[1024];
     char code_to[1024];
     double node_from_x;
@@ -1031,6 +1067,9 @@ validate (char *path, char *table, char *from_column, char *to_column,
     double cost;
     int fromto;
     int tofrom;
+    char xRowid[128];
+    char xIdFrom[128];
+    char xIdTo[128];
 /* initializing SpatiaLite */
     spatialite_init (0);
 /* showing the SQLite version */
@@ -1048,7 +1087,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
       }
     fprintf (stderr, "Step   I - checking for table and columns existence\n");
 /* reporting args */
-    printf ("\nspatialite-network-validator\n\n");
+    printf ("\nspatialite-network\n\n");
     printf
 	("==================================================================\n");
     printf ("   SpatiaLite db: %s\n", path);
@@ -1062,10 +1101,14 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	printf ("    Cost: GLength(%s)\n", geom_column);
     else
 	printf ("    Cost: %s\n", cost_column);
+    if (!name_column)
+	printf ("    Name: *unused*\n");
+    else
+	printf ("    Name: %s\n", name_column);
     printf ("Geometry: %s\n\n", geom_column);
     if (bidirectional)
       {
-	  printf ("assuming arcs to to be BIDIRECTIONAL\n");
+	  printf ("assuming arcs to be BIDIRECTIONAL\n");
 	  if (oneway_tofrom && oneway_fromto)
 	    {
 		printf ("OneWay To->From: %s\n", oneway_tofrom);
@@ -1073,7 +1116,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	    }
       }
     else
-	printf ("assuming arcs to to be UNIDIRECTIONAL\n");
+	printf ("assuming arcs to be UNIDIRECTIONAL\n");
     if (out_table)
       {
 	  printf ("\nNETWORK-DATA table creation required: '%s'\n", out_table);
@@ -1137,6 +1180,11 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		  }
 		if (strcasecmp (geom_column, col_name) == 0)
 		    ok_geom_column = 1;
+		if (name_column)
+		  {
+		      if (strcasecmp (name_column, col_name) == 0)
+			  ok_name_column = 1;
+		  }
 		if (oneway_tofrom)
 		  {
 		      if (strcasecmp (oneway_tofrom, col_name) == 0)
@@ -1162,13 +1210,18 @@ validate (char *path, char *table, char *from_column, char *to_column,
     if (!ok_geom_column)
 	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
 		geom_column);
+    if (name_column && !ok_name_column)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		name_column);
     if (oneway_tofrom && !ok_oneway_tofrom)
 	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
 		oneway_tofrom);
     if (oneway_fromto && !ok_oneway_fromto)
 	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
 		oneway_fromto);
-    if (ok_from_column && ok_to_column && ok_geom_column)
+    if (!name_column)
+	ok_name_column = 1;
+    if (ok_from_column && ok_to_column && ok_geom_column && ok_name_column)
 	;
     else
 	goto abort;
@@ -1528,17 +1581,17 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		      *code_to = '\0';
 		  }
 		/* fetching the ROWID */
-		rowid = sqlite3_column_int (stmt, 0);
+		rowid = sqlite3_column_int64 (stmt, 0);
 		/* fetching the NodeFrom value */
 		if (p_graph->node_code)
 		    strcpy (code_from, (char *) sqlite3_column_text (stmt, 1));
 		else
-		    id_from = sqlite3_column_int (stmt, 1);
+		    id_from = sqlite3_column_int64 (stmt, 1);
 		/* fetching the NodeTo value */
 		if (p_graph->node_code)
 		    strcpy (code_to, (char *) sqlite3_column_text (stmt, 2));
 		else
-		    id_to = sqlite3_column_int (stmt, 2);
+		    id_to = sqlite3_column_int64 (stmt, 2);
 		/* fetching the NodeFromX value */
 		node_from_x = sqlite3_column_double (stmt, 3);
 		/* fetching the NodeFromY value */
@@ -1559,11 +1612,12 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		      /* fetching the OneWay-ToFrom value */
 		      tofrom = sqlite3_column_int (stmt, tofrom_n);
 		  }
+		sprintf (xRowid, FORMAT_64, rowid);
 		if (cost <= 0.0)
 		  {
 		      printf
-			  ("ERROR: arc ROWID=%d has NEGATIVE or NULL cost [%1.6f]\n",
-			   rowid, cost);
+			  ("ERROR: arc ROWID=%s has NEGATIVE or NULL cost [%1.6f]\n",
+			   xRowid, cost);
 		      p_graph->error = 1;
 		  }
 		if (bidirectional)
@@ -1572,12 +1626,16 @@ validate (char *path, char *table, char *from_column, char *to_column,
 			{
 			    if (p_graph->node_code)
 				printf
-				    ("WARNING: arc forbidden in both directions; ROWID=%d From=%s To=%s\n",
-				     rowid, code_from, code_to);
+				    ("WARNING: arc forbidden in both directions; ROWID=%s From=%s To=%s\n",
+				     xRowid, code_from, code_to);
 			    else
-				printf
-				    ("WARNING: arc forbidden in both directions; ROWID=%d From=%d To=%d\n",
-				     rowid, id_from, id_to);
+			      {
+				  sprintf (xIdFrom, FORMAT_64, id_from);
+				  sprintf (xIdTo, FORMAT_64, id_to);
+				  printf
+				      ("WARNING: arc forbidden in both directions; ROWID=%s From=%s To=%s\n",
+				       xRowid, xIdFrom, xIdTo);
+			      }
 			}
 		      if (fromto)
 			  add_arc (p_graph, rowid, id_from, id_to, code_from,
@@ -1630,7 +1688,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
       {
 	  ret =
 	      create_network_data (handle, out_table, force_creation, p_graph,
-				   table, from_column, to_column, geom_column);
+				   table, from_column, to_column, geom_column,
+				   name_column);
 	  if (ret)
 	    {
 		printf
@@ -1681,6 +1740,8 @@ do_help ()
     fprintf (stderr,
 	     "                                  will be used by defualt\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
+    fprintf (stderr,
+	     "-n or --name-column col_name      the column for RoadName\n");
     fprintf (stderr, "--bidirectional                   *default*\n");
     fprintf (stderr, "--unidirectional\n\n");
     fprintf (stderr,
@@ -1713,6 +1774,7 @@ main (int argc, char *argv[])
     char *to_column = NULL;
     char *cost_column = NULL;
     char *geom_column = NULL;
+    char *name_column = NULL;
     char *oneway_tofrom = NULL;
     char *oneway_fromto = NULL;
     char *out_table = NULL;
@@ -1746,6 +1808,9 @@ main (int argc, char *argv[])
 		      break;
 		  case ARG_GEOM_COLUMN:
 		      geom_column = argv[i];
+		      break;
+		  case ARG_NAME_COLUMN:
+		      name_column = argv[i];
 		      break;
 		  case ARG_ONEWAY_TOFROM:
 		      oneway_tofrom = argv[i];
@@ -1826,6 +1891,16 @@ main (int argc, char *argv[])
 	  if (strcmp (argv[i], "-g") == 0)
 	    {
 		next_arg = ARG_GEOM_COLUMN;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--name-column") == 0)
+	    {
+		next_arg = ARG_NAME_COLUMN;
+		continue;
+	    }
+	  if (strcmp (argv[i], "-n") == 0)
+	    {
+		next_arg = ARG_NAME_COLUMN;
 		continue;
 	    }
 	  if (strcasecmp (argv[i], "--oneway-tofrom") == 0)
@@ -1917,7 +1992,7 @@ main (int argc, char *argv[])
 	  return -1;
       }
     validate (path, table, from_column, to_column, cost_column, geom_column,
-	      oneway_tofrom, oneway_fromto, bidirectional, out_table,
-	      force_creation);
+	      name_column, oneway_tofrom, oneway_fromto, bidirectional,
+	      out_table, force_creation);
     return 0;
 }
