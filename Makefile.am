@@ -6,7 +6,8 @@ bin_PROGRAMS =spatialite \
 	spatialite_tool \
 	spatialite_network \
 	shp_doctor \
-	exif_loader
+	exif_loader \
+	spatialite_osm
 
 INCLUDES = @CFLAGS@
 
@@ -15,6 +16,7 @@ spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
+spatialite_osm_SOURCES = spatialite_osm.c
 
 if MINGW
 spatialite_LDADD = @SPATIALITE_LIB@ \
