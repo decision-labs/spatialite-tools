@@ -163,36 +163,38 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
       }
     size_shp = gaiaImport32 (buf_shp + 24, GAIA_BIG_ENDIAN, endian_arch);
     shape = gaiaImport32 (buf_shp + 32, GAIA_LITTLE_ENDIAN, endian_arch);
-    if (shape == 1 || shape == 11 || shape == 21 ||
-	shape == 3 || shape == 13 || shape == 23 ||
-	shape == 5 || shape == 15 || shape == 25 ||
-	shape == 8 || shape == 18 || shape == 28)
+    if (shape == GAIA_SHP_POINT || shape == GAIA_SHP_POINTM
+	|| shape == GAIA_SHP_POINTZ || shape == GAIA_SHP_POLYLINE
+	|| shape == GAIA_SHP_POLYLINEM || shape == GAIA_SHP_POLYLINEZ
+	|| shape == GAIA_SHP_POLYGON || shape == GAIA_SHP_POLYGONM
+	|| shape == GAIA_SHP_POLYGONZ || shape == GAIA_SHP_MULTIPOINT
+	|| shape == GAIA_SHP_MULTIPOINTM || shape == GAIA_SHP_MULTIPOINTZ)
 	;
     else
 	goto unsupported;
-    if (shape == 1)
+    if (shape == GAIA_SHP_POINT)
 	printf ("shape-type=%d POINT\n\n", shape);
-    if (shape == 11)
+    if (shape == GAIA_SHP_POINTZ)
 	printf ("shape-type=%d POINT-Z\n\n", shape);
-    if (shape == 21)
+    if (shape == GAIA_SHP_POINTM)
 	printf ("shape-type=%d POINT-M\n\n", shape);
-    if (shape == 3)
+    if (shape == GAIA_SHP_POLYLINE)
 	printf ("shape-type=%d POLYLINE\n\n", shape);
-    if (shape == 13)
+    if (shape == GAIA_SHP_POLYLINEZ)
 	printf ("shape-type=%d POLYLINE-Z\n\n", shape);
-    if (shape == 23)
+    if (shape == GAIA_SHP_POLYLINEM)
 	printf ("shape-type=%d POLYLINE-M\n\n", shape);
-    if (shape == 5)
+    if (shape == GAIA_SHP_POLYGON)
 	printf ("shape-type=%d POLYGON\n\n", shape);
-    if (shape == 15)
+    if (shape == GAIA_SHP_POLYGONZ)
 	printf ("shape-type=%d POLYGON-Z\n\n", shape);
-    if (shape == 25)
+    if (shape == GAIA_SHP_POLYGONM)
 	printf ("shape-type=%d POLYGON-M\n\n", shape);
-    if (shape == 8)
+    if (shape == GAIA_SHP_MULTIPOINT)
 	printf ("shape-type=%d MULTIPOINT\n\n", shape);
-    if (shape == 18)
+    if (shape == GAIA_SHP_MULTIPOINTZ)
 	printf ("shape-type=%d MULTIPOINT-Z\n\n", shape);
-    if (shape == 28)
+    if (shape == GAIA_SHP_MULTIPOINTM)
 	printf ("shape-type=%d MULTIPOINT-M\n\n", shape);
     x_shape = shape;
     shp_minx = gaiaImport64 (buf_shp + 36, GAIA_LITTLE_ENDIAN, endian_arch);
@@ -353,7 +355,8 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 		buf_size = sz * 2;
 		buf_shp = malloc (sizeof (unsigned char) * buf_size);
 	    }
-	  if (shape == 1 || shape == 11 || shape == 21)
+	  if (shape == GAIA_SHP_POINT || shape == GAIA_SHP_POINTZ
+	      || shape == GAIA_SHP_POINTM)
 	    {
 		/* shape point */
 		rd = fread (buf_shp, sizeof (unsigned char), 16, fl_shp);
@@ -376,7 +379,8 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 3 || shape == 13 || shape == 23)
+	  if (shape == GAIA_SHP_POLYLINE || shape == GAIA_SHP_POLYLINEZ
+	      || shape == GAIA_SHP_POLYLINEM)
 	    {
 		/* shape polyline */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
@@ -431,7 +435,8 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 5 || shape == 15 || shape == 25)
+	  if (shape == GAIA_SHP_POLYGON || shape == GAIA_SHP_POLYGONZ
+	      || shape == GAIA_SHP_POLYGONM)
 	    {
 		/* shape polygon */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
@@ -486,7 +491,8 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 8 || shape == 18 || shape == 28)
+	  if (shape == GAIA_SHP_MULTIPOINT || shape == GAIA_SHP_MULTIPOINTZ
+	      || shape == GAIA_SHP_MULTIPOINTM)
 	    {
 		/* shape multipoint */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
@@ -702,36 +708,38 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
       }
     size_shp = gaiaImport32 (buf_shp + 24, GAIA_BIG_ENDIAN, endian_arch);
     shape = gaiaImport32 (buf_shp + 32, GAIA_LITTLE_ENDIAN, endian_arch);
-    if (shape == 1 || shape == 11 || shape == 21 ||
-	shape == 3 || shape == 13 || shape == 23 ||
-	shape == 5 || shape == 15 || shape == 25 ||
-	shape == 8 || shape == 18 || shape == 28)
+    if (shape == GAIA_SHP_POINT || shape == GAIA_SHP_POINTM
+	|| shape == GAIA_SHP_POINTM || shape == GAIA_SHP_POLYLINE
+	|| shape == GAIA_SHP_POLYLINEZ || shape == GAIA_SHP_POLYLINEM
+	|| shape == GAIA_SHP_POLYGON || shape == GAIA_SHP_POLYGONZ
+	|| shape == GAIA_SHP_POLYGONM || shape == GAIA_SHP_MULTIPOINT
+	|| shape == GAIA_SHP_MULTIPOINTZ || shape == GAIA_SHP_MULTIPOINTM)
 	;
     else
 	goto unsupported;
-    if (shape == 1)
+    if (shape == GAIA_SHP_POINT)
 	printf ("shape-type=%d POINT\n\n", shape);
-    if (shape == 11)
+    if (shape == GAIA_SHP_POINTZ)
 	printf ("shape-type=%d POINT-Z\n\n", shape);
-    if (shape == 21)
+    if (shape == GAIA_SHP_POINTM)
 	printf ("shape-type=%d POINT-M\n\n", shape);
-    if (shape == 3)
+    if (shape == GAIA_SHP_POLYLINE)
 	printf ("shape-type=%d POLYLINE\n\n", shape);
-    if (shape == 13)
+    if (shape == GAIA_SHP_POLYLINEZ)
 	printf ("shape-type=%d POLYLINE-Z\n\n", shape);
-    if (shape == 23)
+    if (shape == GAIA_SHP_POLYLINEM)
 	printf ("shape-type=%d POLYLINE-M\n\n", shape);
-    if (shape == 5)
+    if (shape == GAIA_SHP_POLYGON)
 	printf ("shape-type=%d POLYGON\n\n", shape);
-    if (shape == 15)
+    if (shape == GAIA_SHP_POLYGONZ)
 	printf ("shape-type=%d POLYGON-Z\n\n", shape);
-    if (shape == 25)
+    if (shape == GAIA_SHP_POLYGONM)
 	printf ("shape-type=%d POLYGON-M\n\n", shape);
-    if (shape == 8)
+    if (shape == GAIA_SHP_MULTIPOINT)
 	printf ("shape-type=%d MULTIPOINT\n\n", shape);
-    if (shape == 18)
+    if (shape == GAIA_SHP_MULTIPOINTZ)
 	printf ("shape-type=%d MULTIPOINT-Z\n\n", shape);
-    if (shape == 28)
+    if (shape == GAIA_SHP_MULTIPOINTM)
 	printf ("shape-type=%d MULTIPOINT-M\n\n", shape);
     x_shape = shape;
     shp_minx = gaiaImport64 (buf_shp + 36, GAIA_LITTLE_ENDIAN, endian_arch);
@@ -886,7 +894,8 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 		buf_size = sz * 2;
 		buf_shp = malloc (sizeof (unsigned char) * buf_size);
 	    }
-	  if (shape == 1 || shape == 11 || shape == 21)
+	  if (shape == GAIA_SHP_POINT || shape == GAIA_SHP_POINTZ
+	      || shape == GAIA_SHP_POINTM)
 	    {
 		/* shape point */
 		rd = fread (buf_shp, sizeof (unsigned char), 16, fl_shp);
@@ -909,7 +918,8 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 3 || shape == 13 || shape == 23)
+	  if (shape == GAIA_SHP_POLYLINE || shape == GAIA_SHP_POLYLINEZ
+	      || shape == GAIA_SHP_POLYLINEM)
 	    {
 		/* shape polyline */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
@@ -964,7 +974,8 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 5 || shape == 15 || shape == 25)
+	  if (shape == GAIA_SHP_POLYGON || shape == GAIA_SHP_POLYGONZ
+	      || shape == GAIA_SHP_POLYGONM)
 	    {
 		/* shape polygon */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
@@ -1019,7 +1030,8 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			}
 		  }
 	    }
-	  if (shape == 8 || shape == 18 || shape == 28)
+	  if (shape == GAIA_SHP_MULTIPOINT || shape == GAIA_SHP_MULTIPOINTZ
+	      || shape == GAIA_SHP_MULTIPOINTM)
 	    {
 		/* shape multipoint */
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);

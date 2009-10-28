@@ -1389,6 +1389,8 @@ build_geometry (sqlite3 * handle, struct way *xway)
 	  pa->dyn = NULL;
 	  pa->length =
 	      gaiaGreatCircleTotalLength (a, b,
+					  pa->geom->FirstLinestring->
+					  DimensionModel,
 					  pa->geom->FirstLinestring->Coords,
 					  pa->geom->FirstLinestring->Points);
 	  pa->cost = compute_time (xway->class, pa->length);
@@ -2174,7 +2176,7 @@ open_db (const char *path, const char *table, int double_arcs)
       }
 
     sprintf (sql, "SELECT AddGeometryColumn('%s', 'geometry', ", table);
-    strcat (sql, " 4326, 'LINESTRING', 2)");
+    strcat (sql, " 4326, 'LINESTRING', 'XY')");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {

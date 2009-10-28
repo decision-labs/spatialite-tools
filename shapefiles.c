@@ -95,6 +95,7 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
     unsigned char *blob;
     int blob_size;
     char *geom_type;
+    char *txt_dims;
     char *geo_column = column;
     if (!geo_column)
 	geo_column = "Geometry";
@@ -280,26 +281,28 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 	  /* creating Geometry column */
 	  switch (shp->Shape)
 	    {
-	    case 1:
-	    case 11:
-	    case 21:
+	    case GAIA_SHP_POINT:
+	    case GAIA_SHP_POINTM:
+	    case GAIA_SHP_POINTZ:
 		geom_type = "POINT";
 		break;
-	    case 8:
+	    case GAIA_SHP_MULTIPOINT:
+	    case GAIA_SHP_MULTIPOINTM:
+	    case GAIA_SHP_MULTIPOINTZ:
 		geom_type = "MULTIPOINT";
 		break;
-	    case 3:
-	    case 13:
-	    case 23:
+	    case GAIA_SHP_POLYLINE:
+	    case GAIA_SHP_POLYLINEM:
+	    case GAIA_SHP_POLYLINEZ:
 		gaiaShpAnalyze (shp);
 		if (shp->EffectiveType == GAIA_LINESTRING)
 		    geom_type = "LINESTRING";
 		else
 		    geom_type = "MULTILINESTRING";
 		break;
-	    case 5:
-	    case 15:
-	    case 25:
+	    case GAIA_SHP_POLYGON:
+	    case GAIA_SHP_POLYGONM:
+	    case GAIA_SHP_POLYGONZ:
 		gaiaShpAnalyze (shp);
 		if (shp->EffectiveType == GAIA_POLYGON)
 		    geom_type = "POLYGON";
@@ -307,8 +310,23 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 		    geom_type = "MULTIPOLYGON";
 		break;
 	    };
-	  sprintf (sql, "SELECT AddGeometryColumn('%s', '%s', %d, '%s', 2)",
-		   table, geo_column, srid, geom_type);
+	  switch (shp->EffectiveDims)
+	    {
+	    case GAIA_XY_Z:
+		txt_dims = "XYZ";
+		break;
+	    case GAIA_XY_M:
+		txt_dims = "XYM";
+		break;
+	    case GAIA_XY_Z_M:
+		txt_dims = "XYZM";
+		break;
+	    default:
+		txt_dims = "XY";
+		break;
+	    };
+	  sprintf (sql, "SELECT AddGeometryColumn('%s', '%s', %d, '%s', '%s')",
+		   table, geo_column, srid, geom_type, txt_dims);
 	  if (verbose)
 	      fprintf (stderr, "%s;\n", sql);
 	  ret = sqlite3_exec (sqlite, sql, NULL, 0, &errMsg);
@@ -323,8 +341,12 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
     else
       {
 	  /* no Metadata */
-	  if (shp->Shape == 3 || shp->Shape == 13 || shp->Shape == 23 ||
-	      shp->Shape == 5 || shp->Shape == 15 || shp->Shape == 25)
+	  if (shp->Shape == GAIA_SHP_POLYLINE
+	      || shp->Shape == GAIA_SHP_POLYLINEM
+	      || shp->Shape == GAIA_SHP_POLYLINEZ
+	      || shp->Shape == GAIA_SHP_POLYGON
+	      || shp->Shape == GAIA_SHP_POLYGONM
+	      || shp->Shape == GAIA_SHP_POLYGONZ)
 	    {
 		/* fixing anyway the Geometry type for LINESTRING/MULTILINESTRING or POLYGON/MULTIPOLYGON */
 		gaiaShpAnalyze (shp);
