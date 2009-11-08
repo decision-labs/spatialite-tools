@@ -1,29 +1,38 @@
-/*
- This file is the original SQLite command-line backend
- slightly modified by Alessandro Furieri in order to:
-
- - autoload the SpatiaLite and VirtualShape extensions
- - release any related memory allocation when exiting
-
+/* 
+/ spatialite
+/
+/ a CLI backend for SpatiaLite 
+/
+/ version 1.0, 2008 Decmber 11
+/
+/ Author: Sandro Furieri a.furieri@lqt.it
+/
+/ Copyright (C) 2008  Alessandro Furieri
+/
+/    This program is free software: you can redistribute it and/or modify
+/    it under the terms of the GNU General Public License as published by
+/    the Free Software Foundation, either version 3 of the License, or
+/    (at your option) any later version.
+/
+/    This program is distributed in the hope that it will be useful,
+/    but WITHOUT ANY WARRANTY; without even the implied warranty of
+/    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/    GNU General Public License for more details.
+/
+/    You should have received a copy of the GNU General Public License
+/    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+/
 */
 
-
-
 /*
-** 2001 September 15
-**
-** The author disclaims copyright to this source code.  In place of
-** a legal notice, here is a blessing:
-**
-**    May you do good and not evil.
-**    May you find forgiveness for yourself and forgive others.
-**    May you share freely, never taking more than you give.
-**
-*************************************************************************
-** This file contains code to implement the "sqlite" command line
-** utility for accessing SQLite databases.
-**
-** $Id: shell.c,v 1.178 2008/05/05 16:27:24 drh Exp $
+
+ DISCLAIMER
+ ==========
+ 
+ This file is the original SQLite command-line backend
+ slightly modified by Alessandro Furieri in order to
+ fully support the SpatiaLite extensions
+
 */
 
 /* Sandro Furieri 30 May 2008
@@ -1801,6 +1810,10 @@ open_db (struct callback_data *p)
 #ifndef SQLITE_OMIT_LOAD_EXTENSION
 	  sqlite3_enable_load_extension (p->db, 1);
 #endif
+
+/* Sandro Furieri 2009-11-08 */
+	  sqlite3_exec(p->db, "PRAGMA foreign_keys = 1", NULL, 0, NULL);
+/* end Sandro Furieri 2008-11-08 */
       }
 }
 

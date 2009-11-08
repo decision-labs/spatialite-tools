@@ -667,6 +667,10 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 			       (sql_type[i] == SQLITE_NULL
 				|| sql_type[i] == SQLITE_INTEGER))
 			  sql_type[i] = SQLITE_INTEGER;	/* promoting a null column to be INTEGER */
+		      if (type == SQLITE_INTEGER && max_length[i] < 18)
+			  max_length[i] = 18;
+		      if (type == SQLITE_FLOAT && max_length[i] < 24)
+			  max_length[i] = 24;
 		  }
 	    }
 	  else
@@ -786,6 +790,29 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 					strcpy (dummy,
 						(char *)
 						sqlite3_column_text (stmt, i));
+					gaiaSetStrValue (dbf_field, dummy);
+				    }
+				  else if (sqlite3_column_type (stmt, i) ==
+					   SQLITE_INTEGER)
+				    {
+#if defined(_WIN32) || defined(__MINGW32__)
+					/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
+					sprintf (dummy, "%I64d",
+						 sqlite3_column_int64 (stmt,
+								       i));
+#else
+					sprintf (dummy, "%lld",
+						 sqlite3_column_int64 (stmt,
+								       i));
+#endif
+					gaiaSetStrValue (dbf_field, dummy);
+				    }
+				  else if (sqlite3_column_type (stmt, i) ==
+					   SQLITE_FLOAT)
+				    {
+					sprintf (dummy, "%1.6f",
+						 sqlite3_column_double (stmt,
+									i));
 					gaiaSetStrValue (dbf_field, dummy);
 				    }
 				  else

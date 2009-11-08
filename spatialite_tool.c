@@ -281,7 +281,7 @@ do_import (char *db_path, char *shp_path, char *table, char *charset, int srid,
       }
     if (load_shapefile
 	(handle, shp_path, table, charset, srid, column, 0, &rows))
-	fprintf (stderr, "Inserted %d rows into '%s' form '%s.shp'\n", rows,
+	fprintf (stderr, "Inserted %d rows into '%s' from '%s.shp'\n", rows,
 		 table, shp_path);
     else
 	fprintf (stderr, "Some ERROR occurred\n");
@@ -317,7 +317,7 @@ do_export (char *db_path, char *shp_path, char *table, char *column,
       }
     if (dump_shapefile
 	(handle, table, column, shp_path, charset, type, 0, &rows))
-	fprintf (stderr, "Exported %d rows into '%s.shp' form '%s'\n", rows,
+	fprintf (stderr, "Exported %d rows into '%s.shp' from '%s'\n", rows,
 		 shp_path, table);
     else
 	fprintf (stderr, "Some ERROR occurred\n");
