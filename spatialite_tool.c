@@ -42,12 +42,14 @@
 #define ARG_CMD			1
 #define ARG_SQL			2
 #define ARG_SHP			3
-#define ARG_DB			4
-#define ARG_TABLE		5
-#define ARG_COL			6
-#define ARG_CS			7
-#define ARG_SRID		8
-#define ARG_TYPE		9
+#define ARG_TXT			4
+#define ARG_DBF			5
+#define ARG_DB			6
+#define ARG_TABLE		7
+#define ARG_COL			8
+#define ARG_CS			9
+#define ARG_SRID		10
+#define ARG_TYPE		11
 
 static char *
 read_sql_line (FILE * in, int *len, int *eof)
@@ -255,7 +257,42 @@ do_execute (char *db_path, char *sql_script, char *charset)
 }
 
 static void
-do_import (char *db_path, char *shp_path, char *table, char *charset, int srid,
+do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
+{
+/* importing some DBF */
+    int ret;
+    int rows;
+    sqlite3 *handle;
+/* initializing SpatiaLite */
+    spatialite_init (0);
+/* showing the SQLite version */
+    fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
+/* showing the SpatiaLite version */
+    fprintf (stderr, "SpatiaLite version: %s\n", spatialite_version ());
+/* trying to connect the SpatiaLite DB  */
+    ret =
+	sqlite3_open_v2 (db_path, &handle,
+			 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "cannot open '%s': %s\n", db_path,
+		   sqlite3_errmsg (handle));
+	  sqlite3_close (handle);
+	  return;
+      }
+    if (load_dbf(handle, dbf_path, table, charset, 0, &rows))
+	fprintf (stderr, "Inserted %d rows into '%s' from '%s'\n", rows, table, dbf_path);
+    else
+	fprintf (stderr, "Some ERROR occurred\n");
+/* disconnecting the SpatiaLite DB */
+    ret = sqlite3_close (handle);
+    if (ret != SQLITE_OK)
+	fprintf (stderr, "sqlite3_close() error: %s\n",
+		 sqlite3_errmsg (handle));
+}
+
+static void
+do_import_shp (char *db_path, char *shp_path, char *table, char *charset, int srid,
 	   char *column)
 {
 /* importing some SHP */
@@ -339,8 +376,8 @@ do_help ()
     fprintf (stderr, "------------------------------------\n");
     fprintf (stderr,
 	     "-h or --help                      print this help message\n");
-    fprintf (stderr,
-	     "-i or --import-shp                importing some shapefile\n");
+	fprintf (stderr,
+	     "-i or --import                    import [CSV/TXT, DBF or SHP]\n");
     fprintf (stderr,
 	     "-e or --export-shp                exporting some shapefile\n");
     fprintf (stderr,
@@ -348,6 +385,8 @@ do_help ()
     fprintf (stderr, "\nsupported ARGs are:\n");
     fprintf (stderr, "-------------------\n");
     fprintf (stderr, "-sql or --sql-script pathname     the SQL script path\n");
+	fprintf (stderr,
+	     "-dbf or --dbf-path pathname       the full DBF path\n");
     fprintf (stderr,
 	     "-shp or --shapefile pathname      the shapefile path [NO SUFFIX]\n");
     fprintf (stderr,
@@ -361,6 +400,8 @@ do_help ()
     fprintf (stderr, "\nexamples:\n");
     fprintf (stderr, "---------\n");
     fprintf (stderr, "spatialite_tool -x -sql script.sql -c ASCII\n");
+	fprintf (stderr,
+	     "spatialite_tool -i -dbf abc.dbf -d db.sqlite -t tbl -c CP1252\n");
     fprintf (stderr,
 	     "spatialite_tool -i -shp abc -d db.sqlite -t tbl -c CP1252 [-s 4326] [-g geom]\n");
     fprintf (stderr,
@@ -375,6 +416,7 @@ main (int argc, char *argv[])
     int next_arg = ARG_NONE;
     char *sql_path = NULL;
     char *shp_path = NULL;
+	char *dbf_path = NULL;
     char *db_path = NULL;
     char *table = NULL;
     char *column = NULL;
@@ -382,9 +424,11 @@ main (int argc, char *argv[])
     char *type = NULL;
     int srid = -1;
     int execute = 0;
-    int import = 0;
+	int import = 0;
     int export = 0;
-    int error = 0;
+	int in_shp = 0;
+	int in_dbf = 0;
+	int error = 0;
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -397,6 +441,9 @@ main (int argc, char *argv[])
 		      break;
 		  case ARG_SHP:
 		      shp_path = argv[i];
+		      break;
+			case ARG_DBF:
+		      dbf_path = argv[i];
 		      break;
 		  case ARG_DB:
 		      db_path = argv[i];
@@ -439,11 +486,25 @@ main (int argc, char *argv[])
 	  if (strcasecmp (argv[i], "--shapefile") == 0)
 	    {
 		next_arg = ARG_SHP;
+		in_shp = 1;
 		continue;
 	    }
 	  if (strcmp (argv[i], "-shp") == 0)
 	    {
 		next_arg = ARG_SHP;
+		in_shp = 1;
+		continue;
+	    }
+		if (strcasecmp (argv[i], "--dbf-path") == 0)
+	    {
+		next_arg = ARG_DBF;
+		in_dbf = 1;
+		continue;
+	    }
+	  if (strcmp (argv[i], "-dbf") == 0)
+	    {
+		next_arg = ARG_DBF;
+		in_dbf = 1;
 		continue;
 	    }
 	  if (strcasecmp (argv[i], "--db-path") == 0)
@@ -501,7 +562,7 @@ main (int argc, char *argv[])
 		next_arg = ARG_TYPE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "--import-shp") == 0 ||
+		if (strcasecmp (argv[i], "--import") == 0 ||
 	      strcasecmp (argv[i], "-i") == 0)
 	    {
 		import = 1;
@@ -555,8 +616,8 @@ main (int argc, char *argv[])
 		error = 1;
 	    }
       }
-    if (import)
-      {
+	if (import)
+	{
 	  /* import SHP */
 	  if (!db_path)
 	    {
@@ -564,10 +625,21 @@ main (int argc, char *argv[])
 			 "did you forget setting the --db-path argument ?\n");
 		error = 1;
 	    }
-	  if (!shp_path)
+		if ((in_shp + in_dbf) != 1)
+		{
+		fprintf(stderr, "undefined IMPORT source: SHP or DBF ?\n");
+		error = 1;
+		}
+	  if (in_shp && !shp_path)
 	    {
 		fprintf (stderr,
 			 "did you forget setting the --shapefile argument ?\n");
+		error = 1;
+	    }
+		if (in_dbf && !dbf_path)
+	    {
+		fprintf (stderr,
+			 "did you forget setting the --dbf-path argument ?\n");
 		error = 1;
 	    }
 	  if (!table)
@@ -624,8 +696,10 @@ main (int argc, char *argv[])
       }
     if (execute)
 	do_execute (db_path, sql_path, charset);
-    if (import)
-	do_import (db_path, shp_path, table, charset, srid, column);
+	if (import && in_dbf)
+	do_import_dbf (db_path, dbf_path, table, charset);
+    if (import && in_shp)
+	do_import_shp (db_path, shp_path, table, charset, srid, column);
     if (export)
 	do_export (db_path, shp_path, table, column, charset, type);
     return 0;

@@ -870,3 +870,309 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 	     "The SQL SELECT returned an empty result set ... there is nothing to export ...");
     return 0;
 }
+
+SPATIALITE_DECLARE int
+load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
+	  int verbose, int *rows)
+{
+    sqlite3_stmt *stmt;
+    int ret;
+    char *errMsg = NULL;
+    char sql[65536];
+    char dummyName[4096];
+    int already_exists = 0;
+    int sqlError = 0;
+    gaiaDbfPtr dbf = NULL;
+    gaiaDbfFieldPtr dbf_field;
+    int cnt;
+    int col_cnt;
+    int seed;
+    int len;
+    int dup;
+    int idup;
+    int current_row;
+    char **col_name = NULL;
+    char *txt_dims;
+    int deleted;
+/* checking if TABLE already exists */
+    sprintf (sql,
+	     "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%s'",
+	     table);
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load DBF error: <%s>\n", sqlite3_errmsg (sqlite));
+	  return 0;
+      }
+    while (1)
+      {
+	  /* scrolling the result set */
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;		/* end of result set */
+	  if (ret == SQLITE_ROW)
+	      already_exists = 1;
+	  else
+	    {
+		fprintf (stderr, "load DBF error: <%s>\n",
+			 sqlite3_errmsg (sqlite));
+		break;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    if (already_exists)
+      {
+	  fprintf (stderr, "load DBF error: table '%s' already exists\n",
+		   table);
+	  return 0;
+      }
+    dbf = gaiaAllocDbf ();
+    gaiaOpenDbfRead (dbf, dbf_path, charset, "UTF-8");
+    if (!(dbf->Valid))
+      {
+	  fprintf (stderr, "load DBF error: cannot open '%s'\n", dbf_path);
+	  if (dbf->LastError)
+	      fprintf (stderr, "\tcause: %s\n", dbf->LastError);
+	  gaiaFreeDbf (dbf);
+	  return 0;
+      }
+/* checking for duplicate / illegal column names and antialising them */
+    col_cnt = 0;
+    dbf_field = dbf->Dbf->First;
+    while (dbf_field)
+      {
+	  /* counting DBF fields */
+	  col_cnt++;
+	  dbf_field = dbf_field->Next;
+      }
+    col_name = malloc (sizeof (char *) * col_cnt);
+    cnt = 0;
+    seed = 0;
+    dbf_field = dbf->Dbf->First;
+    while (dbf_field)
+      {
+	  /* preparing column names */
+	  strcpy (dummyName, dbf_field->Name);
+	  dup = 0;
+	  for (idup = 0; idup < cnt; idup++)
+	    {
+		if (strcasecmp (dummyName, *(col_name + idup)) == 0)
+		    dup = 1;
+	    }
+	  if (strcasecmp (dummyName, "PK_UID") == 0)
+	      dup = 1;
+	  if (dup)
+	      sprintf (dummyName, "COL_%d", seed++);
+	  len = strlen (dummyName);
+	  *(col_name + cnt) = malloc (len + 1);
+	  strcpy (*(col_name + cnt), dummyName);
+	  cnt++;
+	  dbf_field = dbf_field->Next;
+      }
+    if (verbose)
+	fprintf (stderr,
+		 "========\nLoading DBF at '%s' into SQLite table '%s'\n",
+		 dbf_path, table);
+/* starting a transaction */
+    if (verbose)
+	fprintf (stderr, "\nBEGIN;\n");
+    ret = sqlite3_exec (sqlite, "BEGIN", NULL, 0, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load DBF error: <%s>\n", errMsg);
+	  sqlite3_free (errMsg);
+	  sqlError = 1;
+	  goto clean_up;
+      }
+/* creating the Table */
+    sprintf (sql, "CREATE TABLE %s", table);
+    strcat (sql, " (\nPK_UID INTEGER PRIMARY KEY AUTOINCREMENT");
+    cnt = 0;
+    dbf_field = dbf->Dbf->First;
+    while (dbf_field)
+      {
+	  strcat (sql, ",\n");
+	  strcat (sql, *(col_name + cnt));
+	  cnt++;
+	  switch (dbf_field->Type)
+	    {
+	    case 'C':
+		strcat (sql, " TEXT");
+		break;
+	    case 'N':
+		fflush (stderr);
+		if (dbf_field->Decimals)
+		    strcat (sql, " DOUBLE");
+		else
+		  {
+		      if (dbf_field->Length <= 18)
+			  strcat (sql, " INTEGER");
+		      else
+			  strcat (sql, " DOUBLE");
+		  }
+		break;
+	    case 'D':
+		strcat (sql, " DOUBLE");
+		break;
+	    case 'F':
+		strcat (sql, " DOUBLE");
+		break;
+	    case 'L':
+		strcat (sql, " INTEGER");
+		break;
+	    };
+	  dbf_field = dbf_field->Next;
+      }
+    strcat (sql, ")");
+    if (verbose)
+	fprintf (stderr, "%s;\n", sql);
+    ret = sqlite3_exec (sqlite, sql, NULL, 0, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load DBF error: <%s>\n", errMsg);
+	  sqlite3_free (errMsg);
+	  sqlError = 1;
+	  goto clean_up;
+      }
+    /* preparing the INSERT INTO parametrerized statement */
+    sprintf (sql, "INSERT INTO %s (PK_UID", table);
+    cnt = 0;
+    dbf_field = dbf->Dbf->First;
+    while (dbf_field)
+      {
+	  /* columns corresponding to some DBF attribute */
+	  strcat (sql, ",");
+	  strcat (sql, *(col_name + cnt++));
+	  dbf_field = dbf_field->Next;
+      }
+    strcat (sql, ")\nVALUES (?");
+    dbf_field = dbf->Dbf->First;
+    while (dbf_field)
+      {
+	  /* column values */
+	  strcat (sql, ", ?");
+	  dbf_field = dbf_field->Next;
+      }
+    strcat (sql, ")");
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load DBF error: <%s>\n", sqlite3_errmsg (sqlite));
+	  sqlError = 1;
+	  goto clean_up;
+      }
+    current_row = 0;
+    while (1)
+      {
+	  /* inserting rows from DBF */
+	  ret = gaiaReadDbfEntity (dbf, current_row, &deleted);
+	  if (!ret)
+	    {
+		if (!(dbf->LastError))	/* normal DBF EOF */
+		    break;
+		fprintf (stderr, "%s\n", dbf->LastError);
+		sqlError = 1;
+		goto clean_up;
+	    }
+	  current_row++;
+	  if (deleted)
+	    {
+		/* skipping DBF deleted row */
+		continue;
+	    }
+	  /* binding query params */
+	  sqlite3_reset (stmt);
+	  sqlite3_clear_bindings (stmt);
+	  sqlite3_bind_int (stmt, 1, current_row);
+	  cnt = 0;
+	  dbf_field = dbf->Dbf->First;
+	  while (dbf_field)
+	    {
+		/* column values */
+		if (!(dbf_field->Value))
+		    sqlite3_bind_null (stmt, cnt + 2);
+		else
+		  {
+		      switch (dbf_field->Value->Type)
+			{
+			case GAIA_INT_VALUE:
+			    sqlite3_bind_int64 (stmt, cnt + 2,
+						dbf_field->Value->IntValue);
+			    break;
+			case GAIA_DOUBLE_VALUE:
+			    sqlite3_bind_double (stmt, cnt + 2,
+						 dbf_field->Value->DblValue);
+			    break;
+			case GAIA_TEXT_VALUE:
+			    sqlite3_bind_text (stmt, cnt + 2,
+					       dbf_field->Value->TxtValue,
+					       strlen (dbf_field->Value->
+						       TxtValue),
+					       SQLITE_STATIC);
+			    break;
+			default:
+			    sqlite3_bind_null (stmt, cnt + 2);
+			    break;
+			}
+		  }
+		cnt++;
+		dbf_field = dbf_field->Next;
+	    }
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	      ;
+	  else
+	    {
+		fprintf (stderr, "load DBF error: <%s>\n",
+			 sqlite3_errmsg (sqlite));
+		sqlite3_finalize (stmt);
+		sqlError = 1;
+		goto clean_up;
+	    }
+      }
+    sqlite3_finalize (stmt);
+  clean_up:
+    gaiaFreeDbf (dbf);
+    if (col_name)
+      {
+	  /* releasing memory allocation for column names */
+	  for (cnt = 0; cnt < col_cnt; cnt++)
+	      free (*(col_name + cnt));
+	  free (col_name);
+      }
+    if (sqlError)
+      {
+	  /* some error occurred - ROLLBACK */
+	  if (verbose)
+	      fprintf (stderr, "ROLLBACK;\n");
+	  ret = sqlite3_exec (sqlite, "ROLLBACK", NULL, 0, &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "load DBF error: <%s>\n", errMsg);
+		sqlite3_free (errMsg);
+	    }
+	  if (rows)
+	      *rows = current_row;
+	  return 0;
+      }
+    else
+      {
+	  /* ok - confirming pending transaction - COMMIT */
+	  if (verbose)
+	      fprintf (stderr, "COMMIT;\n");
+	  ret = sqlite3_exec (sqlite, "COMMIT", NULL, 0, &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "load DBF error: <%s>\n", errMsg);
+		sqlite3_free (errMsg);
+		return 0;
+	    }
+	  if (rows)
+	      *rows = current_row;
+	  if (verbose)
+	      fprintf (stderr,
+		       "\nInserted %d rows into '%s' from DBF\n========\n",
+		       current_row, table);
+	  return 1;
+      }
+}

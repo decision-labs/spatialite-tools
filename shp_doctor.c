@@ -77,6 +77,11 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
     int start;
     int end;
     int iv;
+    double first_x;
+    double first_y;
+    double last_x;
+    double last_y;
+    int repeated;
     double shp_minx;
     double shp_miny;
     double shp_maxx;
@@ -272,11 +277,6 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 		break;
 	    case 'F':
 		printf (" FLOAT\n");
-		if (*(bf + 16) != 20)
-		  {
-		      printf ("\t\tERROR: expected length is 20 !!!\n");
-		      err_dbf = 1;
-		  }
 		break;
 	    default:
 		printf (" UNKNOWN\n");
@@ -386,14 +386,14 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
 		if (rd != 32)
 		  {
-		      printf (err_read, "SHP poliline-entity", current_row + 1);
+		      printf (err_read, "SHP polyline-entity", current_row + 1);
 		      goto error;
 		  }
 		rd = fread (buf_shp, sizeof (unsigned char), (sz * 2) - 36,
 			    fl_shp);
 		if (rd != (sz * 2) - 36)
 		  {
-		      printf (err_read, "SHP poliline-entity", current_row + 1);
+		      printf (err_read, "SHP polyline-entity", current_row + 1);
 		      goto error;
 		  }
 		n = gaiaImport32 (buf_shp, GAIA_LITTLE_ENDIAN, endian_arch);
@@ -412,12 +412,20 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			  end = n1;
 		      points = end - start;
 		      points = 0;
+		      repeated = 0;
 		      for (iv = start; iv < end; iv++)
 			{
 			    x = gaiaImport64 (buf_shp + base + (iv * 16),
 					      GAIA_LITTLE_ENDIAN, endian_arch);
 			    y = gaiaImport64 (buf_shp + base + (iv * 16) + 8,
 					      GAIA_LITTLE_ENDIAN, endian_arch);
+			    if (points != 0)
+			      {
+				  if (last_x == x && last_y == y)
+				      repeated = 1;
+			      }
+			    last_x = x;
+			    last_y = y;
 			    if (!ignore_extent && first_coord_err)
 			      {
 				  if (x < shp_minx || x > shp_maxx
@@ -432,6 +440,19 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			      }
 			    start++;
 			    points++;
+			}
+		      if (points < 2)
+			{
+			    printf
+				("ERROR: illegal polyline [%d vertices] (entity #%d)\n",
+				 points, current_row + 1);
+			    err_geo = 1;
+			}
+		      if (repeated)
+			{
+			    printf ("WARNING: repeated vertices (entity #%d)\n",
+				    current_row + 1);
+			    err_geo = 1;
 			}
 		  }
 	    }
@@ -458,6 +479,7 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 		base = 8 + (n * 4);
 		start = 0;
 		first_coord_err = 1;
+		repeated = 0;
 		for (ind = 0; ind < n; ind++)
 		  {
 		      if (ind < (n - 1))
@@ -474,6 +496,18 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 					      GAIA_LITTLE_ENDIAN, endian_arch);
 			    y = gaiaImport64 (buf_shp + base + (iv * 16) + 8,
 					      GAIA_LITTLE_ENDIAN, endian_arch);
+			    if (points == 0)
+			      {
+				  first_x = x;
+				  first_y = y;
+			      }
+			    else
+			      {
+				  if (last_x == x && last_y == y)
+				      repeated = 1;
+			      }
+			    last_x = x;
+			    last_y = y;
 			    if (!ignore_extent && first_coord_err)
 			      {
 				  if (x < shp_minx || x > shp_maxx
@@ -488,6 +522,39 @@ do_analyze (char *base_path, int ignore_shape, int ignore_extent)
 			      }
 			    start++;
 			    points++;
+			}
+		      if (points < 3)
+			{
+			    printf
+				("ERROR: illegal ring [%d vertices] (entity #%d)\n",
+				 points, current_row + 1);
+			    err_geo = 1;
+			}
+		      else
+			{
+			    if (first_x == last_x && first_y == last_y)
+			      {
+				  if (points < 4)
+				    {
+					printf
+					    ("ERROR: illegal ring [%d vertices] (entity #%d)\n",
+					     points, current_row + 1);
+					err_geo = 1;
+				    }
+			      }
+			    else
+			      {
+				  printf
+				      ("WARNING: unclosed ring (entity #%d)\n",
+				       current_row + 1);
+				  err_geo = 1;
+			      }
+			}
+		      if (repeated)
+			{
+			    printf ("WARNING: repeated vertices (entity #%d)\n",
+				    current_row + 1);
+			    err_geo = 1;
 			}
 		  }
 	    }
@@ -641,6 +708,11 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
     int start;
     int end;
     int iv;
+    double first_x;
+    double first_y;
+    double last_x;
+    double last_y;
+    int repeated;
     double shp_minx;
     double shp_miny;
     double shp_maxx;
@@ -817,11 +889,6 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 		break;
 	    case 'F':
 		printf (" FLOAT\n");
-		if (*(bf + 16) != 20)
-		  {
-		      printf ("\t\tERROR: expected length is 20 !!!\n");
-		      err_dbf = 1;
-		  }
 		break;
 	    default:
 		printf (" UNKNOWN\n");
@@ -925,14 +992,14 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 		rd = fread (buf_shp, sizeof (unsigned char), 32, fl_shp);
 		if (rd != 32)
 		  {
-		      printf (err_read, "SHP poliline-entity", current_row + 1);
+		      printf (err_read, "SHP polyline-entity", current_row + 1);
 		      goto error;
 		  }
 		rd = fread (buf_shp, sizeof (unsigned char), (sz * 2) - 36,
 			    fl_shp);
 		if (rd != (sz * 2) - 36)
 		  {
-		      printf (err_read, "SHP poliline-entity", current_row + 1);
+		      printf (err_read, "SHP polyline-entity", current_row + 1);
 		      goto error;
 		  }
 		n = gaiaImport32 (buf_shp, GAIA_LITTLE_ENDIAN, endian_arch);
@@ -951,12 +1018,20 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			  end = n1;
 		      points = end - start;
 		      points = 0;
+		      repeated = 0;
 		      for (iv = start; iv < end; iv++)
 			{
 			    x = gaiaImport64 (buf_shp + base + (iv * 16),
 					      GAIA_LITTLE_ENDIAN, endian_arch);
 			    y = gaiaImport64 (buf_shp + base + (iv * 16) + 8,
 					      GAIA_LITTLE_ENDIAN, endian_arch);
+			    if (points != 0)
+			      {
+				  if (last_x == x && last_y == y)
+				      repeated = 1;
+			      }
+			    last_x = x;
+			    last_y = y;
 			    if (!ignore_extent && first_coord_err)
 			      {
 				  if (x < shp_minx || x > shp_maxx
@@ -971,6 +1046,19 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			      }
 			    start++;
 			    points++;
+			}
+		      if (points < 2)
+			{
+			    printf
+				("ERROR: illegal polyline [%d vertices] (entity #%d)\n",
+				 points, current_row + 1);
+			    err_geo = 1;
+			}
+		      if (repeated)
+			{
+			    printf ("WARNING: repeated vertices (entity #%d)\n",
+				    current_row + 1);
+			    err_geo = 1;
 			}
 		  }
 	    }
@@ -997,6 +1085,7 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 		base = 8 + (n * 4);
 		start = 0;
 		first_coord_err = 1;
+		repeated = 0;
 		for (ind = 0; ind < n; ind++)
 		  {
 		      if (ind < (n - 1))
@@ -1013,6 +1102,18 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 					      GAIA_LITTLE_ENDIAN, endian_arch);
 			    y = gaiaImport64 (buf_shp + base + (iv * 16) + 8,
 					      GAIA_LITTLE_ENDIAN, endian_arch);
+			    if (points == 0)
+			      {
+				  first_x = x;
+				  first_y = y;
+			      }
+			    else
+			      {
+				  if (last_x == x && last_y == y)
+				      repeated = 1;
+			      }
+			    last_x = x;
+			    last_y = y;
 			    if (!ignore_extent && first_coord_err)
 			      {
 				  if (x < shp_minx || x > shp_maxx
@@ -1027,6 +1128,39 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 			      }
 			    start++;
 			    points++;
+			}
+		      if (points < 3)
+			{
+			    printf
+				("ERROR: illegal ring [%d vertices] (entity #%d)\n",
+				 points, current_row + 1);
+			    err_geo = 1;
+			}
+		      else
+			{
+			    if (first_x == last_x && first_y == last_y)
+			      {
+				  if (points < 4)
+				    {
+					printf
+					    ("ERROR: illegal ring [%d vertices] (entity #%d)\n",
+					     points, current_row + 1);
+					err_geo = 1;
+				    }
+			      }
+			    else
+			      {
+				  printf
+				      ("WARNING: unclosed ring (entity #%d)\n",
+				       current_row + 1);
+				  err_geo = 1;
+			      }
+			}
+		      if (repeated)
+			{
+			    printf ("WARNING: repeated vertices (entity #%d)\n",
+				    current_row + 1);
+			    err_geo = 1;
 			}
 		  }
 	    }
@@ -1142,6 +1276,190 @@ do_analyze_no_shx (char *base_path, int ignore_shape, int ignore_extent)
 }
 
 static void
+do_analyze_dbf (char *base_path)
+{
+/* analyzing a DBF */
+    FILE *fl_dbf = NULL;
+    char path[1024];
+    int rd;
+    unsigned char bf[1024];
+    unsigned char *buf_dbf = NULL;
+    int dbf_size;
+    int dbf_reclen = 0;
+    int dbf_recno;
+    int off_dbf;
+    int current_row;
+    int skpos;
+    int offset;
+    int sz;
+    int ind;
+    int err_dbf = 0;
+    int err_geo = 0;
+    char field_name[16];
+    char *sys_err;
+    int deleted_rows = 0;
+    char *err_open = "ERROR: unable to open '%s' for reading: %s\n";
+    char *err_header = "Invalid %s header\n";
+    char *err_read = "ERROR: invalid read on %s (entity #%d)\n";
+    int endian_arch = gaiaEndianArch ();
+    printf ("\nshp_doctor\n\n");
+    printf
+	("==================================================================\n");
+    printf ("input DBF path: %s\n", base_path);
+    printf
+	("==================================================================\n\n");
+/* opening the DBF file */
+    sprintf (path, "%s", base_path);
+    fl_dbf = fopen (path, "rb");
+    if (!fl_dbf)
+      {
+	  sys_err = strerror (errno);
+	  printf (err_open, path, sys_err);
+      }
+    if (!fl_dbf)
+	goto no_file;
+/* reading DBF file header */
+    rd = fread (bf, sizeof (unsigned char), 32, fl_dbf);
+    if (rd != 32)
+      {
+	  printf (err_header, "DBF");
+	  goto error;
+      }
+    if (*bf != 0x03)		/* checks the DBF magic number */
+      {
+	  printf (err_header, "DBF");
+	  goto error;
+      }
+    dbf_recno = gaiaImport32 (bf + 4, GAIA_LITTLE_ENDIAN, endian_arch);
+    dbf_size = gaiaImport16 (bf + 8, GAIA_LITTLE_ENDIAN, endian_arch);
+    dbf_reclen = gaiaImport16 (bf + 10, GAIA_LITTLE_ENDIAN, endian_arch);
+    printf ("DBF header summary:\n");
+    printf ("========================================\n");
+    printf ("    # records = %d\n", dbf_recno);
+    printf ("record-length = %d\n", dbf_reclen);
+    printf ("\nDBF fields:\n");
+    printf ("========================================\n");
+    dbf_size--;
+    off_dbf = 0;
+    for (ind = 32; ind < dbf_size; ind += 32)
+      {
+	  /* fetches DBF fields definitions */
+	  rd = fread (bf, sizeof (unsigned char), 32, fl_dbf);
+	  if (rd != 32)
+	      goto error;
+	  memcpy (field_name, bf, 11);
+	  field_name[11] = '\0';
+	  printf ("name=%-10s offset=%4d type=%c size=%3d decimals=%2d",
+		  field_name, off_dbf, *(bf + 11), *(bf + 16), *(bf + 17));
+	  switch (*(bf + 11))
+	    {
+	    case 'C':
+		printf (" CHARACTER\n");
+		if (*(bf + 16) < 1)
+		  {
+		      printf ("\t\tERROR: length=0 ???\n");
+		      err_dbf = 1;
+		  }
+		break;
+	    case 'N':
+		printf (" NUMBER\n");
+		if (*(bf + 16) > 18)
+		    printf ("\t\tWARNING: expected size is MAX 18 !!!\n");
+		break;
+	    case 'L':
+		printf (" LOGICAL\n");
+		if (*(bf + 16) != 1)
+		  {
+		      printf ("\t\tERROR: expected length is 1 !!!\n");
+		      err_dbf = 1;
+		  }
+		break;
+	    case 'D':
+		printf (" DATE\n");
+		if (*(bf + 16) != 8)
+		  {
+		      printf ("\t\tERROR: expected length is 8 !!!\n");
+		      err_dbf = 1;
+		  }
+		break;
+	    case 'F':
+		printf (" FLOAT\n");
+		break;
+	    default:
+		printf (" UNKNOWN\n");
+		{
+		    printf ("\t\tERROR: unsupported data type\n");
+		    err_dbf = 1;
+		}
+		break;
+	    };
+	  off_dbf += *(bf + 16);
+      }
+    buf_dbf = malloc (sizeof (unsigned char) * dbf_reclen);
+    current_row = 0;
+/* positioning the DBF file on first entity */
+    offset = dbf_size;
+    skpos = fseek (fl_dbf, offset, SEEK_SET);
+    if (skpos != 0)
+      {
+	  printf (err_read, "DBF", current_row + 1);
+	  goto error;
+      }
+    printf ("\nTesting DBF rows:\n");
+    printf ("========================================\n");
+    while (1)
+      {
+	  /* reading entities from DBF */
+	  if (current_row == dbf_recno)
+	      goto eof;
+	  /* sequentially reading the DBF file */
+	  rd = fread (buf_dbf, sizeof (unsigned char), dbf_reclen, fl_dbf);
+	  if (rd != dbf_reclen)
+	    {
+		printf (err_read, "DBF", current_row + 1);
+		goto error;
+	    }
+	  current_row++;
+	  if (*buf_dbf == '*')
+	      deleted_rows++;
+      }
+  eof:
+    printf ("\nDBF contains %d entities [%d valid / %d deleted]\n", current_row,
+	    current_row - deleted_rows, deleted_rows);
+    if (err_dbf)
+      {
+	  printf ("\n***** DBF contains unsupported data types ********\n");
+	  printf ("\tyou can try to sane this issue as follows:\n");
+	  printf ("\t- open this DBF using OpenOffice\n");
+	  printf ("\t- then save as a new DBF [using a different name]\n");
+	  printf ("\tGOOD LUCK :-)\n");
+      }
+    if (!err_geo)
+	printf ("\nValidation passed: no problem found\n");
+    if (fl_dbf)
+	fclose (fl_dbf);
+    if (buf_dbf)
+	free (buf_dbf);
+    return;
+  no_file:
+/* the DBF file can't be accessed */
+    printf ("\nUnable to analyze this DBF: file not existing\n");
+    if (fl_dbf)
+	fclose (fl_dbf);
+    if (buf_dbf)
+	free (buf_dbf);
+    return;
+  error:
+/* the DBF is invalid or corrupted */
+    printf ("\nThis DBF is corrupted / has an invalid format");
+    if (fl_dbf)
+	fclose (fl_dbf);
+    if (buf_dbf)
+	free (buf_dbf);
+    return;
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -1152,11 +1470,15 @@ do_help ()
 	     "-h or --help                      print this help message\n");
     fprintf (stderr,
 	     "-i or --in-path pathname          the SHP path [no suffix]\n");
+    fprintf (stderr, "                                              or\n");
+    fprintf (stderr,
+	     "                                  the full DBF path [-dbf]\n");
     fprintf (stderr, "\nyou can specify the following options as well\n");
     fprintf (stderr, "--analyze                 *default*\n");
     fprintf (stderr, "--ignore-shape-type       ignore entities' shape-type\n");
     fprintf (stderr, "--ignore-extent           ignore coord consistency\n");
     fprintf (stderr, "--ignore-shx              ignore the SHX file\n");
+    fprintf (stderr, "-dbf or --bare-dbf        bare DBF check\n");
 }
 
 int
@@ -1170,6 +1492,7 @@ main (int argc, char *argv[])
     int ignore_shape = 0;
     int ignore_extent = 0;
     int ignore_shx = 0;
+    int bare_dbf = 0;
     int error = 0;
     for (i = 1; i < argc; i++)
       {
@@ -1221,6 +1544,16 @@ main (int argc, char *argv[])
 		ignore_shx = 1;
 		continue;
 	    }
+	  if (strcasecmp (argv[i], "-dbf") == 0)
+	    {
+		bare_dbf = 1;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--bare-dbf") == 0)
+	    {
+		bare_dbf = 1;
+		continue;
+	    }
 	  fprintf (stderr, "unknown argument: %s\n", argv[i]);
 	  error = 1;
       }
@@ -1242,7 +1575,9 @@ main (int argc, char *argv[])
       }
     if (analyze)
       {
-	  if (ignore_shx)
+	  if (bare_dbf)
+	      do_analyze_dbf (in_path);
+	  else if (ignore_shx)
 	      do_analyze_no_shx (in_path, ignore_shape, ignore_extent);
 	  else
 	      do_analyze (in_path, ignore_shape, ignore_extent);

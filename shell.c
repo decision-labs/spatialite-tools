@@ -475,7 +475,7 @@ create_utf8_converter (char *charset)
       }
 /* creating new converters */
     locale_to_utf8 = iconv_open ("UTF-8", charset);
-    if (locale_to_utf8 == (iconv_t)(-1))
+    if (locale_to_utf8 == (iconv_t) (-1))
       {
 	  locale_to_utf8 = NULL;
 	  fprintf (stderr,
@@ -485,7 +485,7 @@ create_utf8_converter (char *charset)
 	  return;
       }
     utf8_to_locale = iconv_open (charset, "UTF-8");
-    if (utf8_to_locale == (iconv_t)(-1))
+    if (utf8_to_locale == (iconv_t) (-1))
       {
 	  utf8_to_locale = NULL;
 	  fprintf (stderr,
@@ -510,7 +510,7 @@ create_input_utf8_converter (char *charset)
       }
 /* creating new converter */
     in_charset_to_utf8 = iconv_open ("UTF-8", charset);
-    if (in_charset_to_utf8 == (iconv_t)(-1))
+    if (in_charset_to_utf8 == (iconv_t) (-1))
       {
 	  in_charset_to_utf8 = NULL;
 	  fprintf (stderr,
@@ -548,7 +548,8 @@ convert_from_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (utf8_to_locale, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
+    if (iconv (utf8_to_locale, &pBuf, &len, &pUtf8buf, &utf8len) ==
+	(size_t) (-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -587,7 +588,8 @@ convert_to_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (locale_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
+    if (iconv (locale_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) ==
+	(size_t) (-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -626,7 +628,8 @@ convert_input_to_utf8 (char *buf, int maxlen)
     utf8len = maxlen;
     pBuf = buf;
     pUtf8buf = utf8buf;
-    if (iconv (in_charset_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) == (size_t)(-1))
+    if (iconv (in_charset_to_utf8, &pBuf, &len, &pUtf8buf, &utf8len) ==
+	(size_t) (-1))
       {
 	  fprintf (stderr, "\n*** ILLEGAL CHARACTER SEQUENCE ***\n\n");
 	  fflush (stderr);
@@ -1196,7 +1199,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 			  w = 10;
 		      }
 		    if (p->mode == MODE_Explain && azArg[i]
-			&& (int)strlen (azArg[i]) > w)
+			&& (int) strlen (azArg[i]) > w)
 		      {
 			  w = strlen (azArg[i]);
 		      }
@@ -1777,6 +1780,8 @@ static char zHelp[] =
     ".dumpshp <args>   Dumps a SpatiaLite table into a SHAPEFILE\n"
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
+    ".loaddbf <args>   Loads a DBF into a SpatiaLite table\n"
+    "                  arg_list: dbf_path table_name charset\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
 /* end Sandro Furieri 2008-06-20 */
@@ -1812,7 +1817,7 @@ open_db (struct callback_data *p)
 #endif
 
 /* Sandro Furieri 2009-11-08 */
-	  sqlite3_exec(p->db, "PRAGMA foreign_keys = 1", NULL, 0, NULL);
+	  sqlite3_exec (p->db, "PRAGMA foreign_keys = 1", NULL, 0, NULL);
 /* end Sandro Furieri 2008-11-08 */
       }
 }
@@ -2001,6 +2006,15 @@ do_meta_command (char *zLine, struct callback_data *p)
 	      column = azArg[5];
 	  open_db (p);
 	  load_shapefile (p->db, shp_path, table, inCS, srid, column, 1, NULL);
+      }
+    else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
+	     && nArg == 4)
+      {
+	  char *dbf_path = azArg[1];
+	  char *table = azArg[2];
+	  char *inCS = azArg[3];
+	  open_db (p);
+	  load_dbf (p->db, dbf_path, table, inCS, 1, NULL);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
