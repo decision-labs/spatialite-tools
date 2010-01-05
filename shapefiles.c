@@ -72,7 +72,8 @@ getDbfField (gaiaDbfListPtr list, char *name)
 
 SPATIALITE_DECLARE int
 load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
-		int srid, char *column, int verbose, int *rows)
+		int srid, char *column, int coerce2d, int compressed,
+		int verbose, int *rows)
 {
     sqlite3_stmt *stmt;
     int ret;
@@ -310,6 +311,8 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 		    geom_type = "MULTIPOLYGON";
 		break;
 	    };
+	  if (coerce2d)
+	      shp->EffectiveDims = GAIA_XY;
 	  switch (shp->EffectiveDims)
 	    {
 	    case GAIA_XY_Z:
@@ -435,7 +438,12 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 	    }
 	  if (shp->Dbf->Geometry)
 	    {
-		gaiaToSpatiaLiteBlobWkb (shp->Dbf->Geometry, &blob, &blob_size);
+		if (compressed)
+		    gaiaToCompressedBlobWkb (shp->Dbf->Geometry, &blob,
+					     &blob_size);
+		else
+		    gaiaToSpatiaLiteBlobWkb (shp->Dbf->Geometry, &blob,
+					     &blob_size);
 		sqlite3_bind_blob (stmt, cnt + 2, blob, blob_size, free);
 	    }
 	  else

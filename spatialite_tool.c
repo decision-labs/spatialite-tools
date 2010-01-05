@@ -280,8 +280,9 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
 	  sqlite3_close (handle);
 	  return;
       }
-    if (load_dbf(handle, dbf_path, table, charset, 0, &rows))
-	fprintf (stderr, "Inserted %d rows into '%s' from '%s'\n", rows, table, dbf_path);
+    if (load_dbf (handle, dbf_path, table, charset, 0, &rows))
+	fprintf (stderr, "Inserted %d rows into '%s' from '%s'\n", rows, table,
+		 dbf_path);
     else
 	fprintf (stderr, "Some ERROR occurred\n");
 /* disconnecting the SpatiaLite DB */
@@ -292,8 +293,8 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
 }
 
 static void
-do_import_shp (char *db_path, char *shp_path, char *table, char *charset, int srid,
-	   char *column)
+do_import_shp (char *db_path, char *shp_path, char *table, char *charset,
+	       int srid, char *column, int coerce2d, int compressed)
 {
 /* importing some SHP */
     int ret;
@@ -317,7 +318,8 @@ do_import_shp (char *db_path, char *shp_path, char *table, char *charset, int sr
 	  return;
       }
     if (load_shapefile
-	(handle, shp_path, table, charset, srid, column, 0, &rows))
+	(handle, shp_path, table, charset, srid, column, coerce2d, compressed,
+	 0, &rows))
 	fprintf (stderr, "Inserted %d rows into '%s' from '%s.shp'\n", rows,
 		 table, shp_path);
     else
@@ -376,7 +378,7 @@ do_help ()
     fprintf (stderr, "------------------------------------\n");
     fprintf (stderr,
 	     "-h or --help                      print this help message\n");
-	fprintf (stderr,
+    fprintf (stderr,
 	     "-i or --import                    import [CSV/TXT, DBF or SHP]\n");
     fprintf (stderr,
 	     "-e or --export-shp                exporting some shapefile\n");
@@ -385,8 +387,7 @@ do_help ()
     fprintf (stderr, "\nsupported ARGs are:\n");
     fprintf (stderr, "-------------------\n");
     fprintf (stderr, "-sql or --sql-script pathname     the SQL script path\n");
-	fprintf (stderr,
-	     "-dbf or --dbf-path pathname       the full DBF path\n");
+    fprintf (stderr, "-dbf or --dbf-path pathname       the full DBF path\n");
     fprintf (stderr,
 	     "-shp or --shapefile pathname      the shapefile path [NO SUFFIX]\n");
     fprintf (stderr,
@@ -397,13 +398,21 @@ do_help ()
     fprintf (stderr, "-s or --srid SRID                 the SRID\n");
     fprintf (stderr,
 	     "--type         [POINT | LINESTRING | POLYGON | MULTIPOINT]\n");
+    fprintf (stderr, "\noptional ARGs for SHP import are:\n");
+    fprintf (stderr, "---------------------------------\n");
+    fprintf (stderr,
+	     "-2 or --coerce-2d                  coerce to 2D geoms [x,y]\n");
+    fprintf (stderr,
+	     "-k or --compressed                 apply geometry compression\n");
     fprintf (stderr, "\nexamples:\n");
     fprintf (stderr, "---------\n");
     fprintf (stderr, "spatialite_tool -x -sql script.sql -c ASCII\n");
-	fprintf (stderr,
+    fprintf (stderr,
 	     "spatialite_tool -i -dbf abc.dbf -d db.sqlite -t tbl -c CP1252\n");
     fprintf (stderr,
 	     "spatialite_tool -i -shp abc -d db.sqlite -t tbl -c CP1252 [-s 4326] [-g geom]\n");
+    fprintf (stderr,
+	     "spatialite_tool -i -shp abc -d db.sqlite -t tbl -c CP1252 [-s 4326] [-2] [-k]\n");
     fprintf (stderr,
 	     "spatialite_tool -e -shp abc -d db.sqlite -t tbl -g geom -c CP1252 [--type POINT]\n");
 }
@@ -416,7 +425,7 @@ main (int argc, char *argv[])
     int next_arg = ARG_NONE;
     char *sql_path = NULL;
     char *shp_path = NULL;
-	char *dbf_path = NULL;
+    char *dbf_path = NULL;
     char *db_path = NULL;
     char *table = NULL;
     char *column = NULL;
@@ -424,11 +433,13 @@ main (int argc, char *argv[])
     char *type = NULL;
     int srid = -1;
     int execute = 0;
-	int import = 0;
+    int import = 0;
     int export = 0;
-	int in_shp = 0;
-	int in_dbf = 0;
-	int error = 0;
+    int in_shp = 0;
+    int in_dbf = 0;
+    int coerce2d = 0;
+    int compressed = 0;
+    int error = 0;
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -442,7 +453,7 @@ main (int argc, char *argv[])
 		  case ARG_SHP:
 		      shp_path = argv[i];
 		      break;
-			case ARG_DBF:
+		  case ARG_DBF:
 		      dbf_path = argv[i];
 		      break;
 		  case ARG_DB:
@@ -495,7 +506,7 @@ main (int argc, char *argv[])
 		in_shp = 1;
 		continue;
 	    }
-		if (strcasecmp (argv[i], "--dbf-path") == 0)
+	  if (strcasecmp (argv[i], "--dbf-path") == 0)
 	    {
 		next_arg = ARG_DBF;
 		in_dbf = 1;
@@ -562,7 +573,7 @@ main (int argc, char *argv[])
 		next_arg = ARG_TYPE;
 		continue;
 	    }
-		if (strcasecmp (argv[i], "--import") == 0 ||
+	  if (strcasecmp (argv[i], "--import") == 0 ||
 	      strcasecmp (argv[i], "-i") == 0)
 	    {
 		import = 1;
@@ -578,6 +589,18 @@ main (int argc, char *argv[])
 	      strcasecmp (argv[i], "-x") == 0)
 	    {
 		execute = 1;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--coerce-2d") == 0 ||
+	      strcasecmp (argv[i], "-2") == 0)
+	    {
+		coerce2d = 1;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--compressed-geometries") == 0 ||
+	      strcasecmp (argv[i], "-k") == 0)
+	    {
+		coerce2d = 1;
 		continue;
 	    }
 	  fprintf (stderr, "unknown argument: %s\n", argv[i]);
@@ -616,8 +639,8 @@ main (int argc, char *argv[])
 		error = 1;
 	    }
       }
-	if (import)
-	{
+    if (import)
+      {
 	  /* import SHP */
 	  if (!db_path)
 	    {
@@ -625,18 +648,18 @@ main (int argc, char *argv[])
 			 "did you forget setting the --db-path argument ?\n");
 		error = 1;
 	    }
-		if ((in_shp + in_dbf) != 1)
-		{
-		fprintf(stderr, "undefined IMPORT source: SHP or DBF ?\n");
+	  if ((in_shp + in_dbf) != 1)
+	    {
+		fprintf (stderr, "undefined IMPORT source: SHP or DBF ?\n");
 		error = 1;
-		}
+	    }
 	  if (in_shp && !shp_path)
 	    {
 		fprintf (stderr,
 			 "did you forget setting the --shapefile argument ?\n");
 		error = 1;
 	    }
-		if (in_dbf && !dbf_path)
+	  if (in_dbf && !dbf_path)
 	    {
 		fprintf (stderr,
 			 "did you forget setting the --dbf-path argument ?\n");
@@ -696,10 +719,11 @@ main (int argc, char *argv[])
       }
     if (execute)
 	do_execute (db_path, sql_path, charset);
-	if (import && in_dbf)
+    if (import && in_dbf)
 	do_import_dbf (db_path, dbf_path, table, charset);
     if (import && in_shp)
-	do_import_shp (db_path, shp_path, table, charset, srid, column);
+	do_import_shp (db_path, shp_path, table, charset, srid, column,
+		       coerce2d, compressed);
     if (export)
 	do_export (db_path, shp_path, table, column, charset, type);
     return 0;

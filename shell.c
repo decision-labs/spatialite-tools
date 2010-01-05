@@ -1776,7 +1776,7 @@ static char zHelp[] =
     "                        [use the Windows CHCP command in order to check better\n"
     "                         which one charset is used on your Command Prompt]\n\n"
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
-    "                  arg_list: shp_path table_name charset [SRID] [column_name]\n\n"
+    "                  arg_list: shp_path table_name charset [SRID] [column_name] [2d] [compressed]\n\n"
     ".dumpshp <args>   Dumps a SpatiaLite table into a SHAPEFILE\n"
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
@@ -1993,19 +1993,26 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  dump_shapefile (p->db, table, column, shp_path, outCS, type, 1, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadshp", n) == 0
-	     && (nArg == 4 || nArg == 5 || nArg == 6))
+	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
       {
 	  char *shp_path = azArg[1];
 	  char *table = azArg[2];
 	  char *inCS = azArg[3];
 	  int srid = -1;
+	  int coerce2d = 0;
+	  int compressed = 0;
 	  char *column = NULL;
 	  if (nArg >= 5)
 	      srid = atoi (azArg[4]);
 	  if (nArg == 6)
 	      column = azArg[5];
+	  if (nArg == 7)
+	      coerce2d = 1;
+	  if (nArg == 8)
+	      compressed = 1;
 	  open_db (p);
-	  load_shapefile (p->db, shp_path, table, inCS, srid, column, 1, NULL);
+	  load_shapefile (p->db, shp_path, table, inCS, srid, column, coerce2d,
+			  compressed, 1, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
 	     && nArg == 4)
