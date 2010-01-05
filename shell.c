@@ -2006,7 +2006,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	      srid = atoi (azArg[4]);
 	  if (nArg == 6)
 	      column = azArg[5];
-	  if (nArg == 7)
+	  if (nArg >= 7)
 	      coerce2d = 1;
 	  if (nArg == 8)
 	      compressed = 1;
