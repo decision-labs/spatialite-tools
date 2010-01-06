@@ -518,6 +518,7 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
     char sql[1024];
     char dummy[1024];
     int shape = -1;
+    int dims = GAIA_XY;
     int len;
     int ret;
     char *errMsg = NULL;
@@ -558,8 +559,9 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 	  int columns;
 	  int i;
 	  char metatype[256];
+	  char metadims[256];
 	  sprintf (sql,
-		   "SELECT type FROM geometry_columns WHERE f_table_name = '%s' AND f_geometry_column = '%s'",
+		   "SELECT type, coord_dimension FROM geometry_columns WHERE f_table_name = '%s' AND f_geometry_column = '%s'",
 		   table, column);
 	  ret =
 	      sqlite3_get_table (sqlite, sql, &results, &rows, &columns,
@@ -571,19 +573,150 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 		sqlite3_free (errMsg);
 		return 0;
 	    }
+	  *metatype = '\0';
+	  *metadims = '\0';
 	  for (i = 1; i <= rows; i++)
-	      strcpy (metatype, results[(i * columns)]);
+	    {
+		strcpy (metatype, results[(i * columns) + 0]);
+		strcpy (metadims, results[(i * columns) + 1]);
+	    }
 	  sqlite3_free_table (results);
-	  if (strcasecmp ((char *) metatype, "POINT") == 0)
-	      shape = GAIA_POINT;
-	  if (strcasecmp ((char *) metatype, "MULTIPOINT") == 0)
-	      shape = GAIA_MULTIPOINT;
-	  if (strcasecmp ((char *) metatype, "LINESTRING") == 0
-	      || strcasecmp ((char *) metatype, "MULTILINESTRING") == 0)
-	      shape = GAIA_LINESTRING;
-	  if (strcasecmp ((char *) metatype, "POLYGON") == 0
-	      || strcasecmp ((char *) metatype, "MULTIPOLYGON") == 0)
-	      shape = GAIA_POLYGON;
+	  if (strcasecmp (metatype, "POINT") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_POINTZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_POINTM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_POINTZM;
+		else
+		    shape = GAIA_POINT;
+	    }
+	  if (strcasecmp (metatype, "MULTIPOINT") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_MULTIPOINTZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_MULTIPOINTM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_MULTIPOINTZM;
+		else
+		    shape = GAIA_MULTIPOINT;
+	    }
+	  if (strcasecmp (metatype, "LINESTRING") == 0
+	      || strcasecmp (metatype, "MULTILINESTRING") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_LINESTRINGZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_LINESTRINGM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_LINESTRINGZM;
+		else
+		    shape = GAIA_LINESTRING;
+	    }
+	  if (strcasecmp (metatype, "POLYGON") == 0
+	      || strcasecmp (metatype, "MULTIPOLYGON") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_POLYGONZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_POLYGONM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_POLYGONZM;
+		else
+		    shape = GAIA_POLYGON;
+	    }
+      }
+    if (shape < 0)
+      {
+	  /* preparing SQL statement [type still undefined, so we'll read VIEWS_GEOMETRY_COLUMNS */
+	  char **results;
+	  int rows;
+	  int columns;
+	  int i;
+	  char metatype[256];
+	  char metadims[256];
+	  char sql2[1024];
+	  strcpy (sql,
+		  "SELECT type, coord_dimension FROM views_geometry_columns ");
+	  strcat (sql,
+		  "JOIN geometry_columns USING (f_table_name, f_geometry_column) ");
+	  sprintf (sql2, "WHERE view_name = '%s' AND view_geometry = '%s'",
+		   table, column);
+	  strcat (sql, sql2);
+	  ret =
+	      sqlite3_get_table (sqlite, sql, &results, &rows, &columns,
+				 &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "dump shapefile MetaData error: <%s>\n",
+			 errMsg);
+		sqlite3_free (errMsg);
+		return 0;
+	    }
+	  *metatype = '\0';
+	  *metadims = '\0';
+	  for (i = 1; i <= rows; i++)
+	    {
+		strcpy (metatype, results[(i * columns) + 0]);
+		strcpy (metadims, results[(i * columns) + 1]);
+	    }
+	  sqlite3_free_table (results);
+	  if (strcasecmp (metatype, "POINT") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_POINTZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_POINTM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_POINTZM;
+		else
+		    shape = GAIA_POINT;
+	    }
+	  if (strcasecmp (metatype, "MULTIPOINT") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_MULTIPOINTZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_MULTIPOINTM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_MULTIPOINTZM;
+		else
+		    shape = GAIA_MULTIPOINT;
+	    }
+	  if (strcasecmp (metatype, "LINESTRING") == 0
+	      || strcasecmp (metatype, "MULTILINESTRING") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_LINESTRINGZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_LINESTRINGM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_LINESTRINGZM;
+		else
+		    shape = GAIA_LINESTRING;
+	    }
+	  if (strcasecmp (metatype, "POLYGON") == 0
+	      || strcasecmp (metatype, "MULTIPOLYGON") == 0)
+	    {
+		if (strcasecmp (metadims, "XYZ") == 0
+		    || strcmp (metadims, "3") == 0)
+		    shape = GAIA_POLYGONZ;
+		else if (strcasecmp (metadims, "XYM") == 0)
+		    shape = GAIA_POLYGONM;
+		else if (strcasecmp (metadims, "XYZM") == 0)
+		    shape = GAIA_POLYGONZM;
+		else
+		    shape = GAIA_POLYGON;
+	    }
       }
     if (shape < 0)
       {
@@ -597,23 +730,26 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 		 "========\nDumping SQLite table '%s' into shapefile at '%s'\n",
 		 table, shp_path);
     /* preparing SQL statement */
-    sprintf (sql, "SELECT * FROM \"%s\" WHERE GeometryType(\"%s\") = ", table,
-	     column);
-    if (shape == GAIA_LINESTRING)
+    sprintf (sql, "SELECT * FROM \"%s\" WHERE GeometryAliasType(\"%s\") = ",
+	     table, column);
+    if (shape == GAIA_LINESTRING || shape == GAIA_LINESTRINGZ
+	|| shape == GAIA_LINESTRINGM || shape == GAIA_LINESTRINGZM)
       {
-	  strcat (sql, "'LINESTRING' OR GeometryType(\"");
+	  strcat (sql, "'LINESTRING' OR GeometryAliasType(\"");
 	  strcat (sql, (char *) column);
 	  strcat (sql, "\") = 'MULTILINESTRING'");
       }
-    else if (shape == GAIA_POLYGON)
+    else if (shape == GAIA_POLYGON || shape == GAIA_POLYGONZ
+	     || shape == GAIA_POLYGONM || shape == GAIA_POLYGONZM)
       {
-	  strcat (sql, "'POLYGON' OR GeometryType(\"");
+	  strcat (sql, "'POLYGON' OR GeometryAliasType(\"");
 	  strcat (sql, (char *) column);
 	  strcat (sql, "\") = 'MULTIPOLYGON'");
       }
-    else if (shape == GAIA_MULTIPOINT)
+    else if (shape == GAIA_MULTIPOINT || shape == GAIA_MULTIPOINTZ
+	     || shape == GAIA_MULTIPOINTM || shape == GAIA_MULTIPOINTZM)
       {
-	  strcat (sql, "'POINT' OR GeometryType(\"");
+	  strcat (sql, "'POINT' OR GeometryAliasType(\"");
 	  strcat (sql, (char *) column);
 	  strcat (sql, "\") = 'MULTIPOINT'");
       }

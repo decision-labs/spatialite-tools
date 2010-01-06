@@ -40,16 +40,15 @@
 
 #define ARG_NONE		0
 #define ARG_CMD			1
-#define ARG_SQL			2
-#define ARG_SHP			3
-#define ARG_TXT			4
-#define ARG_DBF			5
-#define ARG_DB			6
-#define ARG_TABLE		7
-#define ARG_COL			8
-#define ARG_CS			9
-#define ARG_SRID		10
-#define ARG_TYPE		11
+#define ARG_SHP			2
+#define ARG_TXT			3
+#define ARG_DBF			4
+#define ARG_DB			5
+#define ARG_TABLE		6
+#define ARG_COL			7
+#define ARG_CS			8
+#define ARG_SRID		9
+#define ARG_TYPE		10
 
 static char *
 read_sql_line (FILE * in, int *len, int *eof)
@@ -115,145 +114,6 @@ do_rollback (sqlite3 * handle)
 {
 /* performing a ROLLBACK */
     sqlite3_exec (handle, "ROLLBACK", NULL, NULL, NULL);
-}
-
-static void
-do_execute (char *db_path, char *sql_script, char *charset)
-{
-/* executing some SQL script */
-    void *utf8cvt = NULL;
-    char *line = NULL;
-    char *statement = NULL;
-    int stmt_len = 0;
-    char *prev_stmt;
-    int prev_len;
-    int eof;
-    int row_no = 1;
-    int stmt = 0;
-    int len;
-    char *utf8stmt = NULL;
-    int cvt_err;
-    int ret;
-    sqlite3 *handle;
-    char *sys_err;
-    FILE *in = fopen (sql_script, "rb");
-    if (!in)
-      {
-	  sys_err = strerror (errno);
-	  fprintf (stderr, "can't open \"%s\": %s\n", sql_script, sys_err);
-	  return;
-      }
-/* initializing SpatiaLite */
-    spatialite_init (0);
-/* showing the SQLite version */
-    fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
-/* showing the SpatiaLite version */
-    fprintf (stderr, "SpatiaLite version: %s\n", spatialite_version ());
-/* trying to connect the SpatiaLite DB  */
-    ret =
-	sqlite3_open_v2 (db_path, &handle,
-			 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "cannot open '%s': %s\n", db_path,
-		   sqlite3_errmsg (handle));
-	  sqlite3_close (handle);
-	  goto end;
-      }
-/* creating the UTF8 converter */
-    utf8cvt = gaiaCreateUTF8Converter (charset);
-    if (!utf8cvt)
-      {
-	  fprintf (stderr,
-		   "*** charset ERROR *** cannot convert from '%s' to 'UTF-8'\n",
-		   charset);
-	  goto abort;
-      }
-    fprintf (stderr, "executing SQL script: %s\n\n", sql_script);
-    while (1)
-      {
-	  /* reading the SQL script lines */
-	  line = read_sql_line (in, &len, &eof);
-	  if (len > 0)
-	    {
-		if (statement == NULL)
-		  {
-		      statement = line;
-		      stmt_len = len;
-		  }
-		else
-		  {
-		      /* appending line to SQL statement */
-		      prev_stmt = statement;
-		      prev_len = stmt_len;
-		      stmt_len = prev_len + len;
-		      statement = (char *) malloc (stmt_len + 1);
-		      memcpy (statement, prev_stmt, prev_len);
-		      memcpy (statement + prev_len, line, len);
-		      *(statement + stmt_len) = '\0';
-		      free (prev_stmt);
-		      free (line);
-		      line = NULL;
-		  }
-	    }
-	  else
-	    {
-		free (line);
-		line = NULL;
-	    }
-	  if (statement)
-	    {
-		if (sqlite3_complete (statement))
-		  {
-		      /* executing the SQL statement */
-		      utf8stmt =
-			  gaiaConvertToUTF8 (utf8cvt, statement,
-					     stmt_len, &cvt_err);
-		      free (statement);
-		      statement = NULL;
-		      stmt_len = 0;
-		      if (cvt_err || !utf8stmt)
-			{
-			    do_rollback (handle);
-			    fprintf (stderr,
-				     "SQL Script abnormal termination\nillegal character sequence\n\n");
-			    fprintf (stderr,
-				     "ROLLBACK was automatically performed\n");
-			    goto abort;
-			}
-		      if (!do_execute_sql (handle, utf8stmt, row_no))
-			{
-			    do_rollback (handle);
-			    fprintf (stderr,
-				     "SQL Script abnormal termination\nan error occurred\n\n");
-			    fprintf (stderr,
-				     "ROLLBACK was automatically performed\n");
-			    goto abort;
-			}
-		      else
-			{
-			    stmt++;
-			    free (utf8stmt);
-			    utf8stmt = NULL;
-			}
-		  }
-	    }
-	  row_no++;
-	  if (eof)
-	      break;
-      }
-    fprintf (stderr, "OK\nread %d lines\nprocessed %d SQL statements\n", row_no,
-	     stmt);
-  abort:
-/* disconnecting the SpatiaLite DB */
-    ret = sqlite3_close (handle);
-    if (ret != SQLITE_OK)
-	fprintf (stderr, "sqlite3_close() error: %s\n",
-		 sqlite3_errmsg (handle));
-  end:
-    fclose (in);
-    if (utf8cvt)
-	gaiaFreeUTF8Converter (utf8cvt);
 }
 
 static void
@@ -382,11 +242,8 @@ do_help ()
 	     "-i or --import                    import [CSV/TXT, DBF or SHP]\n");
     fprintf (stderr,
 	     "-e or --export-shp                exporting some shapefile\n");
-    fprintf (stderr,
-	     "-x or --execute-sql               executing some sql script\n");
     fprintf (stderr, "\nsupported ARGs are:\n");
     fprintf (stderr, "-------------------\n");
-    fprintf (stderr, "-sql or --sql-script pathname     the SQL script path\n");
     fprintf (stderr, "-dbf or --dbf-path pathname       the full DBF path\n");
     fprintf (stderr,
 	     "-shp or --shapefile pathname      the shapefile path [NO SUFFIX]\n");
@@ -406,7 +263,6 @@ do_help ()
 	     "-k or --compressed                 apply geometry compression\n");
     fprintf (stderr, "\nexamples:\n");
     fprintf (stderr, "---------\n");
-    fprintf (stderr, "spatialite_tool -x -sql script.sql -c ASCII\n");
     fprintf (stderr,
 	     "spatialite_tool -i -dbf abc.dbf -d db.sqlite -t tbl -c CP1252\n");
     fprintf (stderr,
@@ -423,7 +279,6 @@ main (int argc, char *argv[])
 /* the MAIN function simply perform arguments checking */
     int i;
     int next_arg = ARG_NONE;
-    char *sql_path = NULL;
     char *shp_path = NULL;
     char *dbf_path = NULL;
     char *db_path = NULL;
@@ -432,7 +287,6 @@ main (int argc, char *argv[])
     char *charset = NULL;
     char *type = NULL;
     int srid = -1;
-    int execute = 0;
     int import = 0;
     int export = 0;
     int in_shp = 0;
@@ -447,9 +301,6 @@ main (int argc, char *argv[])
 	    {
 		switch (next_arg)
 		  {
-		  case ARG_SQL:
-		      sql_path = argv[i];
-		      break;
 		  case ARG_SHP:
 		      shp_path = argv[i];
 		      break;
@@ -483,16 +334,6 @@ main (int argc, char *argv[])
 	    {
 		do_help ();
 		return -1;
-	    }
-	  if (strcasecmp (argv[i], "--sql-script") == 0)
-	    {
-		next_arg = ARG_SQL;
-		continue;
-	    }
-	  if (strcmp (argv[i], "-sql") == 0)
-	    {
-		next_arg = ARG_SQL;
-		continue;
 	    }
 	  if (strcasecmp (argv[i], "--shapefile") == 0)
 	    {
@@ -585,12 +426,6 @@ main (int argc, char *argv[])
 		export = 1;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "--execute-sql") == 0 ||
-	      strcasecmp (argv[i], "-x") == 0)
-	    {
-		execute = 1;
-		continue;
-	    }
 	  if (strcasecmp (argv[i], "--coerce-2d") == 0 ||
 	      strcasecmp (argv[i], "-2") == 0)
 	    {
@@ -606,7 +441,7 @@ main (int argc, char *argv[])
 	  fprintf (stderr, "unknown argument: %s\n", argv[i]);
 	  error = 1;
       }
-    if ((execute + import + export) != 1)
+    if ((import + export) != 1)
       {
 	  fprintf (stderr, "undefined CMD\n");
 	  error = 1;
@@ -617,28 +452,6 @@ main (int argc, char *argv[])
 	  return -1;
       }
 /* checking the arguments */
-    if (execute)
-      {
-	  /* execute SQL */
-	  if (!db_path)
-	    {
-		fprintf (stderr,
-			 "did you forget setting the --db-path argument ?\n");
-		error = 1;
-	    }
-	  if (!sql_path)
-	    {
-		fprintf (stderr,
-			 "did you forget setting the --sql-script argument ?\n");
-		error = 1;
-	    }
-	  if (!charset)
-	    {
-		fprintf (stderr,
-			 "did you forget setting the --charset argument ?\n");
-		error = 1;
-	    }
-      }
     if (import)
       {
 	  /* import SHP */
@@ -717,8 +530,6 @@ main (int argc, char *argv[])
 	  do_help ();
 	  return -1;
       }
-    if (execute)
-	do_execute (db_path, sql_path, charset);
     if (import && in_dbf)
 	do_import_dbf (db_path, dbf_path, table, charset);
     if (import && in_shp)
