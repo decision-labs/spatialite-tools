@@ -227,34 +227,34 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
     dbf_field = shp->Dbf->First;
     while (dbf_field)
       {
-	  strcat (sql, ",\n");
+	  strcat (sql, ",\n\"");
 	  strcat (sql, *(col_name + cnt));
 	  cnt++;
 	  switch (dbf_field->Type)
 	    {
 	    case 'C':
-		strcat (sql, " TEXT");
+		strcat (sql, "\" TEXT");
 		break;
 	    case 'N':
 		fflush (stderr);
 		if (dbf_field->Decimals)
-		    strcat (sql, " DOUBLE");
+		    strcat (sql, "\" DOUBLE");
 		else
 		  {
 		      if (dbf_field->Length <= 18)
-			  strcat (sql, " INTEGER");
+			  strcat (sql, "\" INTEGER");
 		      else
-			  strcat (sql, " DOUBLE");
+			  strcat (sql, "\" DOUBLE");
 		  }
 		break;
 	    case 'D':
-		strcat (sql, " DOUBLE");
+		strcat (sql, "\" DOUBLE");
 		break;
 	    case 'F':
-		strcat (sql, " DOUBLE");
+		strcat (sql, "\" DOUBLE");
 		break;
 	    case 'L':
-		strcat (sql, " INTEGER");
+		strcat (sql, "\" INTEGER");
 		break;
 	    };
 	  dbf_field = dbf_field->Next;
@@ -362,8 +362,9 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
     while (dbf_field)
       {
 	  /* columns corresponding to some DBF attribute */
+	  strcat (sql, "\"");
 	  strcat (sql, *(col_name + cnt++));
-	  strcat (sql, ",");
+	  strcat (sql, "\" ,");
 	  dbf_field = dbf_field->Next;
       }
     strcat (sql, geo_column);	/* the GEOMETRY column */
@@ -1135,34 +1136,34 @@ load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
     dbf_field = dbf->Dbf->First;
     while (dbf_field)
       {
-	  strcat (sql, ",\n");
+	  strcat (sql, ",\n\"");
 	  strcat (sql, *(col_name + cnt));
 	  cnt++;
 	  switch (dbf_field->Type)
 	    {
 	    case 'C':
-		strcat (sql, " TEXT");
+		strcat (sql, "\" TEXT");
 		break;
 	    case 'N':
 		fflush (stderr);
 		if (dbf_field->Decimals)
-		    strcat (sql, " DOUBLE");
+		    strcat (sql, "\" DOUBLE");
 		else
 		  {
 		      if (dbf_field->Length <= 18)
-			  strcat (sql, " INTEGER");
+			  strcat (sql, "\" INTEGER");
 		      else
-			  strcat (sql, " DOUBLE");
+			  strcat (sql, "\" DOUBLE");
 		  }
 		break;
 	    case 'D':
-		strcat (sql, " DOUBLE");
+		strcat (sql, "\" DOUBLE");
 		break;
 	    case 'F':
-		strcat (sql, " DOUBLE");
+		strcat (sql, "\" DOUBLE");
 		break;
 	    case 'L':
-		strcat (sql, " INTEGER");
+		strcat (sql, "\" INTEGER");
 		break;
 	    };
 	  dbf_field = dbf_field->Next;
@@ -1185,8 +1186,9 @@ load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
     while (dbf_field)
       {
 	  /* columns corresponding to some DBF attribute */
-	  strcat (sql, ",");
+	  strcat (sql, ",\"");
 	  strcat (sql, *(col_name + cnt++));
+	  strcat (sql, "\"");
 	  dbf_field = dbf_field->Next;
       }
     strcat (sql, ")\nVALUES (?");
