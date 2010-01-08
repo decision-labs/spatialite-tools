@@ -405,7 +405,10 @@ process_node (struct graph *p_graph, sqlite3_int64 id, char *code, double x,
       {
 	  /* this Node already exists into the sorted list */
 	  if (pN->x == DBL_MAX && pN->y == DBL_MAX)
-	      ;
+	    {
+		pN->x = x;
+		pN->y = y;
+	    }
 	  else
 	    {
 		if (pN->x == x && pN->y == y)
@@ -725,7 +728,8 @@ prepareOutcomings (struct node *pN, int *count)
 
 static void
 output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
-	     int max_node_length, struct node *pN, int endian_arch)
+	     int max_node_length, struct node *pN, int endian_arch,
+	     int a_star_supported)
 {
 /* exporting a Node into NETWORK-DATA */
     int n_star;
@@ -747,6 +751,14 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
       {
 	  /* Nodes are identified by an INTEGER Id */
 	  gaiaExportI64 (out, pN->id, 1, endian_arch);	/* the Node ID */
+	  out += 8;
+      }
+    if (a_star_supported)
+      {
+	  /* in order to support the A* algorithm [X,Y] are required for each node */
+	  gaiaExport64 (out, pN->x, 1, endian_arch);
+	  out += 8;
+	  gaiaExport64 (out, pN->y, 1, endian_arch);
 	  out += 8;
       }
     arc_array = prepareOutcomings (pN, &n_star);
@@ -774,7 +786,8 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
 static int
 create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 		     struct graph *p_graph, char *table, char *from_column,
-		     char *to_column, char *geom_column, char *name_column)
+		     char *to_column, char *geom_column, char *name_column,
+		     int a_star_supported, double a_star_coeff)
 {
 /* creates the NETWORK-DATA table */
     int ret;
@@ -840,7 +853,10 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
       {
 	  /* preparing the HEADER block */
 	  out = buf;
-	  *out++ = GAIA_NET64_START;
+	  if (a_star_supported)
+	      *out++ = GAIA_NET64_A_STAR_START;
+	  else
+	      *out++ = GAIA_NET64_START;
 	  *out++ = GAIA_NET_HEADER;
 	  gaiaExport32 (out, p_graph->n_nodes, 1, endian_arch);	/* how many Nodes are there */
 	  out += 4;
@@ -896,6 +912,13 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 	  if (name_column)
 	      strcpy ((char *) out, name_column);
 	  out += len;
+	  if (a_star_supported)
+	    {
+		/* inserting the A* Heuristic Coeff */
+		*out++ = GAIA_NET_A_STAR_COEFF;
+		gaiaExport64 (out, a_star_coeff, 1, endian_arch);
+		out += 8;
+	    }
 	  *out++ = GAIA_NET_END;
 	  /* INSERTing the Header block */
 	  sqlite3_reset (stmt);
@@ -924,7 +947,8 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 	  /* looping on each Node */
 	  pN = *(p_graph->sorted_nodes + i);
 	  output_node (auxbuf, &size, i, p_graph->node_code,
-		       p_graph->max_code_length, pN, endian_arch);
+		       p_graph->max_code_length, pN, endian_arch,
+		       a_star_supported);
 	  if (size >= (MAX_BLOCK - (out - buf)))
 	    {
 		/* inserting the last block */
@@ -1001,7 +1025,7 @@ static void
 validate (char *path, char *table, char *from_column, char *to_column,
 	  char *cost_column, char *geom_column, char *name_column,
 	  char *oneway_tofrom, char *oneway_fromto, int bidirectional,
-	  char *out_table, int force_creation)
+	  char *out_table, int force_creation, int a_star_supported)
 {
 /* performs all the actual network validation */
     int ret;
@@ -1070,6 +1094,10 @@ validate (char *path, char *table, char *from_column, char *to_column,
     char xRowid[128];
     char xIdFrom[128];
     char xIdTo[128];
+    int aStarLength;
+    double a_star_length;
+    double a_star_coeff;
+    double min_a_star_coeff = DBL_MAX;
 /* initializing SpatiaLite */
     spatialite_init (0);
 /* showing the SQLite version */
@@ -1527,17 +1555,41 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	     "SELECT ROWID, \"%s\", \"%s\", X(StartPoint(\"%s\")), Y(StartPoint(\"%s\")), X(EndPoint(\"%s\")), Y(EndPoint(\"%s\"))",
 	     from_column, to_column, geom_column, geom_column, geom_column,
 	     geom_column);
-    if (cost_column)
+    if (a_star_supported)
       {
-	  sprintf (sql2, ", \"%s\"", cost_column);
-	  strcat (sql, sql2);
+	  /* supporting A* algorithm */
+	  if (cost_column)
+	    {
+		sprintf (sql2, ", \"%s\", GLength(\"%s\")", cost_column,
+			 geom_column);
+		strcat (sql, sql2);
+		col_n = 9;
+		aStarLength = 1;
+	    }
+	  else
+	    {
+		sprintf (sql2, ", GLength(\"%s\")", geom_column);
+		strcat (sql, sql2);
+		col_n = 8;
+		aStarLength = 0;
+		min_a_star_coeff = 1.0;
+	    }
       }
     else
       {
-	  sprintf (sql2, ", GLength(\"%s\")", geom_column);
-	  strcat (sql, sql2);
+	  /* A* algorithm unsupported */
+	  if (cost_column)
+	    {
+		sprintf (sql2, ", \"%s\"", cost_column);
+		strcat (sql, sql2);
+	    }
+	  else
+	    {
+		sprintf (sql2, ", GLength(\"%s\")", geom_column);
+		strcat (sql, sql2);
+	    }
+	  col_n = 8;
       }
-    col_n = 8;
     if (oneway_tofrom)
       {
 	  sprintf (sql2, ", \"%s\"", oneway_tofrom);
@@ -1602,6 +1654,14 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		node_to_y = sqlite3_column_double (stmt, 6);
 		/* fetching the Cost value */
 		cost = sqlite3_column_double (stmt, 7);
+		if (aStarLength)
+		  {
+		      /* supporting A* - fetching the arc length */
+		      a_star_length = sqlite3_column_double (stmt, 8);
+		      a_star_coeff = cost / a_star_length;
+		      if (a_star_coeff < min_a_star_coeff)
+			  min_a_star_coeff = a_star_coeff;
+		  }
 		if (oneway_fromto)
 		  {
 		      /* fetching the OneWay-FromTo value */
@@ -1689,7 +1749,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	  ret =
 	      create_network_data (handle, out_table, force_creation, p_graph,
 				   table, from_column, to_column, geom_column,
-				   name_column);
+				   name_column, a_star_supported,
+				   min_a_star_coeff);
 	  if (ret)
 	    {
 		printf
@@ -1739,7 +1800,10 @@ do_help ()
 	     "                                  if omitted, GLength(g)\n");
     fprintf (stderr,
 	     "                                  will be used by defualt\n\n");
-    fprintf (stderr, "you can specify the following options as well\n");
+    fprintf (stderr, "you can specify the following options as well:\n");
+    fprintf (stderr, "----------------------------------------------\n");
+    fprintf (stderr, "--a-star-supported                *default*\n");
+    fprintf (stderr, "--a-star-excluded\n");
     fprintf (stderr,
 	     "-n or --name-column col_name      the column for RoadName\n");
     fprintf (stderr, "--bidirectional                   *default*\n");
@@ -1781,6 +1845,7 @@ main (int argc, char *argv[])
     int bidirectional = 1;
     int force_creation = 0;
     int error = 0;
+    int a_star_supported = 1;
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -1928,6 +1993,16 @@ main (int argc, char *argv[])
 		bidirectional = 0;
 		continue;
 	    }
+	  if (strcasecmp (argv[i], "--a-star-excluded") == 0)
+	    {
+		a_star_supported = 0;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--a-star-supported") == 0)
+	    {
+		a_star_supported = 1;
+		continue;
+	    }
 	  fprintf (stderr, "unknown argument: %s\n", argv[i]);
 	  error = 1;
       }
@@ -1993,6 +2068,6 @@ main (int argc, char *argv[])
       }
     validate (path, table, from_column, to_column, cost_column, geom_column,
 	      name_column, oneway_tofrom, oneway_fromto, bidirectional,
-	      out_table, force_creation);
+	      out_table, force_creation, a_star_supported);
     return 0;
 }
