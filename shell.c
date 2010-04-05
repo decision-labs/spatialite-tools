@@ -1784,6 +1784,7 @@ static char zHelp[] =
     "                  arg_list: dbf_path table_name charset\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
+    ".srs_init         Populates the EPSG dataset into the spatial_ref_sys table\n"
 /* end Sandro Furieri 2008-06-20 */
     ;
 
@@ -2043,10 +2044,14 @@ do_meta_command (char *zLine, struct callback_data *p)
 		fclose (alt);
 	    }
       }
-    else
-/* end Sandro Furieri 2008-06-20 */
-
-    if (c == 'b' && n > 1 && strncmp (azArg[0], "bail", n) == 0 && nArg > 1)
+    else if (c == 's' && strncmp (azArg[0], "srs_init", n) == 0)
+      {
+	  /* Sandro Furieri 2010-04-05: supporting SRS_INIT */
+	  open_db (p);
+	  spatial_ref_sys_init (p->db);
+      }
+    else if (c == 'b' && n > 1 && strncmp (azArg[0], "bail", n) == 0
+	     && nArg > 1)
       {
 	  bail_on_error = booleanValue (azArg[1]);
       }

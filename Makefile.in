@@ -59,7 +59,8 @@ am_shp_doctor_OBJECTS = shp_doctor.$(OBJEXT)
 shp_doctor_OBJECTS = $(am_shp_doctor_OBJECTS)
 shp_doctor_LDADD = $(LDADD)
 @MINGW_TRUE@shp_doctor_DEPENDENCIES = /usr/local/lib/libiconv.a
-am_spatialite_OBJECTS = shell.$(OBJEXT) shapefiles.$(OBJEXT)
+am_spatialite_OBJECTS = shell.$(OBJEXT) shapefiles.$(OBJEXT) \
+	srs_init.$(OBJEXT)
 spatialite_OBJECTS = $(am_spatialite_OBJECTS)
 @MINGW_TRUE@spatialite_DEPENDENCIES = /usr/local/lib/libiconv.a
 am_spatialite_network_OBJECTS = spatialite_network.$(OBJEXT)
@@ -228,7 +229,7 @@ AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE=1
 
 INCLUDES = @CFLAGS@
-spatialite_SOURCES = shell.c shapefiles.c
+spatialite_SOURCES = shell.c shapefiles.c srs_init.c
 spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
@@ -373,6 +374,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_network.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_tool.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srs_init.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
