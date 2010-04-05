@@ -15171,7 +15171,6 @@ exists_spatial_ref_sys (sqlite3 * handle)
 
     strcpy (sql,
 	    "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'spatial_ref_sys'");
-fprintf(stderr, "%s\n", sql);fflush(stderr);
     ret =
 	sqlite3_get_table (handle, sql, &results, &n_rows, &n_columns,
 			   &err_msg);
@@ -15182,7 +15181,6 @@ fprintf(stderr, "%s\n", sql);fflush(stderr);
 	  sqlite3_free (err_msg);
 	  return 0;
       }
-fprintf(stderr, "nr=%d\n", n_rows);fflush(stderr);
     if (n_rows > 0)
 	ok = 1;
     sqlite3_free_table (results);
