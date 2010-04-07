@@ -15080,6 +15080,22 @@ populate_spatial_ref_sys (sqlite3 * handle)
 		"+proj=tmerc +lat_0=0 +lon_0=36 +k=0.9996 +x_0=500000 +y_0=10000000 +ellps=WGS84 +datum=WGS84 +units=m +no_defs",
 		"PROJCS[\"WGS 84 / TM 36 SE\",GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.01745329251994328,AUTHORITY[\"EPSG\",\"9122\"]],AUTHORITY[\"EPSG\",\"4326\"]],UNIT[\"metre\",1,AUTHORITY[\"EPSG\",\"9001\"]],PROJECTION[\"Transverse_Mercator\"],PARAMETER[\"latitude_of_origin\",0],PARAMETER[\"central_meridian\",36],PARAMETER[\"scale_factor\",0.9996],PARAMETER[\"false_easting\",500000],PARAMETER[\"false_northing\",10000000],AUTHORITY[\"EPSG\",\"32766\"],AXIS[\"Easting\",EAST],AXIS[\"Northing\",NORTH]]"},
 	{
+	40000, "gfoss.it", 40000, "Italy mainland zone 1 GB Roma40",
+		"+proj=tmerc+lat_0=0 +lon_0=9  +k=0.9996 +x_0=1500000 +y_0=0 +ellps=intl +units=m +towgs84=-104.1,-49.1,-9.9,0.971,-2.917,0.714,-11.68 +no_defs",
+		""},
+	{
+	40001, "gfoss.it", 40001, "Italy mainland zone 2 GB Roma40",
+		"+proj=tmerc +lat_0=0 +lon_0=15 +k=0.9996 +x_0=2520000 +y_0=0 +ellps=intl +units=m +towgs84=-104.1,-49.1,-9.9,0.971,-2.917,0.714,-11.68 +no_defs",
+		""},
+	{
+	40002, "gfoss.it", 40002, "Italy Sardinia GB Roma40",
+		"+proj=tmerc +lat_0=0 +lon_0=9  +k=0.9996 +x_0=1500000 +y_0=0 +ellps=intl +units=m +towgs84=-168.6,-34.0,38.6,-0.374,-0.679,-1.379,-9.48 +no_defs",
+		""},
+	{
+	40003, "gfoss.it", 40003, "Italy Sicily GB Roma40",
+		"+proj=tmerc +lat_0=0 +lon_0=9  +k=0.9996 +x_0=1500000 +y_0=0 +ellps=intl +units=m +towgs84=-50.2,-50.4,84.8,-0.690,-2.012,0.459,-28.08  +no_defs",
+		""},
+	{
     -1, NULL, -1, NULL, NULL, NULL}};
     struct epsg_defs *p = epsg;
     char sql[1024];
@@ -15121,8 +15137,11 @@ populate_spatial_ref_sys (sqlite3 * handle)
 			     SQLITE_STATIC);
 	  sqlite3_bind_text (stmt, 5, p->proj4text, strlen (p->proj4text),
 			     SQLITE_STATIC);
-	  sqlite3_bind_text (stmt, 6, p->srs_wkt, strlen (p->srs_wkt),
-			     SQLITE_STATIC);
+	  if (strlen (p->srs_wkt) == 0)
+	      sqlite3_bind_null (stmt, 6);
+	  else
+	      sqlite3_bind_text (stmt, 6, p->srs_wkt, strlen (p->srs_wkt),
+				 SQLITE_STATIC);
 	  ret = sqlite3_step (stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -15192,20 +15211,20 @@ check_spatial_ref_sys (sqlite3 * handle)
 {
 /* checking if the SPATIAL_REF_SYS table has an appropriate layout */
     int ret;
-	int i;
+    int i;
     const char *name;
     char sql[1024];
     char **results;
     int n_rows;
     int n_columns;
     char *err_msg = NULL;
-	int rs_srid = 0;
+    int rs_srid = 0;
     int auth_name = 0;
     int auth_srid = 0;
     int srtext = 0;
     int ref_sys_name = 0;
     int proj4text = 0;
-	int srs_wkt = 0;
+    int srs_wkt = 0;
 
     strcpy (sql, "PRAGMA table_info(spatial_ref_sys)");
     ret =
@@ -15240,10 +15259,11 @@ check_spatial_ref_sys (sqlite3 * handle)
 	    }
       }
     sqlite3_free_table (results);
-	if (rs_srid && auth_name && auth_srid && ref_sys_name && proj4text && srs_wkt)
-		ret = 1;
-		else
-		ret = 0;
+    if (rs_srid && auth_name && auth_srid && ref_sys_name && proj4text
+	&& srs_wkt)
+	ret = 1;
+    else
+	ret = 0;
     return ret;
 }
 
@@ -15252,7 +15272,7 @@ spatial_ref_sys_count (sqlite3 * handle)
 {
 /* checking if the SPATIAL_REF_SYS table is empty */
     int ret;
-	int i;
+    int i;
     int count = 0;
     char sql[1024];
     char **results;

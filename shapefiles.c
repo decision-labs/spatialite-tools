@@ -511,6 +511,135 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
       }
 }
 
+static void
+output_prj_file (sqlite3 * sqlite, char *path, char *table, char *column)
+{
+/* exporting [if possible] a .PRJ file */
+    char **results;
+    int rows;
+    int columns;
+    int i;
+    char *errMsg = NULL;
+    int srid = -1;
+    char xtable[1024];
+    char xcolumn[1024];
+    char sql[1024];
+    char sql2[1024];
+    int ret;
+    int rs_srid = 0;
+    int rs_srs_wkt = 0;
+    const char *name;
+    char srsWkt[8192];
+    char dummy[8192];
+    FILE *out;
+
+/* step I: retrieving the SRID */
+    sprintf (sql,
+	     "SELECT srid FROM geometry_columns WHERE f_table_name = '%s' AND f_geometry_column = '%s'",
+	     table, column);
+    ret = sqlite3_get_table (sqlite, sql, &results, &rows, &columns, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "dump shapefile MetaData error: <%s>\n", errMsg);
+	  sqlite3_free (errMsg);
+	  return;
+      }
+    for (i = 1; i <= rows; i++)
+      {
+	  srid = atoi (results[(i * columns) + 0]);
+      }
+    sqlite3_free_table (results);
+    if (srid < 0)
+      {
+	  /* srid still undefined, so we'll read VIEWS_GEOMETRY_COLUMNS */
+	  strcpy (sql, "SELECT srid FROM views_geometry_columns ");
+	  strcat (sql,
+		  "JOIN geometry_columns USING (f_table_name, f_geometry_column) ");
+	  sprintf (sql2, "WHERE view_name = '%s' AND view_geometry = '%s'",
+		   table, column);
+	  strcat (sql, sql2);
+	  ret =
+	      sqlite3_get_table (sqlite, sql, &results, &rows, &columns,
+				 &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "dump shapefile MetaData error: <%s>\n",
+			 errMsg);
+		sqlite3_free (errMsg);
+		return;
+	    }
+	  for (i = 1; i <= rows; i++)
+	    {
+		srid = atoi (results[(i * columns) + 0]);
+	    }
+	  sqlite3_free_table (results);
+      }
+    if (srid < 0)
+	return;
+
+/* step II: checking if the SRS_WKT column actually exists */
+    ret =
+	sqlite3_get_table (sqlite, "PRAGMA table_info(spatial_ref_sys)",
+			   &results, &rows, &columns, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "dump shapefile MetaData error: <%s>\n", errMsg);
+	  sqlite3_free (errMsg);
+	  return;
+      }
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	    {
+		name = results[(i * columns) + 1];
+		if (strcasecmp (name, "srid") == 0)
+		    rs_srid = 1;
+		if (strcasecmp (name, "auth_name") == 0)
+		    rs_srs_wkt = 1;
+	    }
+      }
+    sqlite3_free_table (results);
+    if (rs_srid == 0 || rs_srs_wkt == 0)
+	return;
+
+/* step III: fetching WKT SRS */
+    *srsWkt = '\0';
+    sprintf (sql,
+	     "SELECT srs_wkt FROM spatial_ref_sys WHERE srid = %d AND srs_wkt IS NOT NULL",
+	     srid);
+    ret = sqlite3_get_table (sqlite, sql, &results, &rows, &columns, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "dump shapefile MetaData error: <%s>\n", errMsg);
+	  sqlite3_free (errMsg);
+	  return;
+      }
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	    {
+		strcpy (srsWkt, results[(i * columns) + 0]);
+	    }
+      }
+    sqlite3_free_table (results);
+    if (strlen (srsWkt) == 0)
+	return;
+
+/* step IV: generating the .PRJ file */
+    sprintf (dummy, "%s.prj", path);
+    out = fopen (dummy, "wb");
+    if (!out)
+	goto no_file;
+    fprintf (out, "%s\r\n", srsWkt);
+    fclose (out);
+  no_file:
+    return;
+}
+
 SPATIALITE_DECLARE int
 dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 		char *charset, char *geom_type, int verbose, int *xrows)
@@ -869,6 +998,8 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
     gaiaOpenShpWrite (shp, shp_path, shape, dbf_list, "UTF-8", charset);
     if (!(shp->Valid))
 	goto no_file;
+// trying to export the .PRJ file */
+    output_prj_file (sqlite, shp_path, table, column);
     while (1)
       {
 	  /* Pass II - scrolling the result set to dump data into shapefile */
