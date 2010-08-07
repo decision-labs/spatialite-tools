@@ -34,12 +34,12 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = spatialite$(EXEEXT) spatialite_tool$(EXEEXT) \
 	spatialite_network$(EXEEXT) shp_doctor$(EXEEXT) \
-	exif_loader$(EXEEXT) spatialite_osm$(EXEEXT)
+	exif_loader$(EXEEXT) spatialite_osm$(EXEEXT) \
+	spatialite_osm_map$(EXEEXT) spatialite_gml$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure AUTHORS COPYING \
-	INSTALL config.guess config.sub depcomp install-sh ltmain.sh \
-	missing
+	config.guess config.sub depcomp install-sh ltmain.sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -54,29 +54,33 @@ PROGRAMS = $(bin_PROGRAMS)
 am_exif_loader_OBJECTS = exif_loader.$(OBJEXT)
 exif_loader_OBJECTS = $(am_exif_loader_OBJECTS)
 exif_loader_LDADD = $(LDADD)
-@MINGW_TRUE@exif_loader_DEPENDENCIES = /usr/local/lib/libiconv.a
+exif_loader_DEPENDENCIES =
 am_shp_doctor_OBJECTS = shp_doctor.$(OBJEXT)
 shp_doctor_OBJECTS = $(am_shp_doctor_OBJECTS)
 shp_doctor_LDADD = $(LDADD)
-@MINGW_TRUE@shp_doctor_DEPENDENCIES = /usr/local/lib/libiconv.a
-am_spatialite_OBJECTS = shell.$(OBJEXT) shapefiles.$(OBJEXT) \
-	srs_init.$(OBJEXT)
+shp_doctor_DEPENDENCIES =
+am_spatialite_OBJECTS = shell.$(OBJEXT) shapefiles.$(OBJEXT)
 spatialite_OBJECTS = $(am_spatialite_OBJECTS)
-@MINGW_TRUE@spatialite_DEPENDENCIES = /usr/local/lib/libiconv.a
+spatialite_DEPENDENCIES =
+am_spatialite_gml_OBJECTS = spatialite_gml.$(OBJEXT)
+spatialite_gml_OBJECTS = $(am_spatialite_gml_OBJECTS)
+spatialite_gml_DEPENDENCIES =
 am_spatialite_network_OBJECTS = spatialite_network.$(OBJEXT)
 spatialite_network_OBJECTS = $(am_spatialite_network_OBJECTS)
 spatialite_network_LDADD = $(LDADD)
-@MINGW_TRUE@spatialite_network_DEPENDENCIES =  \
-@MINGW_TRUE@	/usr/local/lib/libiconv.a
+spatialite_network_DEPENDENCIES =
 am_spatialite_osm_OBJECTS = spatialite_osm.$(OBJEXT)
 spatialite_osm_OBJECTS = $(am_spatialite_osm_OBJECTS)
 spatialite_osm_LDADD = $(LDADD)
-@MINGW_TRUE@spatialite_osm_DEPENDENCIES = /usr/local/lib/libiconv.a
+spatialite_osm_DEPENDENCIES =
+am_spatialite_osm_map_OBJECTS = spatialite_osm_map.$(OBJEXT)
+spatialite_osm_map_OBJECTS = $(am_spatialite_osm_map_OBJECTS)
+spatialite_osm_map_DEPENDENCIES =
 am_spatialite_tool_OBJECTS = spatialite_tool.$(OBJEXT) \
 	shapefiles.$(OBJEXT)
 spatialite_tool_OBJECTS = $(am_spatialite_tool_OBJECTS)
 spatialite_tool_LDADD = $(LDADD)
-@MINGW_TRUE@spatialite_tool_DEPENDENCIES = /usr/local/lib/libiconv.a
+spatialite_tool_DEPENDENCIES =
 DEFAULT_INCLUDES = -I.@am__isrc@
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -90,11 +94,13 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	--mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
-	$(spatialite_SOURCES) $(spatialite_network_SOURCES) \
-	$(spatialite_osm_SOURCES) $(spatialite_tool_SOURCES)
+	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
+	$(spatialite_network_SOURCES) $(spatialite_osm_SOURCES) \
+	$(spatialite_osm_map_SOURCES) $(spatialite_tool_SOURCES)
 DIST_SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
-	$(spatialite_SOURCES) $(spatialite_network_SOURCES) \
-	$(spatialite_osm_SOURCES) $(spatialite_tool_SOURCES)
+	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
+	$(spatialite_network_SOURCES) $(spatialite_osm_SOURCES) \
+	$(spatialite_osm_map_SOURCES) $(spatialite_tool_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -138,8 +144,6 @@ EGREP = @EGREP@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
-GEOS_LIB = @GEOS_LIB@
-GEOS_LIB_C = @GEOS_LIB_C@
 GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
@@ -165,13 +169,11 @@ PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PROJ_LIB = @PROJ_LIB@
 RANLIB = @RANLIB@
 READLINE_LIBS = @READLINE_LIBS@
 SED = @SED@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
-SPATIALITE_LIB = @SPATIALITE_LIB@
 STRIP = @STRIP@
 VERSION = @VERSION@
 abs_builddir = @abs_builddir@
@@ -229,53 +231,49 @@ AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE=1
 
 INCLUDES = @CFLAGS@
-spatialite_SOURCES = shell.c shapefiles.c srs_init.c
+spatialite_SOURCES = shell.c shapefiles.c
 spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
 spatialite_osm_SOURCES = spatialite_osm.c
-@MACOSX_FALSE@@MINGW_FALSE@spatialite_LDADD = @SPATIALITE_LIB@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@GEOS_LIB_C@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@GEOS_LIB@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@PROJ_LIB@ \
+spatialite_osm_map_SOURCES = spatialite_osm_map.c
+spatialite_gml_SOURCES = spatialite_gml.c
+@MACOSX_FALSE@@MINGW_FALSE@spatialite_osm_map_LDADD = -lspatialite \
+@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
+
+@MACOSX_TRUE@@MINGW_FALSE@spatialite_osm_map_LDADD = -lspatialite \
+@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+
+@MINGW_TRUE@spatialite_osm_map_LDADD = -lspatialite \
+@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
+
+@MACOSX_FALSE@@MINGW_FALSE@spatialite_gml_LDADD = -lspatialite \
+@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
+
+@MACOSX_TRUE@@MINGW_FALSE@spatialite_gml_LDADD = -lspatialite \
+@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+
+@MINGW_TRUE@spatialite_gml_LDADD = -lspatialite \
+@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
+
+@MACOSX_FALSE@@MINGW_FALSE@LDADD = -lspatialite -lm -lstdc++ -lpthread -ldl
+@MACOSX_TRUE@@MINGW_FALSE@LDADD = -lspatialite -lm -liconv -lstdc++ -lpthread -ldl
+@MINGW_TRUE@LDADD = -lspatialite -liconv -lm -lstdc++
+@MACOSX_FALSE@@MINGW_FALSE@spatialite_LDADD = -lspatialite \
 @MACOSX_FALSE@@MINGW_FALSE@	-lm -lstdc++ -lpthread -ldl \
 @MACOSX_FALSE@@MINGW_FALSE@	@READLINE_LIBS@
 
-@MACOSX_TRUE@@MINGW_FALSE@spatialite_LDADD = @SPATIALITE_LIB@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@GEOS_LIB_C@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@GEOS_LIB@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@PROJ_LIB@ \
+@MACOSX_TRUE@@MINGW_FALSE@spatialite_LDADD = -lspatialite \
 @MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lstdc++ -lpthread -ldl \
 @MACOSX_TRUE@@MINGW_FALSE@	@READLINE_LIBS@
 
-@MINGW_TRUE@spatialite_LDADD = @SPATIALITE_LIB@ \
-@MINGW_TRUE@	@GEOS_LIB_C@ \
-@MINGW_TRUE@	@GEOS_LIB@ \
-@MINGW_TRUE@	@PROJ_LIB@ \
-@MINGW_TRUE@	/usr/local/lib/libiconv.a \
-@MINGW_TRUE@	-lm -lstdc++
+@MINGW_TRUE@spatialite_LDADD = -lspatialite -liconv -lm -lstdc++
+EXTRA_DIST = makefile.vc nmake.opt \
+	Makefile-static-MinGW \
+	Makefile-static-Linux \
+	Makefile-static-MacOsX
 
-@MACOSX_FALSE@@MINGW_FALSE@LDADD = @SPATIALITE_LIB@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@GEOS_LIB_C@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@GEOS_LIB@ \
-@MACOSX_FALSE@@MINGW_FALSE@	@PROJ_LIB@ \
-@MACOSX_FALSE@@MINGW_FALSE@	-lm -lstdc++ -lpthread -ldl
-
-@MACOSX_TRUE@@MINGW_FALSE@LDADD = @SPATIALITE_LIB@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@GEOS_LIB_C@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@GEOS_LIB@ \
-@MACOSX_TRUE@@MINGW_FALSE@	@PROJ_LIB@ \
-@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lstdc++ -lpthread -ldl
-
-@MINGW_TRUE@LDADD = @SPATIALITE_LIB@ \
-@MINGW_TRUE@	@GEOS_LIB_C@ \
-@MINGW_TRUE@	@GEOS_LIB@ \
-@MINGW_TRUE@	@PROJ_LIB@ \
-@MINGW_TRUE@	/usr/local/lib/libiconv.a \
-@MINGW_TRUE@	-lm -lstdc++
-
-EXTRA_DIST = makefile.vc nmake.opt
 AUTOMAKE_OPTIONS = dist-zip
 all: all-am
 
@@ -351,12 +349,18 @@ shp_doctor$(EXEEXT): $(shp_doctor_OBJECTS) $(shp_doctor_DEPENDENCIES)
 spatialite$(EXEEXT): $(spatialite_OBJECTS) $(spatialite_DEPENDENCIES) 
 	@rm -f spatialite$(EXEEXT)
 	$(LINK) $(spatialite_OBJECTS) $(spatialite_LDADD) $(LIBS)
+spatialite_gml$(EXEEXT): $(spatialite_gml_OBJECTS) $(spatialite_gml_DEPENDENCIES) 
+	@rm -f spatialite_gml$(EXEEXT)
+	$(LINK) $(spatialite_gml_OBJECTS) $(spatialite_gml_LDADD) $(LIBS)
 spatialite_network$(EXEEXT): $(spatialite_network_OBJECTS) $(spatialite_network_DEPENDENCIES) 
 	@rm -f spatialite_network$(EXEEXT)
 	$(LINK) $(spatialite_network_OBJECTS) $(spatialite_network_LDADD) $(LIBS)
 spatialite_osm$(EXEEXT): $(spatialite_osm_OBJECTS) $(spatialite_osm_DEPENDENCIES) 
 	@rm -f spatialite_osm$(EXEEXT)
 	$(LINK) $(spatialite_osm_OBJECTS) $(spatialite_osm_LDADD) $(LIBS)
+spatialite_osm_map$(EXEEXT): $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_DEPENDENCIES) 
+	@rm -f spatialite_osm_map$(EXEEXT)
+	$(LINK) $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_LDADD) $(LIBS)
 spatialite_tool$(EXEEXT): $(spatialite_tool_OBJECTS) $(spatialite_tool_DEPENDENCIES) 
 	@rm -f spatialite_tool$(EXEEXT)
 	$(LINK) $(spatialite_tool_OBJECTS) $(spatialite_tool_LDADD) $(LIBS)
@@ -371,10 +375,11 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shapefiles.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shp_doctor.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_gml.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_network.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_tool.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/srs_init.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

@@ -528,13 +528,11 @@ convert_from_utf8 (char *buf, int maxlen)
     char *utf8buf = 0;
 #ifdef __MINGW32__
     const char *pBuf;
-    int len;
-    int utf8len;
 #else
     char *pBuf;
+#endif
     size_t len;
     size_t utf8len;
-#endif
     char *pUtf8buf;
     if (!utf8_to_locale)
 	return;
@@ -568,13 +566,11 @@ convert_to_utf8 (char *buf, int maxlen)
     char *utf8buf = 0;
 #ifdef __MINGW32__
     const char *pBuf;
-    int len;
-    int utf8len;
 #else
     char *pBuf;
+#endif
     size_t len;
     size_t utf8len;
-#endif
     char *pUtf8buf;
     if (!locale_to_utf8)
 	return;
@@ -608,13 +604,11 @@ convert_input_to_utf8 (char *buf, int maxlen)
     char *utf8buf = 0;
 #ifdef __MINGW32__
     const char *pBuf;
-    int len;
-    int utf8len;
 #else
     char *pBuf;
+#endif
     size_t len;
     size_t utf8len;
-#endif
     char *pUtf8buf;
     if (!in_charset_to_utf8)
 	return;

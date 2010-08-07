@@ -1,0 +1,83 @@
+# SandroFurieri (c) 2010
+# Makefile SpatiaLite statically linked tools [Linux]
+
+all: ./static_bin/spatialite ./static_bin/spatialite_tool \
+	./static_bin/spatialite_network ./static_bin/shp_doctor \
+	./static_bin/exif_loader ./static_bin/spatialite_osm \
+	./static_bin/spatialite_osm_map ./static_bin/spatialite_gml
+
+./static_bin/spatialite: shell.o shapefiles.o
+	$(CC) shell.o shapefiles.o -o ./static_bin/spatialite \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/lib/libreadline.a \
+	/usr/lib/libncurses.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite
+
+./static_bin/spatialite_tool: shapefiles.o spatialite_tool.o
+	$(CC) shapefiles.o spatialite_tool.o -o ./static_bin/spatialite_tool \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite_tool
+
+./static_bin/spatialite_network: spatialite_network.o
+	$(CC) spatialite_network.o -o ./static_bin/spatialite_network \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite_network
+	
+./static_bin/shp_doctor: shp_doctor.o
+	$(CC) shp_doctor.o -o ./static_bin/shp_doctor \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/shp_doctor
+	
+./static_bin/exif_loader: exif_loader.o
+	$(CC) exif_loader.o -o ./static_bin/exif_loader \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/exif_loader
+	
+./static_bin/spatialite_osm: spatialite_osm.o
+	$(CC) spatialite_osm.o -o ./static_bin/spatialite_osm \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite_osm
+
+./static_bin/spatialite_osm_map: spatialite_osm_map.o
+	$(CC) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/lib/libexpat.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite_osm_map
+
+./static_bin/spatialite_gml: spatialite_gml.o
+	$(CC) spatialite_gml.o -o ./static_bin/spatialite_gml \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/lib/libexpat.a \
+	-lstdc++ -lm -lpthread -ldl
+	strip --strip-all ./static_bin/spatialite_gml

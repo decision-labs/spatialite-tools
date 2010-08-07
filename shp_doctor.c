@@ -1291,7 +1291,6 @@ do_analyze_dbf (char *base_path)
     int current_row;
     int skpos;
     int offset;
-    int sz;
     int ind;
     int err_dbf = 0;
     int err_geo = 0;

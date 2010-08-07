@@ -521,8 +521,6 @@ output_prj_file (sqlite3 * sqlite, char *path, char *table, char *column)
     int i;
     char *errMsg = NULL;
     int srid = -1;
-    char xtable[1024];
-    char xcolumn[1024];
     char sql[1024];
     char sql2[1024];
     int ret;
@@ -648,7 +646,6 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
     char sql[1024];
     char dummy[1024];
     int shape = -1;
-    int dims = GAIA_XY;
     int len;
     int ret;
     char *errMsg = NULL;
@@ -998,7 +995,7 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
     gaiaOpenShpWrite (shp, shp_path, shape, dbf_list, "UTF-8", charset);
     if (!(shp->Valid))
 	goto no_file;
-// trying to export the .PRJ file */
+/* trying to export the .PRJ file */
     output_prj_file (sqlite, shp_path, table, column);
     while (1)
       {
@@ -1168,7 +1165,6 @@ load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
     int idup;
     int current_row;
     char **col_name = NULL;
-    char *txt_dims;
     int deleted;
 /* checking if TABLE already exists */
     sprintf (sql,
