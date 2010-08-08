@@ -51,6 +51,48 @@
 #define ARG_TYPE		10
 
 static void
+spatialite_autocreate (sqlite3 * db)
+{
+/* attempting to perform self-initialization for a newly created DB */
+    int ret;
+    char sql[1024];
+    char *err_msg = NULL;
+    int count;
+    int i;
+    char **results;
+    int rows;
+    int columns;
+
+/* checking if this DB is really empty */
+    strcpy (sql, "SELECT Count(*) from sqlite_master");
+    ret = sqlite3_get_table (db, sql, &results, &rows, &columns, NULL);
+    if (ret != SQLITE_OK)
+	return;
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	      count = atoi (results[(i * columns) + 0]);
+      }
+    sqlite3_free_table (results);
+
+    if (count > 0)
+	return;
+
+/* all right, it's empty: proceding to initialize */
+    strcpy (sql, "SELECT InitSpatialMetadata()");
+    ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  return;
+      }
+    spatial_ref_sys_init (db, 0);
+}
+
+static void
 do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
 {
 /* importing some DBF */
@@ -74,6 +116,7 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
 	  sqlite3_close (handle);
 	  return;
       }
+    spatialite_autocreate (handle);
     if (load_dbf (handle, dbf_path, table, charset, 0, &rows))
 	fprintf (stderr, "Inserted %d rows into '%s' from '%s'\n", rows, table,
 		 dbf_path);
@@ -111,6 +154,7 @@ do_import_shp (char *db_path, char *shp_path, char *table, char *charset,
 	  sqlite3_close (handle);
 	  return;
       }
+    spatialite_autocreate (handle);
     if (load_shapefile
 	(handle, shp_path, table, charset, srid, column, coerce2d, compressed,
 	 0, &rows))

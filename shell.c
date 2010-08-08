@@ -1644,6 +1644,7 @@ dump_callback (void *pArg, int nArg, char **azArg, char **azCol)
 	  if (zTmp)
 	    {
 		zSelect = appendText (zSelect, zTmp, '\'');
+		free (zTmp);
 	    }
 	  zSelect = appendText (zSelect, " || ' VALUES(' || ", 0);
 	  rc = sqlite3_step (pTableInfo);
@@ -1683,6 +1684,48 @@ dump_callback (void *pArg, int nArg, char **azArg, char **azCol)
 	      free (zSelect);
       }
     return 0;
+}
+
+static void
+spatialite_autocreate (sqlite3 * db)
+{
+/* attempting to perform self-initialization for a newly created DB */
+    int ret;
+    char sql[1024];
+    char *err_msg = NULL;
+    int count;
+    int i;
+    char **results;
+    int rows;
+    int columns;
+
+/* checking if this DB is really empty */
+    strcpy (sql, "SELECT Count(*) from sqlite_master");
+    ret = sqlite3_get_table (db, sql, &results, &rows, &columns, NULL);
+    if (ret != SQLITE_OK)
+	return;
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	      count = atoi (results[(i * columns) + 0]);
+      }
+    sqlite3_free_table (results);
+
+    if (count > 0)
+	return;
+
+/* all right, it's empty: proceding to initialize */
+    strcpy (sql, "SELECT InitSpatialMetadata()");
+    ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  return;
+      }
+    spatial_ref_sys_init (db, 1);
 }
 
 /*
@@ -1778,7 +1821,6 @@ static char zHelp[] =
     "                  arg_list: dbf_path table_name charset\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
-    ".srs_init         Populates the EPSG dataset into the spatial_ref_sys table\n"
 /* end Sandro Furieri 2008-06-20 */
     ;
 
@@ -1814,6 +1856,9 @@ open_db (struct callback_data *p)
 /* Sandro Furieri 2009-11-08 */
 	  sqlite3_exec (p->db, "PRAGMA foreign_keys = 1", NULL, 0, NULL);
 /* end Sandro Furieri 2008-11-08 */
+/* Sandro Furieri 2010-08-07 */
+	  spatialite_autocreate (p->db);
+/* end Sandro Furieri 2010-08-07 */
       }
 }
 
@@ -2037,12 +2082,6 @@ do_meta_command (char *zLine, struct callback_data *p)
 		process_input (p, alt, azArg[2]);
 		fclose (alt);
 	    }
-      }
-    else if (c == 's' && strncmp (azArg[0], "srs_init", n) == 0)
-      {
-	  /* Sandro Furieri 2010-04-05: supporting SRS_INIT */
-	  open_db (p);
-	  spatial_ref_sys_init (p->db);
       }
     else if (c == 'b' && n > 1 && strncmp (azArg[0], "bail", n) == 0
 	     && nArg > 1)

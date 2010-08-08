@@ -2018,6 +2018,48 @@ db_vacuum (sqlite3 * handle)
     printf ("\tAll done: OSM graph was succesfully loaded\n");
 }
 
+static void
+spatialite_autocreate (sqlite3 * db)
+{
+/* attempting to perform self-initialization for a newly created DB */
+    int ret;
+    char sql[1024];
+    char *err_msg = NULL;
+    int count;
+    int i;
+    char **results;
+    int rows;
+    int columns;
+
+/* checking if this DB is really empty */
+    strcpy (sql, "SELECT Count(*) from sqlite_master");
+    ret = sqlite3_get_table (db, sql, &results, &rows, &columns, NULL);
+    if (ret != SQLITE_OK)
+	return;
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	      count = atoi (results[(i * columns) + 0]);
+      }
+    sqlite3_free_table (results);
+
+    if (count > 0)
+	return;
+
+/* all right, it's empty: proceding to initialize */
+    strcpy (sql, "SELECT InitSpatialMetadata()");
+    ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  return;
+      }
+    spatial_ref_sys_init (db, 0);
+}
+
 static sqlite3 *
 open_db (const char *path, const char *table, int double_arcs)
 {
@@ -2049,7 +2091,9 @@ open_db (const char *path, const char *table, int double_arcs)
     printf ("SQLite version: %s\n", sqlite3_libversion ());
     printf ("SpatiaLite version: %s\n\n", spatialite_version ());
 
-    ret = sqlite3_open_v2 (path, &handle, SQLITE_OPEN_READWRITE, NULL);
+    ret =
+	sqlite3_open_v2 (path, &handle,
+			 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "cannot open '%s': %s\n", path,
@@ -2057,6 +2101,7 @@ open_db (const char *path, const char *table, int double_arcs)
 	  sqlite3_close (handle);
 	  return NULL;
       }
+    spatialite_autocreate (handle);
 
 /* checking the GEOMETRY_COLUMNS table */
     strcpy (sql, "PRAGMA table_info(geometry_columns)");
