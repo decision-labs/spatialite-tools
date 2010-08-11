@@ -39,6 +39,10 @@
 
 #define MAX_TAG		16
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#define strcasecmp	_stricmp
+#endif /* not WIN32 */
+
 #if defined(_WIN32)
 #define atol_64		_atoi64
 #else
