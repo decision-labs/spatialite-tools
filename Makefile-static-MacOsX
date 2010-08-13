@@ -12,10 +12,8 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
-	/usr/lib/libreadline.a \
-	/usr/lib/libncurses.a \
-	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite
+	-lreadline -liconv -lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite
 
 ./static_bin/spatialite_tool: shapefiles.o spatialite_tool.o
 	$(CC) shapefiles.o spatialite_tool.o -o ./static_bin/spatialite_tool \
@@ -24,7 +22,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite_tool
+	strip ./static_bin/spatialite_tool
 
 ./static_bin/spatialite_network: spatialite_network.o
 	$(CC) spatialite_network.o -o ./static_bin/spatialite_network \
@@ -33,7 +31,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite_network
+	strip ./static_bin/spatialite_network
 
 ./static_bin/shp_doctor: shp_doctor.o
 	$(CC) shp_doctor.o -o ./static_bin/shp_doctor \
@@ -42,7 +40,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/shp_doctor
+	strip ./static_bin/shp_doctor
 	
 ./static_bin/exif_loader: exif_loader.o
 	$(CC) exif_loader.o -o ./static_bin/exif_loader \
@@ -51,7 +49,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/exif_loader
+	strip ./static_bin/exif_loader
 	
 ./static_bin/spatialite_osm: spatialite_osm.o
 	$(CC) spatialite_osm.o -o ./static_bin/spatialite_osm \
@@ -60,7 +58,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite_osm
+	strip ./static_bin/spatialite_osm
 
 ./static_bin/spatialite_osm_map: spatialite_osm_map.o
 	$(CC) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map \
@@ -68,9 +66,8 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
-	/usr/lib/libexpat.a \
-	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite_osm_map
+	-lexpat -liconv -lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_osm_map
 
 ./static_bin/spatialite_gml: spatialite_gml.o
 	$(CC) spatialite_gml.o -o ./static_bin/spatialite_gml \
@@ -78,6 +75,5 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
-	/usr/lib/libexpat.a \
-	-liconv -lstdc++ -lm -lpthread -ldl
-	strip --strip-all ./static_bin/spatialite_gml
+	-lexpat -liconv -lstdc++ -lm -lpthread -ldl
+	strip ./static_bin/spatialite_gml
