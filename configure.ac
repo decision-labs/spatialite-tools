@@ -21,6 +21,10 @@ AC_CHECK_HEADERS(stddef.h,, [AC_MSG_ERROR([cannot find stddef.h, bailing out])])
 AC_CHECK_HEADERS(stdint.h,, [AC_MSG_ERROR([cannot find stdint.h, bailing out])])
 AC_CHECK_HEADERS(sys/time.h,, [AC_MSG_ERROR([cannot find sys/time.h, bailing out])])
 AC_CHECK_HEADERS(unistd.h,, [AC_MSG_ERROR([cannot find unistd.h, bailing out])])
+AC_CHECK_HEADERS(spatialite/sqlite3.h,, [AC_MSG_ERROR([cannot find spatialite/sqlite3.h, bailing out])])
+AC_CHECK_HEADERS(spatialite/gaiaexif.h,, [AC_MSG_ERROR([cannot find spatialite/gaiaexif.h, bailing out])])
+AC_CHECK_HEADERS(spatialite/gaiaaux.h,, [AC_MSG_ERROR([cannot find spatialite/gaiaaux.h, bailing out])])
+AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -67,6 +71,11 @@ if test x"$enable_readline" != xno ; then
   LIBS=$sLIBS
 fi
 AC_SUBST(READLINE_LIBS)
+
+AC_CHECK_LIB(expat,XML_ParserCreate,,AC_MSG_ERROR(['expat' is required but it doesn't seems to be installed on this system.]))
+AC_CHECK_LIB(proj,pj_init_plus,,AC_MSG_ERROR(['libproj' is required but it doesn't seems to be installed on this system.]),-lm)
+AC_CHECK_LIB(geos_c,GEOSTopologyPreserveSimplify,,AC_MSG_ERROR(['libgeos_c' is required but it doesn't seems to be installed on this system.]),-lm -lgeos)
+AC_CHECK_LIB(spatialite,gaiaRingGetPoint,,AC_MSG_ERROR(['spatialite' is required but it doesn't seems to be installed on this system.]))
 
 # Checking for MinGW
 AM_CONDITIONAL([MINGW], [test "$target_alias" = "mingw32"])
