@@ -34,8 +34,9 @@ build_triplet = @build@
 host_triplet = @host@
 bin_PROGRAMS = spatialite$(EXEEXT) spatialite_tool$(EXEEXT) \
 	spatialite_network$(EXEEXT) shp_doctor$(EXEEXT) \
-	exif_loader$(EXEEXT) spatialite_osm$(EXEEXT) \
-	spatialite_osm_map$(EXEEXT) spatialite_gml$(EXEEXT)
+	exif_loader$(EXEEXT) spatialite_osm_net$(EXEEXT) \
+	spatialite_osm_map$(EXEEXT) spatialite_osm_raw$(EXEEXT) \
+	spatialite_gml$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure AUTHORS COPYING \
@@ -69,13 +70,16 @@ am_spatialite_network_OBJECTS = spatialite_network.$(OBJEXT)
 spatialite_network_OBJECTS = $(am_spatialite_network_OBJECTS)
 spatialite_network_LDADD = $(LDADD)
 spatialite_network_DEPENDENCIES =
-am_spatialite_osm_OBJECTS = spatialite_osm.$(OBJEXT)
-spatialite_osm_OBJECTS = $(am_spatialite_osm_OBJECTS)
-spatialite_osm_LDADD = $(LDADD)
-spatialite_osm_DEPENDENCIES =
 am_spatialite_osm_map_OBJECTS = spatialite_osm_map.$(OBJEXT)
 spatialite_osm_map_OBJECTS = $(am_spatialite_osm_map_OBJECTS)
 spatialite_osm_map_DEPENDENCIES =
+am_spatialite_osm_net_OBJECTS = spatialite_osm_net.$(OBJEXT)
+spatialite_osm_net_OBJECTS = $(am_spatialite_osm_net_OBJECTS)
+spatialite_osm_net_LDADD = $(LDADD)
+spatialite_osm_net_DEPENDENCIES =
+am_spatialite_osm_raw_OBJECTS = spatialite_osm_raw.$(OBJEXT)
+spatialite_osm_raw_OBJECTS = $(am_spatialite_osm_raw_OBJECTS)
+spatialite_osm_raw_DEPENDENCIES =
 am_spatialite_tool_OBJECTS = spatialite_tool.$(OBJEXT) \
 	shapefiles.$(OBJEXT)
 spatialite_tool_OBJECTS = $(am_spatialite_tool_OBJECTS)
@@ -95,12 +99,14 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
-	$(spatialite_network_SOURCES) $(spatialite_osm_SOURCES) \
-	$(spatialite_osm_map_SOURCES) $(spatialite_tool_SOURCES)
+	$(spatialite_network_SOURCES) $(spatialite_osm_map_SOURCES) \
+	$(spatialite_osm_net_SOURCES) $(spatialite_osm_raw_SOURCES) \
+	$(spatialite_tool_SOURCES)
 DIST_SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
-	$(spatialite_network_SOURCES) $(spatialite_osm_SOURCES) \
-	$(spatialite_osm_map_SOURCES) $(spatialite_tool_SOURCES)
+	$(spatialite_network_SOURCES) $(spatialite_osm_map_SOURCES) \
+	$(spatialite_osm_net_SOURCES) $(spatialite_osm_raw_SOURCES) \
+	$(spatialite_tool_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -236,8 +242,9 @@ spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
-spatialite_osm_SOURCES = spatialite_osm.c
+spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
+spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_gml_SOURCES = spatialite_gml.c
 @MACOSX_FALSE@@MINGW_FALSE@spatialite_osm_map_LDADD = -lspatialite \
 @MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
@@ -246,6 +253,15 @@ spatialite_gml_SOURCES = spatialite_gml.c
 @MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
 
 @MINGW_TRUE@spatialite_osm_map_LDADD = -lspatialite \
+@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
+
+@MACOSX_FALSE@@MINGW_FALSE@spatialite_osm_raw_LDADD = -lspatialite \
+@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
+
+@MACOSX_TRUE@@MINGW_FALSE@spatialite_osm_raw_LDADD = -lspatialite \
+@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+
+@MINGW_TRUE@spatialite_osm_raw_LDADD = -lspatialite \
 @MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
 
 @MACOSX_FALSE@@MINGW_FALSE@spatialite_gml_LDADD = -lspatialite \
@@ -355,12 +371,15 @@ spatialite_gml$(EXEEXT): $(spatialite_gml_OBJECTS) $(spatialite_gml_DEPENDENCIES
 spatialite_network$(EXEEXT): $(spatialite_network_OBJECTS) $(spatialite_network_DEPENDENCIES) 
 	@rm -f spatialite_network$(EXEEXT)
 	$(LINK) $(spatialite_network_OBJECTS) $(spatialite_network_LDADD) $(LIBS)
-spatialite_osm$(EXEEXT): $(spatialite_osm_OBJECTS) $(spatialite_osm_DEPENDENCIES) 
-	@rm -f spatialite_osm$(EXEEXT)
-	$(LINK) $(spatialite_osm_OBJECTS) $(spatialite_osm_LDADD) $(LIBS)
 spatialite_osm_map$(EXEEXT): $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_DEPENDENCIES) 
 	@rm -f spatialite_osm_map$(EXEEXT)
 	$(LINK) $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_LDADD) $(LIBS)
+spatialite_osm_net$(EXEEXT): $(spatialite_osm_net_OBJECTS) $(spatialite_osm_net_DEPENDENCIES) 
+	@rm -f spatialite_osm_net$(EXEEXT)
+	$(LINK) $(spatialite_osm_net_OBJECTS) $(spatialite_osm_net_LDADD) $(LIBS)
+spatialite_osm_raw$(EXEEXT): $(spatialite_osm_raw_OBJECTS) $(spatialite_osm_raw_DEPENDENCIES) 
+	@rm -f spatialite_osm_raw$(EXEEXT)
+	$(LINK) $(spatialite_osm_raw_OBJECTS) $(spatialite_osm_raw_LDADD) $(LIBS)
 spatialite_tool$(EXEEXT): $(spatialite_tool_OBJECTS) $(spatialite_tool_DEPENDENCIES) 
 	@rm -f spatialite_tool$(EXEEXT)
 	$(LINK) $(spatialite_tool_OBJECTS) $(spatialite_tool_LDADD) $(LIBS)
@@ -377,8 +396,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shp_doctor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_gml.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_network.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_map.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_net.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_raw.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_tool.Po@am__quote@
 
 .c.o:

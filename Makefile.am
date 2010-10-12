@@ -7,8 +7,9 @@ bin_PROGRAMS =spatialite \
 	spatialite_network \
 	shp_doctor \
 	exif_loader \
-	spatialite_osm \
+	spatialite_osm_net \
 	spatialite_osm_map \
+	spatialite_osm_raw \
 	spatialite_gml
 
 INCLUDES = @CFLAGS@
@@ -18,12 +19,15 @@ spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
-spatialite_osm_SOURCES = spatialite_osm.c
+spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
+spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_gml_SOURCES = spatialite_gml.c
 
 if MINGW
 spatialite_osm_map_LDADD = -lspatialite \
+	-liconv -lexpat -lm -lstdc++
+spatialite_osm_raw_LDADD = -lspatialite \
 	-liconv -lexpat -lm -lstdc++
 spatialite_gml_LDADD = -lspatialite \
 	-liconv -lexpat -lm -lstdc++
@@ -33,6 +37,8 @@ else
 if MACOSX
 spatialite_osm_map_LDADD = -lspatialite \
 	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+spatialite_osm_raw_LDADD = -lspatialite \
+	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
 spatialite_gml_LDADD = -lspatialite \
 	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
 spatialite_LDADD = -lspatialite \
@@ -41,6 +47,8 @@ spatialite_LDADD = -lspatialite \
 LDADD = -lspatialite -lm -liconv -lstdc++ -lpthread -ldl
 else
 spatialite_osm_map_LDADD = -lspatialite \
+	-lexpat -lm -lstdc++ -lpthread -ldl 
+spatialite_osm_raw_LDADD = -lspatialite \
 	-lexpat -lm -lstdc++ -lpthread -ldl 
 spatialite_gml_LDADD = -lspatialite \
 	-lexpat -lm -lstdc++ -lpthread -ldl 

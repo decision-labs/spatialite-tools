@@ -1,5 +1,5 @@
 /* 
-/ spatialite_osm
+/ spatialite_osm_net
 /
 / a tool loading OSM-XML roads into a SpatiaLite DB
 /
@@ -1393,8 +1393,8 @@ build_geometry (sqlite3 * handle, struct way *xway)
 	  pa->dyn = NULL;
 	  pa->length =
 	      gaiaGreatCircleTotalLength (a, b,
-					  pa->geom->FirstLinestring->
-					  DimensionModel,
+					  pa->geom->
+					  FirstLinestring->DimensionModel,
 					  pa->geom->FirstLinestring->Coords,
 					  pa->geom->FirstLinestring->Points);
 	  pa->cost = compute_time (xway->class, pa->length);
@@ -2322,7 +2322,7 @@ static void
 do_help ()
 {
 /* printing the argument list */
-    fprintf (stderr, "\n\nusage: spatialite_osm ARGLIST\n");
+    fprintf (stderr, "\n\nusage: spatialite_osm_net ARGLIST\n");
     fprintf (stderr,
 	     "==============================================================\n");
     fprintf (stderr,

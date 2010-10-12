@@ -3,8 +3,9 @@
 
 all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_network.exe ./static_bin/shp_doctor.exe \
-	./static_bin/exif_loader.exe ./static_bin/spatialite_osm.exe \
-	./static_bin/spatialite_osm_map.exe ./static_bin/spatialite_gml.exe
+	./static_bin/exif_loader.exe ./static_bin/spatialite_osm_net.exe \
+	./static_bin/spatialite_osm_map.exe ./static_bin/spatialite_gml.exe \
+	./static_bin/spatialite_osm_raw.exe
 
 ./static_bin/spatialite.exe: shell.o shapefiles.o
 	$(CC) shell.o shapefiles.o -o ./static_bin/spatialite.exe \
@@ -57,15 +58,15 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	-lstdc++ -lm
 	strip --strip-all ./static_bin/exif_loader.exe
 	
-./static_bin/spatialite_osm.exe: spatialite_osm.o
-	$(CC) spatialite_osm.o -o ./static_bin/spatialite_osm.exe \
+./static_bin/spatialite_osm_net.exe: spatialite_osm_net.o
+	$(CC) spatialite_osm_net.o -o ./static_bin/spatialite_osm_net.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
 	-lstdc++ -lm
-	strip --strip-all ./static_bin/spatialite_osm.exe
+	strip --strip-all ./static_bin/spatialite_osm_net.exe
 
 ./static_bin/spatialite_osm_map.exe: spatialite_osm_map.o
 	$(CC) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map.exe \
@@ -88,3 +89,14 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libexpat.a \
 	-lstdc++ -lm
 	strip --strip-all ./static_bin/spatialite_gml.exe
+
+./static_bin/spatialite_osm_raw.exe: spatialite_osm_raw.o
+	$(CC) spatialite_osm_raw.o -o ./static_bin/spatialite_osm_raw.exe \
+	/usr/local/lib/libspatialite.a \
+	/usr/local/lib/libproj.a \
+	/usr/local/lib/libgeos_c.a \
+	/usr/local/lib/libgeos.a \
+	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libexpat.a \
+	-lstdc++ -lm
+	strip --strip-all ./static_bin/spatialite_osm_raw.exe
