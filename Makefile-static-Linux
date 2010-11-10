@@ -1,6 +1,8 @@
 # SandroFurieri (c) 2010
 # Makefile SpatiaLite statically linked tools [Linux]
 
+CFLAGS = -DSPATIALITE_AMALGAMATION
+
 all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	./static_bin/spatialite_network ./static_bin/shp_doctor \
 	./static_bin/exif_loader ./static_bin/spatialite_osm_net \

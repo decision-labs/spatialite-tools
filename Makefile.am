@@ -1,6 +1,6 @@
 
 AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE_SOURCE=1
+	-D_LARGEFILE_SOURCE=1 @AMALGAMATION_FLAGS@
 
 bin_PROGRAMS =spatialite \
 	spatialite_tool \
@@ -24,40 +24,15 @@ spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_gml_SOURCES = spatialite_gml.c
 
-if MINGW
 spatialite_osm_map_LDADD = -lspatialite \
-	-liconv -lexpat -lm -lstdc++
+	-lexpat
 spatialite_osm_raw_LDADD = -lspatialite \
-	-liconv -lexpat -lm -lstdc++
+	-lexpat
 spatialite_gml_LDADD = -lspatialite \
-	-liconv -lexpat -lm -lstdc++
-LDADD = -lspatialite -liconv -lm -lstdc++
-spatialite_LDADD = -lspatialite -liconv -lm -lstdc++
-else
-if MACOSX
-spatialite_osm_map_LDADD = -lspatialite \
-	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
-spatialite_osm_raw_LDADD = -lspatialite \
-	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
-spatialite_gml_LDADD = -lspatialite \
-	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+	-lexpat 
 spatialite_LDADD = -lspatialite \
-	-lm -liconv -lstdc++ -lpthread -ldl \
 	@READLINE_LIBS@
-LDADD = -lspatialite -lm -liconv -lstdc++ -lpthread -ldl
-else
-spatialite_osm_map_LDADD = -lspatialite \
-	-lexpat -lm -lstdc++ -lpthread -ldl 
-spatialite_osm_raw_LDADD = -lspatialite \
-	-lexpat -lm -lstdc++ -lpthread -ldl 
-spatialite_gml_LDADD = -lspatialite \
-	-lexpat -lm -lstdc++ -lpthread -ldl 
-spatialite_LDADD = -lspatialite \
-	-lm -lstdc++ -lpthread -ldl \
-	@READLINE_LIBS@
-LDADD = -lspatialite -lm -lstdc++ -lpthread -ldl
-endif
-endif
+LDADD = -lspatialite 
 
 EXTRA_DIST = makefile.vc nmake.opt \
 	Makefile-static-MinGW \

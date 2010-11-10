@@ -1,6 +1,9 @@
 # SandroFurieri (c) 2009
 # Makefile RasterLite statically linked tools [Win MSYS/MinGW]
 
+CFLAGS = -DSPATIALITE_AMALGAMATION
+CC = gcc
+
 all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_network.exe ./static_bin/shp_doctor.exe \
 	./static_bin/exif_loader.exe ./static_bin/spatialite_osm_net.exe \

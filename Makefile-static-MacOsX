@@ -1,6 +1,8 @@
 # SandroFurieri (c) 2009
 # Makefile RasterLite statically linked tools [MacOsX]
 
+CFLAGS = -DSPATIALITE_AMALGAMATION
+
 all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	./static_bin/spatialite_network ./static_bin/shp_doctor \
 	./static_bin/exif_loader ./static_bin/spatialite_osm_net \

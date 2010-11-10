@@ -40,7 +40,12 @@
 #include <dirent.h>
 #endif
 
+#ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>
+#else
+#include <sqlite3.h>
+#endif
+
 #include <spatialite/gaiaexif.h>
 #include <spatialite/gaiageo.h>
 #include <spatialite.h>

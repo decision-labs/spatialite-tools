@@ -121,6 +121,7 @@ GZIP_ENV = --best
 distuninstallcheck_listfiles = find . -type f -print
 distcleancheck_listfiles = find . -type f -print
 ACLOCAL = @ACLOCAL@
+AMALGAMATION_FLAGS = @AMALGAMATION_FLAGS@
 AMTAR = @AMTAR@
 AR = @AR@
 AS = @AS@
@@ -234,7 +235,7 @@ target_alias = @target_alias@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE_SOURCE=1
+	-D_LARGEFILE_SOURCE=1 @AMALGAMATION_FLAGS@
 
 INCLUDES = @CFLAGS@
 spatialite_SOURCES = shell.c shapefiles.c
@@ -246,45 +247,19 @@ spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_gml_SOURCES = spatialite_gml.c
-@MACOSX_FALSE@@MINGW_FALSE@spatialite_osm_map_LDADD = -lspatialite \
-@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
+spatialite_osm_map_LDADD = -lspatialite \
+	-lexpat
 
-@MACOSX_TRUE@@MINGW_FALSE@spatialite_osm_map_LDADD = -lspatialite \
-@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
+spatialite_osm_raw_LDADD = -lspatialite \
+	-lexpat
 
-@MINGW_TRUE@spatialite_osm_map_LDADD = -lspatialite \
-@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
+spatialite_gml_LDADD = -lspatialite \
+	-lexpat 
 
-@MACOSX_FALSE@@MINGW_FALSE@spatialite_osm_raw_LDADD = -lspatialite \
-@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
+spatialite_LDADD = -lspatialite \
+	@READLINE_LIBS@
 
-@MACOSX_TRUE@@MINGW_FALSE@spatialite_osm_raw_LDADD = -lspatialite \
-@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
-
-@MINGW_TRUE@spatialite_osm_raw_LDADD = -lspatialite \
-@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
-
-@MACOSX_FALSE@@MINGW_FALSE@spatialite_gml_LDADD = -lspatialite \
-@MACOSX_FALSE@@MINGW_FALSE@	-lexpat -lm -lstdc++ -lpthread -ldl 
-
-@MACOSX_TRUE@@MINGW_FALSE@spatialite_gml_LDADD = -lspatialite \
-@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lexpat -lstdc++ -lpthread -ldl
-
-@MINGW_TRUE@spatialite_gml_LDADD = -lspatialite \
-@MINGW_TRUE@	-liconv -lexpat -lm -lstdc++
-
-@MACOSX_FALSE@@MINGW_FALSE@LDADD = -lspatialite -lm -lstdc++ -lpthread -ldl
-@MACOSX_TRUE@@MINGW_FALSE@LDADD = -lspatialite -lm -liconv -lstdc++ -lpthread -ldl
-@MINGW_TRUE@LDADD = -lspatialite -liconv -lm -lstdc++
-@MACOSX_FALSE@@MINGW_FALSE@spatialite_LDADD = -lspatialite \
-@MACOSX_FALSE@@MINGW_FALSE@	-lm -lstdc++ -lpthread -ldl \
-@MACOSX_FALSE@@MINGW_FALSE@	@READLINE_LIBS@
-
-@MACOSX_TRUE@@MINGW_FALSE@spatialite_LDADD = -lspatialite \
-@MACOSX_TRUE@@MINGW_FALSE@	-lm -liconv -lstdc++ -lpthread -ldl \
-@MACOSX_TRUE@@MINGW_FALSE@	@READLINE_LIBS@
-
-@MINGW_TRUE@spatialite_LDADD = -lspatialite -liconv -lm -lstdc++
+LDADD = -lspatialite 
 EXTRA_DIST = makefile.vc nmake.opt \
 	Makefile-static-MinGW \
 	Makefile-static-Linux \

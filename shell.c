@@ -38,7 +38,12 @@
 /* Sandro Furieri 30 May 2008
 / #include "sqlite3.h"
 */
+#ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>
+#else
+#include <sqlite3.h>
+#endif
+
 #include <spatialite.h>
 #ifdef __MINGW32__
 #define LIBICONV_STATIC
