@@ -1,6 +1,6 @@
 
 AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE_SOURCE=1 @AMALGAMATION_FLAGS@
+	-D_LARGEFILE_SOURCE=1 @LIBSPATIALITE_CFLAGS@
 
 bin_PROGRAMS =spatialite \
 	spatialite_tool \
@@ -24,15 +24,15 @@ spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_gml_SOURCES = spatialite_gml.c
 
-spatialite_osm_map_LDADD = -lspatialite \
+spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
 	-lexpat
-spatialite_osm_raw_LDADD = -lspatialite \
+spatialite_osm_raw_LDADD = @LIBSPATIALITE_LIBS@ \
 	-lexpat
-spatialite_gml_LDADD = -lspatialite \
+spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 	-lexpat 
-spatialite_LDADD = -lspatialite \
+spatialite_LDADD = @LIBSPATIALITE_LIBS@ \
 	@READLINE_LIBS@
-LDADD = -lspatialite 
+LDADD = @LIBSPATIALITE_LIBS@ 
 
 EXTRA_DIST = makefile.vc nmake.opt \
 	Makefile-static-MinGW \
