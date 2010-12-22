@@ -1407,10 +1407,12 @@ validate (char *path, char *table, char *from_column, char *to_column,
 			 ("LINESTRING",
 			  (char *) sqlite3_column_text (stmt, 2)) != 0)
 		    geom_not_linestring = 1;
+		col_n = 3;
 		if (cost_column)
 		  {
 		      /* the Cost type */
-		      type = sqlite3_column_type (stmt, 3);
+		      type = sqlite3_column_type (stmt, col_n);
+		      col_n++;
 		      if (type == SQLITE_NULL)
 			  cost_null = 1;
 		      if (type == SQLITE_INTEGER)
@@ -1425,7 +1427,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		if (oneway_fromto)
 		  {
 		      /* the FromTo type */
-		      type = sqlite3_column_type (stmt, 4);
+		      type = sqlite3_column_type (stmt, col_n);
+		      col_n++;
 		      if (type == SQLITE_NULL)
 			  fromto_null = 1;
 		      if (type == SQLITE_INTEGER)
@@ -1440,7 +1443,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		if (oneway_tofrom)
 		  {
 		      /* the ToFrom type */
-		      type = sqlite3_column_type (stmt, 5);
+		      type = sqlite3_column_type (stmt, col_n);
+		      col_n++;
 		      if (type == SQLITE_NULL)
 			  tofrom_null = 1;
 		      if (type == SQLITE_INTEGER)
