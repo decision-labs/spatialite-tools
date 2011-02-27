@@ -46,6 +46,7 @@
 #define ARG_OSM_PATH	1
 #define ARG_DB_PATH		2
 #define ARG_TABLE		3
+#define ARG_CACHE_SIZE	4
 
 #define MAX_TAG		16
 
@@ -2071,11 +2072,10 @@ spatialite_autocreate (sqlite3 * db)
 	  sqlite3_free (err_msg);
 	  return;
       }
-    spatial_ref_sys_init (db, 0);
 }
 
 static sqlite3 *
-open_db (const char *path, const char *table, int double_arcs)
+open_db (const char *path, const char *table, int double_arcs, int cache_size)
 {
 /* opening the DB */
     sqlite3 *handle;
@@ -2116,6 +2116,12 @@ open_db (const char *path, const char *table, int double_arcs)
 	  return NULL;
       }
     spatialite_autocreate (handle);
+    if (cache_size > 0)
+      {
+	  /* setting the CACHE-SIZE */
+	  sprintf (sql, "PRAGMA cache_size=%d", cache_size);
+	  sqlite3_exec (handle, sql, NULL, NULL, NULL);
+      }
 
 /* checking the GEOMETRY_COLUMNS table */
     strcpy (sql, "PRAGMA table_info(geometry_columns)");
@@ -2344,6 +2350,8 @@ do_help ()
 	     "-T or --table    table_name     the db table to be feeded\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
     fprintf (stderr,
+	     "-cs or --cache-size    num      DB cache size (how many pages)\n");
+    fprintf (stderr,
 	     "-m or --in-memory               using IN-MEMORY database\n");
     fprintf (stderr, "-2 or --undirectional           double arcs\n\n");
 }
@@ -2358,6 +2366,7 @@ main (int argc, char *argv[])
     const char *db_path = NULL;
     const char *table = NULL;
     int in_memory = 0;
+    int cache_size = 0;
     int double_arcs = 0;
     int error = 0;
     sqlite3 *handle;
@@ -2380,6 +2389,9 @@ main (int argc, char *argv[])
 		      break;
 		  case ARG_TABLE:
 		      table = argv[i];
+		      break;
+		  case ARG_CACHE_SIZE:
+		      cache_size = atoi (argv[i]);
 		      break;
 		  };
 		next_arg = ARG_NONE;
@@ -2419,6 +2431,12 @@ main (int argc, char *argv[])
 	  if (strcasecmp (argv[i], "--table") == 0)
 	    {
 		next_arg = ARG_TABLE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--cache-size") == 0
+	      || strcmp (argv[i], "-cs") == 0)
+	    {
+		next_arg = ARG_CACHE_SIZE;
 		continue;
 	    }
 	  if (strcasecmp (argv[i], "-m") == 0)
@@ -2492,7 +2510,9 @@ main (int argc, char *argv[])
 /* repositioning XML from beginning */
     rewind (xml);
 /* opening the DB */
-    handle = open_db (db_path, table, double_arcs);
+    if (in_memory)
+	cache_size = 0;
+    handle = open_db (db_path, table, double_arcs, cache_size);
     if (!handle)
 	return -1;
     if (in_memory)

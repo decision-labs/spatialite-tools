@@ -99,7 +99,6 @@ spatialite_autocreate (sqlite3 * db)
 	  sqlite3_free (err_msg);
 	  return;
       }
-    spatial_ref_sys_init (db, 0);
 }
 
 static void
