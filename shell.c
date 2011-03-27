@@ -1821,7 +1821,7 @@ static char zHelp[] =
     ".remdupl <table>  Removes any duplicated row from a TABLE\n\n"
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
     "                  arg_list: shp_path table_name charset [SRID] [column_name]\n"
-    "                      [2d] [compressed]\n\n"
+    "                      [2d | 3d] [compressed]\n\n"
     ".dumpshp <args>   Dumps a SpatiaLite table into a SHAPEFILE\n"
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
@@ -2077,7 +2077,10 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  if (nArg == 6)
 	      column = azArg[5];
 	  if (nArg >= 7)
-	      coerce2d = 1;
+	    {
+		if (strcasecmp (azArg[6], "2d") == 0)
+		    coerce2d = 1;
+	    }
 	  if (nArg == 8)
 	      compressed = 1;
 	  open_db (p);

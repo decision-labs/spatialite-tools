@@ -271,7 +271,7 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 		int srid, char *column, int coerce2d, int compressed,
 		int verbose, int *rows)
 {
-    sqlite3_stmt *stmt;
+    sqlite3_stmt *stmt = NULL;
     int ret;
     char *errMsg = NULL;
     char sql[65536];
@@ -592,6 +592,7 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 		    break;
 		fprintf (stderr, "%s\n", shp->LastError);
 		sqlError = 1;
+		sqlite3_finalize (stmt);
 		goto clean_up;
 	    }
 	  current_row++;
