@@ -1,8 +1,9 @@
+ACLOCAL_AMFLAGS = -I m4
 
 AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
 	-D_LARGEFILE_SOURCE=1 @LIBSPATIALITE_CFLAGS@
 
-bin_PROGRAMS =spatialite \
+bin_PROGRAMS = spatialite \
 	spatialite_tool \
 	spatialite_network \
 	shp_doctor \
