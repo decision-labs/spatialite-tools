@@ -2074,7 +2074,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *column = NULL;
 	  if (nArg >= 5)
 	      srid = atoi (azArg[4]);
-	  if (nArg == 6)
+	  if (nArg >= 6)
 	      column = azArg[5];
 	  if (nArg >= 7)
 	    {
