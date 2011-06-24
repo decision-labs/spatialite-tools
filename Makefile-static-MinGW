@@ -2,7 +2,7 @@
 # Makefile RasterLite statically linked tools [Win MSYS/MinGW]
 
 CFLAGS = -DSPATIALITE_AMALGAMATION
-CC = gcc
+CC = g++
 
 all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_network.exe ./static_bin/shp_doctor.exe \
@@ -17,7 +17,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite.exe
 
 ./static_bin/spatialite_tool.exe: shapefiles.o spatialite_tool.o
@@ -28,7 +28,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_tool.exe
 
 ./static_bin/spatialite_network.exe: spatialite_network.o
@@ -38,7 +38,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_network.exe
 
 ./static_bin/shp_doctor.exe: shp_doctor.o
@@ -48,7 +48,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/shp_doctor.exe
 	
 ./static_bin/exif_loader.exe: exif_loader.o
@@ -58,7 +58,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/exif_loader.exe
 	
 ./static_bin/spatialite_osm_net.exe: spatialite_osm_net.o
@@ -68,7 +68,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_net.exe
 
 ./static_bin/spatialite_osm_map.exe: spatialite_osm_map.o
@@ -79,7 +79,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
 	/usr/local/lib/libexpat.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_map.exe
 
 ./static_bin/spatialite_gml.exe: spatialite_gml.o
@@ -90,7 +90,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
 	/usr/local/lib/libexpat.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_gml.exe
 
 ./static_bin/spatialite_osm_raw.exe: spatialite_osm_raw.o
@@ -101,5 +101,5 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
 	/usr/local/lib/libexpat.a \
-	-lstdc++ -lm
+	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_raw.exe
