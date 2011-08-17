@@ -15,6 +15,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/usr/lib/libreadline.a \
 	/usr/lib/libncurses.a \
 	-lstdc++ -lm -lpthread -ldl
@@ -26,6 +27,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_tool
 
@@ -35,6 +37,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_network
 	
@@ -44,6 +47,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr//lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/shp_doctor
 	
@@ -53,6 +57,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/exif_loader
 	
@@ -62,6 +67,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_net
 
@@ -71,6 +77,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/usr/lib/libexpat.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_map
@@ -81,6 +88,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/usr/lib/libexpat.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_gml
@@ -91,6 +99,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libproj.a \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/usr/lib/libexpat.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_raw

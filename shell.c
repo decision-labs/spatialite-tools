@@ -58,29 +58,29 @@
 #include <stdarg.h>
 
 #if !defined(_WIN32) && !defined(WIN32) && !defined(__OS2__)
-# include <signal.h>
-# include <pwd.h>
-# include <unistd.h>
-# include <sys/types.h>
+#include <signal.h>
+#include <pwd.h>
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #ifdef __OS2__
-# include <unistd.h>
+#include <unistd.h>
 #endif
 
 #if defined(HAVE_READLINE) && HAVE_READLINE==1
-# include <readline/readline.h>
-# include <readline/history.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #else
-# define readline(p) local_getline(p,stdin)
-# define add_history(X)
-# define read_history(X)
-# define write_history(X)
-# define stifle_history(X)
+#define readline(p) local_getline(p,stdin)
+#define add_history(X)
+#define read_history(X)
+#define write_history(X)
+#define stifle_history(X)
 #endif
 
 #if defined(_WIN32) || defined(WIN32)
-# include <io.h>
+#include <io.h>
 #define isatty	_isatty
 #define access	_access
 #else
@@ -704,6 +704,8 @@ static const char *zShellStatic = 0;
 static void
 shellstaticFunc (sqlite3_context * context, int argc, sqlite3_value ** argv)
 {
+    if (argv == NULL)
+	argv = NULL;		/* suppressing stupid compiler warnings [unused] */
     assert (0 == argc);
     assert (zShellStatic);
     sqlite3_result_text (context, zShellStatic, -1, SQLITE_STATIC);
@@ -1135,7 +1137,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 		    for (i = 0; i < nArg; i++)
 		      {
 			  int w, n;
-			  if (i < ArraySize (p->colWidth))
+			  if (i < (int) ArraySize (p->colWidth))
 			    {
 				w = p->colWidth[i];
 			    }
@@ -1154,7 +1156,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 				if (w < n)
 				    w = n;
 			    }
-			  if (i < ArraySize (p->actualWidth))
+			  if (i < (int) ArraySize (p->actualWidth))
 			    {
 				p->actualWidth[i] = w;
 			    }
@@ -1169,7 +1171,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 			  for (i = 0; i < nArg; i++)
 			    {
 				int w;
-				if (i < ArraySize (p->actualWidth))
+				if (i < (int) ArraySize (p->actualWidth))
 				  {
 				      w = p->actualWidth[i];
 				  }
@@ -1189,7 +1191,7 @@ callback (void *pArg, int nArg, char **azArg, char **azCol)
 	      for (i = 0; i < nArg; i++)
 		{
 		    int w;
-		    if (i < ArraySize (p->actualWidth))
+		    if (i < (int) ArraySize (p->actualWidth))
 		      {
 			  w = p->actualWidth[i];
 		      }
@@ -1586,6 +1588,8 @@ dump_callback (void *pArg, int nArg, char **azArg, char **azCol)
     const char *zSql;
     struct callback_data *p = (struct callback_data *) pArg;
 
+    if (azCol == NULL)
+	azCol = NULL;		/* suppressing stupid compiler warnings [unused] */
     if (nArg != 3)
 	return 1;
     zTable = azArg[0];
@@ -1827,6 +1831,11 @@ static char zHelp[] =
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
     ".loaddbf <args>   Loads a DBF into a SpatiaLite table\n"
     "                  arg_list: dbf_path table_name charset\n\n"
+    ".dumpdbf <args>   Dumps a SpatiaLite table into a DBF\n"
+    "                  arg_list: table_name dbf_path charset\n\n"
+    ".loadxl <args>    Loads a XL spreadsheet (.xls) into a SpatiaLite table\n"
+    "                  arg_list: xl_path table_name \n"
+    "                      [worksheet_index [first_line_titles{0/1}]]\n\n"
     ".dumpkml <args>   Dumps a SpatiaLite table as a KML file\n"
     "                  arg_list: table_name geom_column kml_path\n"
     "                      [precision] [name_column] [desc_column]\n\n"
@@ -1963,7 +1972,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 
     /* Parse the input line into tokens.
      */
-    while (zLine[i] && nArg < ArraySize (azArg))
+    while (zLine[i] && nArg < (int) ArraySize (azArg))
       {
 	  while (isspace ((unsigned char) zLine[i]))
 	    {
@@ -2043,6 +2052,16 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  open_db (p);
 	  dump_shapefile (p->db, table, column, shp_path, outCS, type, 1, NULL);
       }
+    else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpdbf", n) == 0
+	     && (nArg == 4))
+      {
+	  /* dumping a spatial table to DBF */
+	  char *table = azArg[1];
+	  char *dbf_path = azArg[2];
+	  char *outCS = azArg[3];
+	  open_db (p);
+	  dump_dbf (p->db, table, dbf_path, outCS);
+      }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpkml", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7))
       {
@@ -2095,6 +2114,23 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *inCS = azArg[3];
 	  open_db (p);
 	  load_dbf (p->db, dbf_path, table, inCS, 1, NULL);
+      }
+    else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0
+	     && (nArg == 3 || nArg == 4 || nArg == 5))
+      {
+	  char *xl_path = azArg[1];
+	  char *table = azArg[2];
+	  unsigned int worksheet = 0;
+	  int firstLine = 0;
+	  if (nArg == 4 || nArg == 5)
+	      worksheet = atoi (azArg[3]);
+	  if (nArg == 5)
+	    {
+		if (atoi (azArg[4]) == 1)
+		    firstLine = 1;
+	    }
+	  open_db (p);
+	  load_XL (p->db, xl_path, table, worksheet, firstLine);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
@@ -2754,8 +2790,8 @@ do_meta_command (char *zLine, struct callback_data *p)
     if (c == 'w' && strncmp (azArg[0], "width", n) == 0)
       {
 	  int j;
-	  assert (nArg <= ArraySize (azArg));
-	  for (j = 1; j < nArg && j < ArraySize (p->colWidth); j++)
+	  assert (nArg <= (int) ArraySize (azArg));
+	  for (j = 1; j < nArg && j < (int) ArraySize (p->colWidth); j++)
 	    {
 		p->colWidth[j - 1] = atoi (azArg[j]);
 	    }
@@ -3425,14 +3461,17 @@ registering the SpatiaLite extension
 		char *zHome;
 		char *zHistory = 0;
 		int nHistory;
-/* Sandro Furieri 2008-11-20 
+/* Sandro Furieri 2008-11-20 		
 		printf ("SQLite version ......: %s\n"
 			"Enter \".help\" for instructions\n",
 			sqlite3_libversion ());
 */
-		printf ("SQLite version ......: %s\n", sqlite3_libversion ());
+		if (isatty (1))
+		    printf ("SQLite version ......: %s\n",
+			    sqlite3_libversion ());
 		auto_fdo_start (data.db);
-		printf ("Enter \".help\" for instructions\n");
+		if (isatty (1))
+		    printf ("Enter \".help\" for instructions\n");
 /* end Sandro Furieri 2008-11-20 */
 		zHome = find_home_dir ();
 		if (zHome

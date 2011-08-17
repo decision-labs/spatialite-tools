@@ -15,6 +15,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libreadline.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
@@ -28,6 +29,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	-lstdc++ -lm -lpthread -ldl
@@ -39,6 +41,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	-lstdc++ -lm -lpthread -ldl
@@ -50,6 +53,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	-lstdc++ -lm -lpthread -ldl
@@ -61,6 +65,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	-lstdc++ -lm -lpthread -ldl
@@ -83,6 +88,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	/opt/local/lib/libexpat.a \
@@ -95,6 +101,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	/opt/local/lib/libexpat.a \
@@ -107,6 +114,7 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	/opt/local/lib/libexpat.a \

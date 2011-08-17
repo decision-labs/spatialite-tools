@@ -62,6 +62,8 @@ the terms of any one of the MPL, the GPL or the LGPL.
 #include <spatialite/gaiageo.h>
 #include <spatialite.h>
 
+#include <freexl.h>
+
 #if defined(_WIN32) && !defined(__MINGW32__)
 #define strcasecmp	_stricmp
 #endif
@@ -622,8 +624,8 @@ load_shapefile (sqlite3 * sqlite, char *shp_path, char *table, char *charset,
 			case GAIA_TEXT_VALUE:
 			    sqlite3_bind_text (stmt, cnt + 2,
 					       dbf_field->Value->TxtValue,
-					       strlen (dbf_field->Value->
-						       TxtValue),
+					       strlen (dbf_field->
+						       Value->TxtValue),
 					       SQLITE_STATIC);
 			    break;
 			default:
@@ -833,6 +835,25 @@ output_prj_file (sqlite3 * sqlite, char *path, char *table, char *column)
     fclose (out);
   no_file:
     return;
+}
+
+static void
+double_quoted_sql (char *buf)
+{
+/* well-formatting a string to be used as an SQL name */
+    char tmp[1024];
+    char *in = tmp;
+    char *out = buf;
+    strcpy (tmp, buf);
+    *out++ = '"';
+    while (*in != '\0')
+      {
+	  if (*in == '"')
+	      *out++ = '"';
+	  *out++ = *in++;
+      }
+    *out++ = '"';
+    *out = '\0';
 }
 
 SPATIALITE_DECLARE int
@@ -1167,8 +1188,8 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 	    }
 	  if (sql_type[i] == SQLITE_FLOAT)
 	    {
-		gaiaAddDbfField (dbf_list, dbf_field->Name, 'N', offset, 24, 6);
-		offset += 24;
+		gaiaAddDbfField (dbf_list, dbf_field->Name, 'N', offset, 19, 6);
+		offset += 19;
 	    }
 	  if (sql_type[i] == SQLITE_INTEGER)
 	    {
@@ -1576,8 +1597,8 @@ load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
 			case GAIA_TEXT_VALUE:
 			    sqlite3_bind_text (stmt, cnt + 2,
 					       dbf_field->Value->TxtValue,
-					       strlen (dbf_field->Value->
-						       TxtValue),
+					       strlen (dbf_field->
+						       Value->TxtValue),
 					       SQLITE_STATIC);
 			    break;
 			default:
@@ -1645,6 +1666,277 @@ load_dbf (sqlite3 * sqlite, char *dbf_path, char *table, char *charset,
 		       current_row, table);
 	  return 1;
       }
+}
+
+SPATIALITE_DECLARE int
+dump_dbf (sqlite3 * sqlite, char *table, char *dbf_path, char *charset)
+{
+/* DBF dump */
+    int rows;
+    int i;
+    char sql[4096];
+    char xtable[4096];
+    sqlite3_stmt *stmt;
+    int row1 = 0;
+    int n_cols = 0;
+    int offset = 0;
+    int type;
+    const unsigned char *char_value;
+    gaiaDbfPtr dbf = NULL;
+    gaiaDbfListPtr dbf_export_list = NULL;
+    gaiaDbfListPtr dbf_list = NULL;
+    gaiaDbfListPtr dbf_write;
+    gaiaDbfFieldPtr dbf_field;
+    int *max_length = NULL;
+    int *sql_type = NULL;
+    char dummy[1024];
+    int len;
+    int ret;
+/*
+/ preparing SQL statement 
+*/
+    strcpy (xtable, table);
+    double_quoted_sql (xtable);
+    sprintf (sql, "SELECT * FROM %s", xtable);
+/*
+/ compiling SQL prepared statement 
+*/
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+	goto sql_error;
+    rows = 0;
+    while (1)
+      {
+	  /*
+	     / Pass I - scrolling the result set to compute real DBF attributes' sizes and types 
+	   */
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;		/* end of result set */
+	  if (ret == SQLITE_ROW)
+	    {
+		/* processing a result set row */
+		row1++;
+		if (n_cols == 0)
+		  {
+		      /* this one is the first row, so we are going to prepare the DBF Fields list */
+		      n_cols = sqlite3_column_count (stmt);
+		      dbf_export_list = gaiaAllocDbfList ();
+		      max_length = (int *) malloc (sizeof (int) * n_cols);
+		      sql_type = (int *) malloc (sizeof (int) * n_cols);
+		      for (i = 0; i < n_cols; i++)
+			{
+			    /* initializes the DBF export fields */
+			    strcpy (dummy, sqlite3_column_name (stmt, i));
+			    gaiaAddDbfField (dbf_export_list, dummy, '\0', 0, 0,
+					     0);
+			    max_length[i] = 0;
+			    sql_type[i] = SQLITE_NULL;
+			}
+		  }
+		for (i = 0; i < n_cols; i++)
+		  {
+		      /* update the DBF export fields analyzing fetched data */
+		      type = sqlite3_column_type (stmt, i);
+		      if (type == SQLITE_NULL || type == SQLITE_BLOB)
+			  continue;
+		      if (type == SQLITE_TEXT)
+			{
+			    char_value = sqlite3_column_text (stmt, i);
+			    len = sqlite3_column_bytes (stmt, i);
+			    sql_type[i] = SQLITE_TEXT;
+			    if (len > max_length[i])
+				max_length[i] = len;
+			}
+		      else if (type == SQLITE_FLOAT
+			       && sql_type[i] != SQLITE_TEXT)
+			  sql_type[i] = SQLITE_FLOAT;	/* promoting a numeric column to be DOUBLE */
+		      else if (type == SQLITE_INTEGER
+			       && (sql_type[i] == SQLITE_NULL
+				   || sql_type[i] == SQLITE_INTEGER))
+			  sql_type[i] = SQLITE_INTEGER;	/* promoting a null column to be INTEGER */
+		      if (type == SQLITE_INTEGER && max_length[i] < 18)
+			  max_length[i] = 18;
+		      if (type == SQLITE_FLOAT && max_length[i] < 24)
+			  max_length[i] = 24;
+		  }
+	    }
+	  else
+	      goto sql_error;
+      }
+    if (!row1)
+	goto empty_result_set;
+    i = 0;
+    offset = 0;
+    dbf_list = gaiaAllocDbfList ();
+    dbf_field = dbf_export_list->First;
+    while (dbf_field)
+      {
+	  /* preparing the final DBF attribute list */
+	  if (sql_type[i] == SQLITE_NULL || sql_type[i] == SQLITE_BLOB)
+	    {
+		i++;
+		dbf_field = dbf_field->Next;
+		continue;
+	    }
+	  if (sql_type[i] == SQLITE_TEXT)
+	    {
+		gaiaAddDbfField (dbf_list, dbf_field->Name, 'C', offset,
+				 max_length[i], 0);
+		offset += max_length[i];
+	    }
+	  if (sql_type[i] == SQLITE_FLOAT)
+	    {
+		gaiaAddDbfField (dbf_list, dbf_field->Name, 'N', offset, 19, 6);
+		offset += 19;
+	    }
+	  if (sql_type[i] == SQLITE_INTEGER)
+	    {
+		gaiaAddDbfField (dbf_list, dbf_field->Name, 'N', offset, 18, 0);
+		offset += 18;
+	    }
+	  i++;
+	  dbf_field = dbf_field->Next;
+      }
+    free (max_length);
+    free (sql_type);
+    gaiaFreeDbfList (dbf_export_list);
+    dbf_export_list = NULL;
+/* resetting SQLite query */
+    ret = sqlite3_reset (stmt);
+    if (ret != SQLITE_OK)
+	goto sql_error;
+/* trying to open the DBF file */
+    dbf = gaiaAllocDbf ();
+/* xfering export-list ownership */
+    dbf->Dbf = dbf_list;
+    dbf_list = NULL;
+    gaiaOpenDbfWrite (dbf, dbf_path, "UTF-8", charset);
+    if (!(dbf->Valid))
+	goto no_file;
+    while (1)
+      {
+	  /* Pass II - scrolling the result set to dump data into DBF */
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;		/* end of result set */
+	  if (ret == SQLITE_ROW)
+	    {
+		rows++;
+		dbf_write = gaiaCloneDbfEntity (dbf->Dbf);
+		for (i = 0; i < n_cols; i++)
+		  {
+		      strcpy (dummy, sqlite3_column_name (stmt, i));
+		      dbf_field = getDbfField (dbf_write, dummy);
+		      if (!dbf_field)
+			  continue;
+		      if (sqlite3_column_type (stmt, i) == SQLITE_NULL
+			  || sqlite3_column_type (stmt, i) == SQLITE_BLOB)
+			{
+			    /* handling NULL values */
+			    gaiaSetNullValue (dbf_field);
+			}
+		      else
+			{
+			    switch (dbf_field->Type)
+			      {
+			      case 'N':
+				  if (sqlite3_column_type (stmt, i) ==
+				      SQLITE_INTEGER)
+				      gaiaSetIntValue (dbf_field,
+						       sqlite3_column_int64
+						       (stmt, i));
+				  else if (sqlite3_column_type (stmt, i) ==
+					   SQLITE_FLOAT)
+				      gaiaSetDoubleValue (dbf_field,
+							  sqlite3_column_double
+							  (stmt, i));
+				  else
+				      gaiaSetNullValue (dbf_field);
+				  break;
+			      case 'C':
+				  if (sqlite3_column_type (stmt, i) ==
+				      SQLITE_TEXT)
+				    {
+					strcpy (dummy,
+						(char *)
+						sqlite3_column_text (stmt, i));
+					gaiaSetStrValue (dbf_field, dummy);
+				    }
+				  else if (sqlite3_column_type (stmt, i) ==
+					   SQLITE_INTEGER)
+				    {
+#if defined(_WIN32) || defined(__MINGW32__)
+					/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
+					sprintf (dummy, "%I64d",
+						 sqlite3_column_int64 (stmt,
+								       i));
+#else
+					sprintf (dummy, "%lld",
+						 sqlite3_column_int64 (stmt,
+								       i));
+#endif
+					gaiaSetStrValue (dbf_field, dummy);
+				    }
+				  else if (sqlite3_column_type (stmt, i) ==
+					   SQLITE_FLOAT)
+				    {
+					sprintf (dummy, "%1.6f",
+						 sqlite3_column_double (stmt,
+									i));
+					gaiaSetStrValue (dbf_field, dummy);
+				    }
+				  else
+				      gaiaSetNullValue (dbf_field);
+				  break;
+			      };
+			}
+		  }
+		if (!gaiaWriteDbfEntity (dbf, dbf_write))
+		    fprintf (stderr, "DBF write error\n");
+		gaiaFreeDbfList (dbf_write);
+	    }
+	  else
+	      goto sql_error;
+      }
+    sqlite3_finalize (stmt);
+    gaiaFlushDbfHeader (dbf);
+    gaiaFreeDbf (dbf);
+    fprintf (stderr, "Exported %d rows into the DBF file\n", rows);
+    return 1;
+  sql_error:
+/* some SQL error occurred */
+    sqlite3_finalize (stmt);
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
+    if (dbf)
+	gaiaFreeDbf (dbf);
+    fprintf (stderr, "dump DBF file error: %s\n", sqlite3_errmsg (sqlite));
+    return 0;
+  no_file:
+/* DBF can't be created/opened */
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
+    if (dbf)
+	gaiaFreeDbf (dbf);
+    fprintf (stderr, "ERROR: unable to open '%s' for writing\n", dbf_path);
+    return 0;
+  empty_result_set:
+/* the result set is empty - nothing to do */
+    sqlite3_finalize (stmt);
+    if (dbf_export_list)
+	gaiaFreeDbfList (dbf_export_list);
+    if (dbf_list)
+	gaiaFreeDbfList (dbf_list);
+    if (dbf)
+	gaiaFreeDbf (dbf);
+    fprintf (stderr,
+	     "The SQL SELECT returned an empty result set ... there is nothing to export ...\n");
+    return 0;
 }
 
 SPATIALITE_DECLARE int
@@ -1790,25 +2082,6 @@ dump_kml (sqlite3 * sqlite, char *table, char *geom_col, char *kml_path,
     fprintf (stderr,
 	     "The SQL SELECT returned an empty result set\n... there is nothing to export ...\n");
     return 0;
-}
-
-static void
-double_quoted_sql (char *buf)
-{
-/* well-formatting a string to be used as an SQL name */
-    char tmp[1024];
-    char *in = tmp;
-    char *out = buf;
-    strcpy (tmp, buf);
-    *out++ = '"';
-    while (*in != '\0')
-      {
-	  if (*in == '"')
-	      *out++ = '"';
-	  *out++ = *in++;
-      }
-    *out++ = '"';
-    *out = '\0';
 }
 
 static int
@@ -2307,4 +2580,308 @@ remove_duplicated_rows (sqlite3 * sqlite, char *table)
 		       table);
       }
     clean_dupl_row (&value_list);
+}
+
+SPATIALITE_DECLARE void
+load_XL (sqlite3 * sqlite, const char *path, const char *table,
+	 unsigned int worksheetIndex, int first_titles)
+{
+/* loading an XL spreadsheet as a new DB table */
+    sqlite3_stmt *stmt;
+    unsigned int current_row;
+    int ret;
+    char *errMsg = NULL;
+    char xname[1024];
+    char dummyName[4096];
+    char sql[65536];
+    int sqlError = 0;
+    const void *xl_handle;
+    unsigned int info;
+    unsigned int rows;
+    unsigned short columns;
+    unsigned short col;
+    unsigned char type;
+    int int_value;
+    double dbl_value;
+    const char *text_value;
+    int already_exists = 0;
+/* checking if TABLE already exists */
+    sprintf (sql,
+	     "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE '%s'",
+	     table);
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load XL error: <%s>\n", sqlite3_errmsg (sqlite));
+	  return;
+      }
+    while (1)
+      {
+	  /* scrolling the result set */
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;		/* end of result set */
+	  if (ret == SQLITE_ROW)
+	      already_exists = 1;
+	  else
+	    {
+		fprintf (stderr, "load XL error: <%s>\n",
+			 sqlite3_errmsg (sqlite));
+		break;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    if (already_exists)
+      {
+	  fprintf (stderr, "load XL error: table '%s' already exists\n", table);
+	  return;
+      }
+/* opening the .XLS file [Workbook] */
+    ret = freexl_open (path, &xl_handle);
+    if (ret != FREEXL_OK)
+	goto error;
+/* checking if Password protected */
+    ret = freexl_get_info (xl_handle, FREEXL_BIFF_PASSWORD, &info);
+    if (ret != FREEXL_OK)
+	goto error;
+    if (info != FREEXL_BIFF_PLAIN)
+	goto error;
+/* Worksheet entries */
+    ret = freexl_get_info (xl_handle, FREEXL_BIFF_SHEET_COUNT, &info);
+    if (ret != FREEXL_OK)
+	goto error;
+    if (info == 0)
+	goto error;
+    if (worksheetIndex < info)
+	;
+    else
+	goto error;
+    ret = freexl_select_active_worksheet (xl_handle, worksheetIndex);
+    if (ret != FREEXL_OK)
+	goto error;
+    ret = freexl_worksheet_dimensions (xl_handle, &rows, &columns);
+    if (ret != FREEXL_OK)
+	goto error;
+/* starting a transaction */
+    ret = sqlite3_exec (sqlite, "BEGIN", NULL, 0, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load XL error: %s\n", errMsg);
+	  sqlite3_free (errMsg);
+	  sqlError = 1;
+	  goto clean_up;
+      }
+/* creating the Table */
+    strcpy (xname, table);
+    double_quoted_sql (xname);
+    sprintf (sql, "CREATE TABLE %s", xname);
+    strcat (sql, " (\nPK_UID INTEGER PRIMARY KEY AUTOINCREMENT");
+    for (col = 0; col < columns; col++)
+      {
+	  if (first_titles)
+	    {
+		// fetching comun names 
+		for (col = 0; col < columns; col++)
+		  {
+		      ret =
+			  freexl_get_cell_value (xl_handle, 0, col, &type,
+						 &int_value, &dbl_value,
+						 &text_value);
+		      if (ret != FREEXL_OK)
+			  sprintf (dummyName, "col_%d", col);
+		      else
+			{
+			    if (type == FREEXL_CELL_INT)
+				sprintf (dummyName, "%d", int_value);
+			    else if (type == FREEXL_CELL_DOUBLE)
+				sprintf (dummyName, "%1.2f", dbl_value);
+			    else if (type == FREEXL_CELL_TEXT
+				     || type == FREEXL_CELL_SST_TEXT
+				     || type == FREEXL_CELL_DATE
+				     || type == FREEXL_CELL_DATETIME
+				     || type == FREEXL_CELL_TIME)
+			      {
+				  int len = strlen (text_value);
+				  if (len < 256)
+				      strcpy (dummyName, text_value);
+				  else
+				      sprintf (dummyName, "col_%d", col);
+			      }
+			    else
+				sprintf (dummyName, "col_%d", col);
+			}
+		      double_quoted_sql (dummyName);
+		      strcat (sql, ", ");
+		      strcat (sql, dummyName);
+		  }
+	    }
+	  else
+	    {
+		/* setting default column names */
+		for (col = 0; col < columns; col++)
+		  {
+		      sprintf (dummyName, "col_%d", col);
+		      double_quoted_sql (dummyName);
+		      strcat (sql, ", ");
+		      strcat (sql, dummyName);
+		  }
+	    }
+      }
+    strcat (sql, ")");
+    ret = sqlite3_exec (sqlite, sql, NULL, 0, &errMsg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load XL error: %s\n", errMsg);
+	  sqlite3_free (errMsg);
+	  sqlError = 1;
+	  goto clean_up;
+      }
+// preparing the INSERT INTO parameterized statement
+    strcpy (xname, table);
+    double_quoted_sql (xname);
+    sprintf (sql, "INSERT INTO %s (PK_UID", xname);
+    for (col = 0; col < columns; col++)
+      {
+	  if (first_titles)
+	    {
+		ret =
+		    freexl_get_cell_value (xl_handle, 0, col, &type, &int_value,
+					   &dbl_value, &text_value);
+		if (ret != FREEXL_OK)
+		    sprintf (dummyName, "col_%d", col);
+		else
+		  {
+		      if (type == FREEXL_CELL_INT)
+			  sprintf (dummyName, "%d", int_value);
+		      else if (type == FREEXL_CELL_DOUBLE)
+			  sprintf (dummyName, "%1.2f", dbl_value);
+		      else if (type == FREEXL_CELL_TEXT
+			       || type == FREEXL_CELL_SST_TEXT
+			       || type == FREEXL_CELL_DATE
+			       || type == FREEXL_CELL_DATETIME
+			       || type == FREEXL_CELL_TIME)
+			{
+			    int len = strlen (text_value);
+			    if (len < 256)
+				strcpy (dummyName, text_value);
+			    else
+				sprintf (dummyName, "col_%d", col);
+			}
+		      else
+			  sprintf (dummyName, "col_%d", col);
+		  }
+		double_quoted_sql (dummyName);
+		strcat (sql, ", ");
+		strcat (sql, dummyName);
+	    }
+	  else
+	    {
+		// setting default column names 
+		sprintf (dummyName, "col_%d", col);
+		double_quoted_sql (dummyName);
+		strcat (sql, ", ");
+		strcat (sql, dummyName);
+	    }
+      }
+    strcat (sql, ")\nVALUES (NULL");
+    for (col = 0; col < columns; col++)
+      {
+	  /* column values */
+	  strcat (sql, ", ?");
+      }
+    strcat (sql, ")");
+    ret = sqlite3_prepare_v2 (sqlite, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "load XL error: %s\n", sqlite3_errmsg (sqlite));
+	  sqlError = 1;
+	  goto clean_up;
+      }
+    if (first_titles)
+	current_row = 1;
+    else
+	current_row = 0;
+    while (current_row < rows)
+      {
+	  /* binding query params */
+	  sqlite3_reset (stmt);
+	  sqlite3_clear_bindings (stmt);
+	  for (col = 0; col < columns; col++)
+	    {
+		/* column values */
+		ret =
+		    freexl_get_cell_value (xl_handle, current_row, col, &type,
+					   &int_value, &dbl_value, &text_value);
+		if (ret != FREEXL_OK)
+		    sqlite3_bind_null (stmt, col + 1);
+		else
+		  {
+		      switch (type)
+			{
+			case FREEXL_CELL_INT:
+			    sqlite3_bind_int (stmt, col + 1, int_value);
+			    break;
+			case FREEXL_CELL_DOUBLE:
+			    sqlite3_bind_double (stmt, col + 1, dbl_value);
+			    break;
+			case FREEXL_CELL_TEXT:
+			case FREEXL_CELL_SST_TEXT:
+			case FREEXL_CELL_DATE:
+			case FREEXL_CELL_DATETIME:
+			case FREEXL_CELL_TIME:
+			    sqlite3_bind_text (stmt, col + 1, text_value,
+					       strlen (text_value),
+					       SQLITE_STATIC);
+			    break;
+			default:
+			    sqlite3_bind_null (stmt, col + 1);
+			    break;
+			};
+		  }
+	    }
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	      ;
+	  else
+	    {
+		fprintf (stderr, "load XL error: %s\n",
+			 sqlite3_errmsg (sqlite));
+		sqlite3_finalize (stmt);
+		sqlError = 1;
+		goto clean_up;
+	    }
+	  current_row++;
+      }
+    sqlite3_finalize (stmt);
+  clean_up:
+    if (sqlError)
+      {
+	  /* some error occurred - ROLLBACK */
+	  ret = sqlite3_exec (sqlite, "ROLLBACK", NULL, 0, &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "load XL error: %s\n", errMsg);
+		sqlite3_free (errMsg);
+	    }
+	  fprintf (stderr,
+		   "XL not loaded\n\n\na ROLLBACK was automatically performed\n");
+      }
+    else
+      {
+	  /* ok - confirming pending transaction - COMMIT */
+	  ret = sqlite3_exec (sqlite, "COMMIT", NULL, 0, &errMsg);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "load XL error: %s\n", errMsg);
+		sqlite3_free (errMsg);
+		return;
+	    }
+	  fprintf (stderr, "XL loaded\n\n%d inserted rows\n", rows);
+      }
+    freexl_close (xl_handle);
+    return;
+
+  error:
+    freexl_close (xl_handle);
+    fprintf (stderr, "XL datasource '%s' is not valid\n", path);
 }
