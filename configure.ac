@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 3.0.0-beta, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 3.0.0-beta1, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -75,8 +75,10 @@ AC_CHECK_LIB(proj,pj_init_plus,,AC_MSG_ERROR(['libproj' is required but it doesn
 AC_CHECK_LIB(geos_c,GEOSTopologyPreserveSimplify,,AC_MSG_ERROR(['libgeos_c' is required but it doesn't seems to be installed on this system.]),-lm -lgeos)
 
 PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seems to be installed on this system.]))
-PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seems to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
 AC_SUBST(LIBSPATIALITE_LIBS)
+PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seems to be installed on this system.]))
+AC_SUBST(LIBFREEXL_CFLAGS)
+AC_SUBST(LIBFREEXL_LIBS)
 
 AC_OUTPUT
