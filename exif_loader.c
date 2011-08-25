@@ -1056,7 +1056,6 @@ checkExifTables (sqlite3 * handle)
     int ok_shotDateTime;
     int ok_gpsGeometry;
     int ok_gpsDirection;
-    int ok_gpsSatellites;
     int ok_gpsTimestamp;
     int ok_fromPath;
     int ok_tagId;
@@ -1114,7 +1113,6 @@ checkExifTables (sqlite3 * handle)
     ok_shotDateTime = 0;
     ok_gpsGeometry = 0;
     ok_gpsDirection = 0;
-    ok_gpsSatellites = 0;
     ok_gpsTimestamp = 0;
     ok_fromPath = 0;
     ok_photoIdPk = 0;

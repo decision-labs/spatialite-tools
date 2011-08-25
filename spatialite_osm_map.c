@@ -1088,7 +1088,7 @@ end_way (struct aux_params *params)
     struct nd *p_nd2;
     unsigned char *blob;
     int blob_size;
-    int area;
+    int area = 0;
 
     gaiaGeomCollPtr geom = build_linestring (params->db_handle);
     if (geom)
@@ -1519,7 +1519,6 @@ build_multipolygon (sqlite3 * db_handle)
     char sql[8192];
     sqlite3_stmt *stmt;
     sqlite3_int64 id;
-    int area;
 
     const unsigned char *blob = NULL;
     int blob_size;
@@ -1608,7 +1607,6 @@ build_multipolygon (sqlite3 * db_handle)
 		  {
 		      /* ok, we've just fetched a valid row */
 		      id = sqlite3_column_int64 (stmt, 0);
-		      area = sqlite3_column_int (stmt, 1);
 		      blob = sqlite3_column_blob (stmt, 2);
 		      blob_size = sqlite3_column_bytes (stmt, 2);
 		      org_geom = gaiaFromSpatiaLiteBlobWkb (blob, blob_size);

@@ -1071,6 +1071,8 @@ output_csv (struct callback_data *p, const char *z, int bSep)
 static void
 interrupt_handler (int NotUsed)
 {
+    if (NotUsed != 0)
+	NotUsed = 0;		/* suppressing stupid compiler warnings */
     seenInterrupt = 1;
     if (db)
 	sqlite3_interrupt (db);

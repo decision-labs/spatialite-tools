@@ -874,14 +874,12 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
     int i;
     int rows = 0;
     int type;
-    const unsigned char *char_value;
     const void *blob_value;
     gaiaShapefilePtr shp = NULL;
     gaiaDbfListPtr dbf_export_list = NULL;
     gaiaDbfListPtr dbf_list = NULL;
     gaiaDbfListPtr dbf_write;
     gaiaDbfFieldPtr dbf_field;
-    gaiaGeomCollPtr geom;
     int *max_length = NULL;
     int *sql_type = NULL;
     if (geom_type)
@@ -1143,7 +1141,6 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 			  continue;
 		      if (type == SQLITE_TEXT)
 			{
-			    char_value = sqlite3_column_text (stmt, i);
 			    len = sqlite3_column_bytes (stmt, i);
 			    sql_type[i] = SQLITE_TEXT;
 			    if (len > max_length[i])
@@ -1224,7 +1221,6 @@ dump_shapefile (sqlite3 * sqlite, char *table, char *column, char *shp_path,
 	  if (ret == SQLITE_ROW)
 	    {
 		rows++;
-		geom = NULL;
 		dbf_write = gaiaCloneDbfEntity (dbf_list);
 		for (i = 0; i < n_cols; i++)
 		  {
@@ -1681,7 +1677,6 @@ dump_dbf (sqlite3 * sqlite, char *table, char *dbf_path, char *charset)
     int n_cols = 0;
     int offset = 0;
     int type;
-    const unsigned char *char_value;
     gaiaDbfPtr dbf = NULL;
     gaiaDbfListPtr dbf_export_list = NULL;
     gaiaDbfListPtr dbf_list = NULL;
@@ -1742,7 +1737,6 @@ dump_dbf (sqlite3 * sqlite, char *table, char *dbf_path, char *charset)
 			  continue;
 		      if (type == SQLITE_TEXT)
 			{
-			    char_value = sqlite3_column_text (stmt, i);
 			    len = sqlite3_column_bytes (stmt, i);
 			    sql_type[i] = SQLITE_TEXT;
 			    if (len > max_length[i])
@@ -2680,7 +2674,7 @@ load_XL (sqlite3 * sqlite, const char *path, const char *table,
       {
 	  if (first_titles)
 	    {
-		// fetching comun names 
+		/* fetching comun names */
 		for (col = 0; col < columns; col++)
 		  {
 		      ret =
@@ -2736,7 +2730,7 @@ load_XL (sqlite3 * sqlite, const char *path, const char *table,
 	  sqlError = 1;
 	  goto clean_up;
       }
-// preparing the INSERT INTO parameterized statement
+/* preparing the INSERT INTO parameterized statement */
     strcpy (xname, table);
     double_quoted_sql (xname);
     sprintf (sql, "INSERT INTO %s (PK_UID", xname);
@@ -2776,7 +2770,7 @@ load_XL (sqlite3 * sqlite, const char *path, const char *table,
 	    }
 	  else
 	    {
-		// setting default column names 
+		/* setting default column names  */
 		sprintf (dummyName, "col_%d", col);
 		double_quoted_sql (dummyName);
 		strcat (sql, ", ");
