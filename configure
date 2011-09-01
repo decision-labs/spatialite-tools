@@ -16491,7 +16491,7 @@ _ACEOF
   LIBS="-lexpat $LIBS"
 
 else
-  as_fn_error $? "'expat' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+  as_fn_error $? "'expat' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pj_init_plus in -lproj" >&5
@@ -16538,7 +16538,7 @@ _ACEOF
   LIBS="-lproj $LIBS"
 
 else
-  as_fn_error $? "'libproj' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+  as_fn_error $? "'libproj' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for GEOSTopologyPreserveSimplify in -lgeos_c" >&5
@@ -16585,7 +16585,7 @@ _ACEOF
   LIBS="-lgeos_c $LIBS"
 
 else
-  as_fn_error $? "'libgeos_c' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+  as_fn_error $? "'libgeos_c' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 fi
 
 
@@ -16765,11 +16765,11 @@ fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$LIBSPATIALITE_PKG_ERRORS" >&5
 
-	as_fn_error $? "'libspatialite' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+	as_fn_error $? "'libspatialite' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 elif test $pkg_failed = untried; then
      	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	as_fn_error $? "'libspatialite' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+	as_fn_error $? "'libspatialite' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 else
 	LIBSPATIALITE_CFLAGS=$pkg_cv_LIBSPATIALITE_CFLAGS
 	LIBSPATIALITE_LIBS=$pkg_cv_LIBSPATIALITE_LIBS
@@ -16836,11 +16836,11 @@ fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$LIBFREEXL_PKG_ERRORS" >&5
 
-	as_fn_error $? "'libfreexl' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+	as_fn_error $? "'libfreexl' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 elif test $pkg_failed = untried; then
      	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	as_fn_error $? "'libfreexl' is required but it doesn't seems to be installed on this system." "$LINENO" 5
+	as_fn_error $? "'libfreexl' is required but it doesn't seem to be installed on this system." "$LINENO" 5
 else
 	LIBFREEXL_CFLAGS=$pkg_cv_LIBFREEXL_CFLAGS
 	LIBFREEXL_LIBS=$pkg_cv_LIBFREEXL_LIBS
