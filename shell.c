@@ -2049,10 +2049,12 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *shp_path = azArg[3];
 	  char *outCS = azArg[4];
 	  char *type = NULL;
+	  int rows;
 	  if (nArg == 6)
 	      type = azArg[5];
 	  open_db (p);
-	  dump_shapefile (p->db, table, column, shp_path, outCS, type, 1, NULL);
+	  dump_shapefile (p->db, table, column, shp_path, outCS, type, 1, &rows,
+			  NULL);
       }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpdbf", n) == 0
 	     && (nArg == 4))
@@ -2062,7 +2064,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *dbf_path = azArg[2];
 	  char *outCS = azArg[3];
 	  open_db (p);
-	  dump_dbf (p->db, table, dbf_path, outCS);
+	  dump_dbf (p->db, table, dbf_path, outCS, NULL);
       }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpkml", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7))
@@ -2093,6 +2095,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  int coerce2d = 0;
 	  int compressed = 0;
 	  char *column = NULL;
+	  int rows;
 	  if (nArg >= 5)
 	      srid = atoi (azArg[4]);
 	  if (nArg >= 6)
@@ -2106,7 +2109,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	      compressed = 1;
 	  open_db (p);
 	  load_shapefile (p->db, shp_path, table, inCS, srid, column, coerce2d,
-			  compressed, 1, NULL);
+			  compressed, 1, 0, &rows, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
 	     && nArg == 4)
@@ -2114,8 +2117,9 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *dbf_path = azArg[1];
 	  char *table = azArg[2];
 	  char *inCS = azArg[3];
+	  int rows;
 	  open_db (p);
-	  load_dbf (p->db, dbf_path, table, inCS, 1, NULL);
+	  load_dbf (p->db, dbf_path, table, inCS, 1, &rows, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0
 	     && (nArg == 3 || nArg == 4 || nArg == 5))
@@ -2132,7 +2136,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 		    firstLine = 1;
 	    }
 	  open_db (p);
-	  load_XL (p->db, xl_path, table, worksheet, firstLine);
+	  load_XL (p->db, xl_path, table, worksheet, firstLine, NULL);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
