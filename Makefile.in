@@ -62,7 +62,7 @@ am_shp_doctor_OBJECTS = shp_doctor.$(OBJEXT)
 shp_doctor_OBJECTS = $(am_shp_doctor_OBJECTS)
 shp_doctor_LDADD = $(LDADD)
 shp_doctor_DEPENDENCIES =
-am_spatialite_OBJECTS = shell.$(OBJEXT) shapefiles.$(OBJEXT)
+am_spatialite_OBJECTS = shell.$(OBJEXT)
 spatialite_OBJECTS = $(am_spatialite_OBJECTS)
 spatialite_DEPENDENCIES =
 am_spatialite_gml_OBJECTS = spatialite_gml.$(OBJEXT)
@@ -82,8 +82,7 @@ spatialite_osm_net_DEPENDENCIES =
 am_spatialite_osm_raw_OBJECTS = spatialite_osm_raw.$(OBJEXT)
 spatialite_osm_raw_OBJECTS = $(am_spatialite_osm_raw_OBJECTS)
 spatialite_osm_raw_DEPENDENCIES =
-am_spatialite_tool_OBJECTS = spatialite_tool.$(OBJEXT) \
-	shapefiles.$(OBJEXT)
+am_spatialite_tool_OBJECTS = spatialite_tool.$(OBJEXT)
 spatialite_tool_OBJECTS = $(am_spatialite_tool_OBJECTS)
 spatialite_tool_LDADD = $(LDADD)
 spatialite_tool_DEPENDENCIES =
@@ -256,8 +255,8 @@ AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
 	@LIBFREEXL_CFLAGS@
 
 INCLUDES = @CFLAGS@
-spatialite_SOURCES = shell.c shapefiles.c
-spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
+spatialite_SOURCES = shell.c
+spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
@@ -406,7 +405,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/exif_loader.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shapefiles.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shell.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shp_doctor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_gml.Po@am__quote@

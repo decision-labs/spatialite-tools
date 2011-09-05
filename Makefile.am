@@ -16,8 +16,8 @@ bin_PROGRAMS = spatialite \
 
 INCLUDES = @CFLAGS@
 
-spatialite_SOURCES = shell.c shapefiles.c
-spatialite_tool_SOURCES = spatialite_tool.c shapefiles.c
+spatialite_SOURCES = shell.c
+spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c

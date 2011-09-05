@@ -9,8 +9,8 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	./static_bin/spatialite_osm_map ./static_bin/spatialite_gml \
 	./static_bin/spatialite_osm_raw
 
-./static_bin/spatialite: shell.o shapefiles.o
-	$(CC) shell.o shapefiles.o -o ./static_bin/spatialite \
+./static_bin/spatialite: shell.o
+	$(CC) shell.o -o ./static_bin/spatialite \
 	/usr/local/lib/libspatialite.a \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
@@ -23,8 +23,8 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	-lstdc++ -lm -lpthread -ldl
 	strip ./static_bin/spatialite
 
-./static_bin/spatialite_tool: shapefiles.o spatialite_tool.o
-	$(CC) shapefiles.o spatialite_tool.o -o ./static_bin/spatialite_tool \
+./static_bin/spatialite_tool: spatialite_tool.o
+	$(CC) spatialite_tool.o -o ./static_bin/spatialite_tool \
 	/usr/local/lib/libspatialite.a \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
