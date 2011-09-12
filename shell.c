@@ -1825,6 +1825,9 @@ static char zHelp[] =
     "                         which one charset is used on your Command Prompt]\n\n"
     ".chkdupl <table>  Check a TABLE for duplicated rows\n\n"
     ".remdupl <table>  Removes any duplicated row from a TABLE\n\n"
+    ".elemgeo <args>   derives a new table from the original one, so to ensure that\n"
+    "                  only elementary Geometries (one for each row) will be present\n"
+    "                  arg_list: in_tbl geom out_tbl out_pk out_old_id\n\n"
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
     "                  arg_list: shp_path table_name charset [SRID] [column_name]\n"
     "                      [2d | 3d] [compressed]\n\n"
@@ -2169,6 +2172,16 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *table = azArg[1];
 	  open_db (p);
 	  remove_duplicated_rows (p->db, table);
+      }
+    else if (c == 'e' && strncmp (azArg[0], "elemgeo", n) == 0 && nArg == 6)
+      {
+	  char *inTable = azArg[1];
+	  char *geom = azArg[2];
+	  char *outTable = azArg[3];
+	  char *pKey = azArg[4];
+	  char *multiId = azArg[5];
+	  open_db (p);
+	  elementary_geometries (p->db, inTable, geom, outTable, pKey, multiId);
       }
     else if (c == 'b' && n > 1 && strncmp (azArg[0], "bail", n) == 0
 	     && nArg > 1)
