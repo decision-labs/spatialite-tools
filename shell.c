@@ -2127,6 +2127,7 @@ do_meta_command (char *zLine, struct callback_data *p)
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0
 	     && (nArg == 3 || nArg == 4 || nArg == 5))
       {
+	  unsigned int rows;
 	  char *xl_path = azArg[1];
 	  char *table = azArg[2];
 	  unsigned int worksheet = 0;
@@ -2139,7 +2140,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 		    firstLine = 1;
 	    }
 	  open_db (p);
-	  load_XL (p->db, xl_path, table, worksheet, firstLine, NULL);
+	  load_XL (p->db, xl_path, table, worksheet, firstLine, &rows, NULL);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
@@ -2163,9 +2164,10 @@ do_meta_command (char *zLine, struct callback_data *p)
       }
     else if (c == 'c' && strncmp (azArg[0], "chkdupl", n) == 0 && nArg == 2)
       {
+	  int rows;
 	  char *table = azArg[1];
 	  open_db (p);
-	  check_duplicated_rows (p->db, table);
+	  check_duplicated_rows (p->db, table, &rows);
       }
     else if (c == 'r' && strncmp (azArg[0], "remdupl", n) == 0 && nArg == 2)
       {
