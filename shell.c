@@ -83,6 +83,7 @@
 #include <io.h>
 #define isatty	_isatty
 #define access	_access
+#define strcasecmp	_stricmp
 #else
 /* Make sure isatty() has a prototype.
 */

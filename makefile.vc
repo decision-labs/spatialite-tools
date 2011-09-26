@@ -23,8 +23,8 @@ all: $(SPATIALITE_EXE) $(SHP_DOCTOR_EXE) $(SPATIALITE_TOOL_EXE) \
 	$(SPATIALITE_OSM_NET_EXE) $(SPATIALITE_OSM_MAP_EXE) \
 	$(SPATIALITE_GML_EXE) $(SPATIALITE_OSM_RAW_EXE)
 
-$(SPATIALITE_EXE): shell.obj shapefiles.obj
-	cl shell.obj shapefiles.obj C:\OSGeo4W\lib\proj_i.lib \
+$(SPATIALITE_EXE): shell.obj
+	cl shell.obj C:\OSGeo4W\lib\proj_i.lib \
 		C:\OSGeo4W\lib\iconv.lib C:\OSGeo4W\lib\geos_c_i.lib \
 		C:\OSGeo4W\lib\spatialite_i.lib \
 		/Fe$(SPATIALITE_EXE)
@@ -53,8 +53,8 @@ $(SPATIALITE_NETWORK_EXE):	spatialite_network.obj
 		$(SPATIALITE_TOOL_EXE).manifest \
 		-outputresource:$(SPATIALITE_TOOL_EXE);1
 
-$(SPATIALITE_TOOL_EXE):	spatialite_tool.obj shapefiles.obj
-	cl spatialite_tool.obj shapefiles.obj C:\OSGeo4W\lib\proj_i.lib \
+$(SPATIALITE_TOOL_EXE):	spatialite_tool.obj
+	cl spatialite_tool.obj C:\OSGeo4W\lib\proj_i.lib \
 		C:\OSGeo4W\lib\iconv.lib C:\OSGeo4W\lib\geos_c_i.lib \
 		C:\OSGeo4W\lib\spatialite_i.lib
 	if exist $(SPATIALITE_TOOL_EXE).manifest mt -manifest \
