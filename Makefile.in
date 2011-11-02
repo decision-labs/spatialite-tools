@@ -38,7 +38,7 @@ bin_PROGRAMS = spatialite$(EXEEXT) spatialite_tool$(EXEEXT) \
 	spatialite_network$(EXEEXT) shp_doctor$(EXEEXT) \
 	exif_loader$(EXEEXT) spatialite_osm_net$(EXEEXT) \
 	spatialite_osm_map$(EXEEXT) spatialite_osm_raw$(EXEEXT) \
-	spatialite_gml$(EXEEXT)
+	spatialite_osm_filter$(EXEEXT) spatialite_gml$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(top_srcdir)/configure AUTHORS COPYING \
@@ -72,6 +72,10 @@ am_spatialite_network_OBJECTS = spatialite_network.$(OBJEXT)
 spatialite_network_OBJECTS = $(am_spatialite_network_OBJECTS)
 spatialite_network_LDADD = $(LDADD)
 spatialite_network_DEPENDENCIES =
+am_spatialite_osm_filter_OBJECTS = spatialite_osm_filter.$(OBJEXT)
+spatialite_osm_filter_OBJECTS = $(am_spatialite_osm_filter_OBJECTS)
+spatialite_osm_filter_LDADD = $(LDADD)
+spatialite_osm_filter_DEPENDENCIES =
 am_spatialite_osm_map_OBJECTS = spatialite_osm_map.$(OBJEXT)
 spatialite_osm_map_OBJECTS = $(am_spatialite_osm_map_OBJECTS)
 spatialite_osm_map_DEPENDENCIES =
@@ -101,14 +105,14 @@ LINK = $(LIBTOOL) --tag=CC $(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) \
 	$(LDFLAGS) -o $@
 SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
-	$(spatialite_network_SOURCES) $(spatialite_osm_map_SOURCES) \
-	$(spatialite_osm_net_SOURCES) $(spatialite_osm_raw_SOURCES) \
-	$(spatialite_tool_SOURCES)
+	$(spatialite_network_SOURCES) $(spatialite_osm_filter_SOURCES) \
+	$(spatialite_osm_map_SOURCES) $(spatialite_osm_net_SOURCES) \
+	$(spatialite_osm_raw_SOURCES) $(spatialite_tool_SOURCES)
 DIST_SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_SOURCES) $(spatialite_gml_SOURCES) \
-	$(spatialite_network_SOURCES) $(spatialite_osm_map_SOURCES) \
-	$(spatialite_osm_net_SOURCES) $(spatialite_osm_raw_SOURCES) \
-	$(spatialite_tool_SOURCES)
+	$(spatialite_network_SOURCES) $(spatialite_osm_filter_SOURCES) \
+	$(spatialite_osm_map_SOURCES) $(spatialite_osm_net_SOURCES) \
+	$(spatialite_osm_raw_SOURCES) $(spatialite_tool_SOURCES)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -263,6 +267,7 @@ exif_loader_SOURCES = exif_loader.c
 spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
+spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
@@ -385,6 +390,9 @@ spatialite_gml$(EXEEXT): $(spatialite_gml_OBJECTS) $(spatialite_gml_DEPENDENCIES
 spatialite_network$(EXEEXT): $(spatialite_network_OBJECTS) $(spatialite_network_DEPENDENCIES) 
 	@rm -f spatialite_network$(EXEEXT)
 	$(LINK) $(spatialite_network_OBJECTS) $(spatialite_network_LDADD) $(LIBS)
+spatialite_osm_filter$(EXEEXT): $(spatialite_osm_filter_OBJECTS) $(spatialite_osm_filter_DEPENDENCIES) 
+	@rm -f spatialite_osm_filter$(EXEEXT)
+	$(LINK) $(spatialite_osm_filter_OBJECTS) $(spatialite_osm_filter_LDADD) $(LIBS)
 spatialite_osm_map$(EXEEXT): $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_DEPENDENCIES) 
 	@rm -f spatialite_osm_map$(EXEEXT)
 	$(LINK) $(spatialite_osm_map_OBJECTS) $(spatialite_osm_map_LDADD) $(LIBS)
@@ -409,6 +417,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/shp_doctor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_gml.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_network.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_net.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_raw.Po@am__quote@

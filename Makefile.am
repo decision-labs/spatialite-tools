@@ -12,6 +12,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_net \
 	spatialite_osm_map \
 	spatialite_osm_raw \
+	spatialite_osm_filter \
 	spatialite_gml
 
 INCLUDES = @CFLAGS@
@@ -24,6 +25,7 @@ exif_loader_SOURCES = exif_loader.c
 spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
+spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \

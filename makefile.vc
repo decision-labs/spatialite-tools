@@ -12,6 +12,7 @@ SPATIALITE_TOOL_EXE    =	spatialite_tool.exe
 SPATIALITE_OSM_NET_EXE =    spatialite_osm_net.exe
 SPATIALITE_OSM_MAP_EXE =    spatialite_osm_map.exe
 SPATIALITE_OSM_RAW_EXE =    spatialite_osm_raw.exe
+SPATIALITE_OSM_FILTER_EXE =    spatialite_osm_filter.exe
 SPATIALITE_GML_EXE     =    spatialite_gml.exe
 
 CFLAGS	=	/nologo -IC:\OSGeo4W\include $(OPTFLAGS)
@@ -95,6 +96,14 @@ $(SPATIALITE_OSM_RAW_EXE):	spatialite_osm_raw.obj
 	if exist $(SPATIALITE_OSM_RAW_EXE).manifest mt -manifest \
 		$(SPATIALITE_OSM_RAW_EXE).manifest \
 		-outputresource:$(SPATIALITE_OSM_RAW_EXE);1
+
+$(SPATIALITE_OSM_FILTER_EXE):	spatialite_osm_filter.obj
+	cl spatialite_osm_filter.obj C:\OSGeo4W\lib\proj_i.lib \
+		C:\OSGeo4W\lib\iconv.lib \
+		C:\OSGeo4W\lib\spatialite_i.lib
+	if exist $(SPATIALITE_OSM_FILTER_EXE).manifest mt -manifest \
+		$(SPATIALITE_OSM_FILTER_EXE).manifest \
+		-outputresource:$(SPATIALITE_OSM_FILTER_EXE);1
 
 clean:
 	del *.exe
