@@ -24,6 +24,11 @@
 /
 */
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+/* MSVC strictly requires this include [off_t] */
+#include <sys/types.h>
+#endif
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -43,6 +48,10 @@
 #define ARG_DB_PATH		2
 #define ARG_CACHE_SIZE	3
 #define ARG_MASK_PATH	4
+
+#if defined(_WIN32) && !defined(__MINGW32__)
+#define strcasecmp	_stricmp
+#endif /* not WIN32 */
 
 static char *
 clean_xml (const char *in)

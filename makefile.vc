@@ -4,16 +4,16 @@
 #
 !INCLUDE nmake.opt
 
-SPATIALITE_EXE         =	spatialite.exe
-EXIF_LOADER_EXE        =	exif_loader.exe
-SHP_DOCTOR_EXE         =	shp_doctor.exe
-SPATIALITE_NETWORK_EXE =	spatialite_network.exe
-SPATIALITE_TOOL_EXE    =	spatialite_tool.exe
-SPATIALITE_OSM_NET_EXE =    spatialite_osm_net.exe
-SPATIALITE_OSM_MAP_EXE =    spatialite_osm_map.exe
-SPATIALITE_OSM_RAW_EXE =    spatialite_osm_raw.exe
-SPATIALITE_OSM_FILTER_EXE =    spatialite_osm_filter.exe
-SPATIALITE_GML_EXE     =    spatialite_gml.exe
+SPATIALITE_EXE            = spatialite.exe
+EXIF_LOADER_EXE           = exif_loader.exe
+SHP_DOCTOR_EXE            = shp_doctor.exe
+SPATIALITE_NETWORK_EXE    = spatialite_network.exe
+SPATIALITE_TOOL_EXE       = spatialite_tool.exe
+SPATIALITE_OSM_NET_EXE    = spatialite_osm_net.exe
+SPATIALITE_OSM_MAP_EXE    = spatialite_osm_map.exe
+SPATIALITE_OSM_RAW_EXE    = spatialite_osm_raw.exe
+SPATIALITE_OSM_FILTER_EXE = spatialite_osm_filter.exe
+SPATIALITE_GML_EXE        = spatialite_gml.exe
 
 CFLAGS	=	/nologo -IC:\OSGeo4W\include $(OPTFLAGS)
 
@@ -22,7 +22,8 @@ default:	all
 all: $(SPATIALITE_EXE) $(SHP_DOCTOR_EXE) $(SPATIALITE_TOOL_EXE) \
 	$(SPATIALITE_NETWORK_EXE) $(EXIF_LOADER_EXE) \
 	$(SPATIALITE_OSM_NET_EXE) $(SPATIALITE_OSM_MAP_EXE) \
-	$(SPATIALITE_GML_EXE) $(SPATIALITE_OSM_RAW_EXE)
+	$(SPATIALITE_GML_EXE) $(SPATIALITE_OSM_RAW_EXE) \
+	$(SPATIALITE_OSM_FILTER_EXE)
 
 $(SPATIALITE_EXE): shell.obj
 	cl shell.obj C:\OSGeo4W\lib\proj_i.lib \
