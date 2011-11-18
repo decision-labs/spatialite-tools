@@ -1845,6 +1845,11 @@ static char zHelp[] =
     ".dumpkml <args>   Dumps a SpatiaLite table as a KML file\n"
     "                  arg_list: table_name geom_column kml_path\n"
     "                      [precision] [name_column] [desc_column]\n\n"
+    ".dumpgeojson <args>  Dumps a SpatiaLite table as a GeoJSON file\n"
+    "                  arg_list: table_name geom_column geojson_path\n"
+    "                      [format] [precision]\n"
+    "                  format={ none | MBR | withShortCRS | MBRwithShortCRS\n"
+    "                           | withLongCRS | MBRwithLongCRS }\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
 /* end Sandro Furieri 2008-06-20 */
@@ -2088,6 +2093,38 @@ do_meta_command (char *zLine, struct callback_data *p)
 	      desc = azArg[6];
 	  open_db (p);
 	  dump_kml (p->db, table, geom, kml_path, name, desc, precision);
+      }
+    else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpgeojson", n) == 0
+	     && (nArg == 4 || nArg == 5 || nArg == 6))
+      {
+	  /* 
+	     dumping a spatial table as file of GeoJSON 
+	     2011-11-09 Brad Hards
+	   */
+	  char *table = azArg[1];
+	  char *geom = azArg[2];
+	  char *gml_path = azArg[3];
+	  int format = 0;
+	  int precision = 8;
+	  if (nArg >= 5)
+	    {
+		if (strcmp (azArg[4], "none") == 0)
+		    format = 0;
+		else if (strcmp (azArg[4], "MBR") == 0)
+		    format = 1;
+		else if (strcmp (azArg[4], "withShortCRS") == 0)
+		    format = 2;
+		else if (strcmp (azArg[4], "MBRwithShortCRS") == 0)
+		    format = 3;
+		else if (strcmp (azArg[4], "withLongCRS") == 0)
+		    format = 4;
+		else if (strcmp (azArg[4], "MBRwithLongCRS") == 0)
+		    format = 5;
+	    }
+	  if (nArg == 6)
+	      precision = atoi (azArg[5]);
+	  open_db (p);
+	  dump_geojson (p->db, table, geom, gml_path, precision, format);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadshp", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
