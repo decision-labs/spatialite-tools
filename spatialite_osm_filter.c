@@ -793,8 +793,6 @@ reset_filtered (sqlite3 * handle)
 	  return 0;
       }
 
-    fprintf (stderr, "res-nodes\n");
-    fflush (stderr);
 /* resetting NODES */
     strcpy (sql, "UPDATE osm_nodes SET filtered = 0");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
@@ -805,8 +803,6 @@ reset_filtered (sqlite3 * handle)
 	  return 0;
       }
 
-    fprintf (stderr, "res-ways\n");
-    fflush (stderr);
 /* resetting WAYS */
     strcpy (sql, "UPDATE osm_ways SET filtered = 0");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
@@ -817,8 +813,6 @@ reset_filtered (sqlite3 * handle)
 	  return 0;
       }
 
-    fprintf (stderr, "res-rels\n");
-    fflush (stderr);
 /* resetting RELATIONS */
     strcpy (sql, "UPDATE osm_relations SET filtered = 0");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
