@@ -532,7 +532,7 @@ convert_from_utf8 (char *buf, int maxlen)
 {
 /* converting from UTF8 to locale charset */
     char *utf8buf = 0;
-#ifdef __MINGW32__
+#if !defined(__MINGW32__) && defined(_WIN32)
     const char *pBuf;
 #else
     char *pBuf;
@@ -570,7 +570,7 @@ convert_to_utf8 (char *buf, int maxlen)
 {
 /* converting from locale charset to UTF8 */
     char *utf8buf = 0;
-#ifdef __MINGW32__
+#if !defined(__MINGW32__) && defined(_WIN32)
     const char *pBuf;
 #else
     char *pBuf;
@@ -608,7 +608,7 @@ convert_input_to_utf8 (char *buf, int maxlen)
 {
 /* converting from required charset to UTF8 */
     char *utf8buf = 0;
-#ifdef __MINGW32__
+#if !defined(__MINGW32__) && defined(_WIN32)
     const char *pBuf;
 #else
     char *pBuf;
