@@ -284,7 +284,7 @@ parse_nodes (FILE * xml, sqlite3 * handle)
     int node = 0;
     int c;
     int last_c;
-    char value[8192];
+    char value[65536];
     char *p;
     struct check_tag tag;
     init_tag (&tag, 6);
@@ -977,10 +977,10 @@ set_way_name (struct way *xway)
 }
 
 static int
-is_valid_way (const char *key, const char *class)
+is_valid_way (const char *key, const char *class, int railways)
 {
 /* checks if this one is an valid road to be included into the network */
-    if (strcmp (key, "highway") == 0)
+    if (strcmp (key, "highway") == 0 && !railways)
       {
 	  if (strcmp (class, "pedestrian") == 0)
 	      return 0;
@@ -1002,6 +1002,10 @@ is_valid_way (const char *key, const char *class)
 	      return 0;
 	  if (strcmp (class, "steps") == 0)
 	      return 0;
+	  return 1;
+      }
+    if (strcmp (key, "railway") == 0 && railways)
+      {
 	  return 1;
       }
     return 0;
@@ -1036,14 +1040,14 @@ set_oneway (struct way *xway)
 }
 
 static int
-check_way (struct way *xway)
+check_way (struct way *xway, int railways)
 {
 /* checks if <way> is interesting to build the road network */
     struct kv *pkv;
     pkv = xway->first_kv;
     while (pkv)
       {
-	  if (is_valid_way (pkv->k, pkv->v))
+	  if (is_valid_way (pkv->k, pkv->v, railways))
 	    {
 		xway->class = malloc (strlen (pkv->v) + 1);
 		strcpy (xway->class, pkv->v);
@@ -1404,8 +1408,8 @@ build_geometry (sqlite3 * handle, struct way *xway)
 	  pa->dyn = NULL;
 	  pa->length =
 	      gaiaGreatCircleTotalLength (a, b,
-					  pa->geom->
-					  FirstLinestring->DimensionModel,
+					  pa->geom->FirstLinestring->
+					  DimensionModel,
 					  pa->geom->FirstLinestring->Coords,
 					  pa->geom->FirstLinestring->Points);
 	  pa->cost = compute_time (xway->class, pa->length);
@@ -1586,7 +1590,7 @@ insert_arc_unidir (sqlite3 * handle, sqlite3_stmt * stmt, struct way *xway,
 
 static int
 parse_ways_pass_2 (FILE * xml, sqlite3 * handle, const char *table,
-		   int double_arcs, char *value)
+		   int double_arcs, char *value, int railways)
 {
 /* parsing <way> tags from XML file - Step II */
     sqlite3_stmt *stmt;
@@ -1673,7 +1677,7 @@ parse_ways_pass_2 (FILE * xml, sqlite3 * handle, const char *table,
 		  }
 		else
 		  {
-		      if (check_way (&xway))
+		      if (check_way (&xway, railways))
 			{
 			    ret = build_geometry (handle, &xway);
 			    if (ret == 0)
@@ -1737,14 +1741,14 @@ parse_ways_pass_2 (FILE * xml, sqlite3 * handle, const char *table,
 }
 
 static int
-pre_check_way (struct way *xway)
+pre_check_way (struct way *xway, int railways)
 {
 /* checks if <way> is interesting to build the road network */
     struct kv *pkv;
     pkv = xway->first_kv;
     while (pkv)
       {
-	  if (is_valid_way (pkv->k, pkv->v))
+	  if (is_valid_way (pkv->k, pkv->v, railways))
 	      return 1;
 	  pkv = pkv->next;
       }
@@ -1888,7 +1892,7 @@ mark_nodes (sqlite3 * handle, sqlite3_stmt * stmt_upd, struct way *xway)
 }
 
 static int
-parse_ways_pass_1 (FILE * xml, sqlite3 * handle, char *value)
+parse_ways_pass_1 (FILE * xml, sqlite3 * handle, char *value, int railways)
 {
 /* parsing <way> tags from XML file - Pass I */
     sqlite3_stmt *stmt;
@@ -1957,7 +1961,7 @@ parse_ways_pass_1 (FILE * xml, sqlite3 * handle, char *value)
 		  }
 		else
 		  {
-		      if (pre_check_way (&xway))
+		      if (pre_check_way (&xway, railways))
 			{
 			    if (!mark_nodes (handle, stmt, &xway))
 			      {
@@ -2354,6 +2358,11 @@ do_help ()
     fprintf (stderr,
 	     "-m or --in-memory               using IN-MEMORY database\n");
     fprintf (stderr, "-2 or --undirectional           double arcs\n\n");
+    fprintf (stderr,
+	     "--roads                         extract roads [default]\n");
+    fprintf (stderr, "--railways                      extract railways\n");
+    fprintf (stderr,
+	     "                                [mutually exclusive]\n\n");
 }
 
 int
@@ -2368,6 +2377,7 @@ main (int argc, char *argv[])
     int in_memory = 0;
     int cache_size = 0;
     int double_arcs = 0;
+    int railways = 0;
     int error = 0;
     sqlite3 *handle;
     FILE *xml;
@@ -2445,7 +2455,7 @@ main (int argc, char *argv[])
 		next_arg = ARG_NONE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "-in-memory") == 0)
+	  if (strcasecmp (argv[i], "--in-memory") == 0)
 	    {
 		in_memory = 1;
 		next_arg = ARG_NONE;
@@ -2457,9 +2467,21 @@ main (int argc, char *argv[])
 		next_arg = ARG_NONE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "-unidirectional") == 0)
+	  if (strcasecmp (argv[i], "--unidirectional") == 0)
 	    {
 		double_arcs = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--roads") == 0)
+	    {
+		railways = 0;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--railways") == 0)
+	    {
+		railways = 1;
 		next_arg = ARG_NONE;
 		continue;
 	    }
@@ -2567,7 +2589,7 @@ main (int argc, char *argv[])
 /* extracting <way> tags form XML file - Pass I */
     printf ("\nVerifying OSM ways ... wait please ...\n");
     big_buffer = malloc (4 * 1024 * 1024);
-    ways = parse_ways_pass_1 (xml, handle, big_buffer);
+    ways = parse_ways_pass_1 (xml, handle, big_buffer, railways);
     free (big_buffer);
     if (ways < 0)
       {
@@ -2596,7 +2618,9 @@ main (int argc, char *argv[])
 /* extracting <way> tags form XML file - Pass II */
     printf ("\nLoading network ARCs ... wait please ...\n");
     big_buffer = malloc (4 * 1024 * 1024);
-    ways = parse_ways_pass_2 (xml, handle, table, double_arcs, big_buffer);
+    ways =
+	parse_ways_pass_2 (xml, handle, table, double_arcs, big_buffer,
+			   railways);
 
     if (ways < 0)
       {
