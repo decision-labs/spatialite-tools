@@ -34,6 +34,8 @@
 #include <string.h>
 #include <errno.h>
 
+#include "config.h"
+
 #ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>
 #else

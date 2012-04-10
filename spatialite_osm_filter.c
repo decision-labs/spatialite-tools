@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+
 #ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>
 #else

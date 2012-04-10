@@ -35,6 +35,8 @@
 
 */
 
+#include "config.h"
+
 /* Sandro Furieri 30 May 2008
 / #include "sqlite3.h"
 */

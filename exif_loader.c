@@ -33,6 +33,8 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#include "config.h"
+
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include <io.h>
 #include <direct.h>

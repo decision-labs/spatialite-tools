@@ -1,9 +1,5 @@
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CFLAGS = -D_LARGE_FILE=1 -D_FILE_OFFSET_BITS=64 \
-	-D_LARGEFILE_SOURCE=1 @LIBSPATIALITE_CFLAGS@ \
-	@LIBFREEXL_CFLAGS@
-
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
 	spatialite_network \
@@ -16,6 +12,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_gml
 
 INCLUDES = @CFLAGS@
+INCLUDES += -I$(top_srcdir)
 
 spatialite_SOURCES = shell.c
 spatialite_tool_SOURCES = spatialite_tool.c

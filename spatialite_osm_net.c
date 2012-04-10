@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "config.h"
+
 #ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>
 #else
@@ -1087,7 +1089,7 @@ compute_time (const char *class, double length)
 	speed = 110;
     if (strcmp (class, "primary") == 0)
 	speed = 90;
-    if (strcmp (class, "secundary") == 0)
+    if (strcmp (class, "secondary") == 0)
 	speed = 70;
     if (strcmp (class, "tertiary") == 0)
 	speed = 50;
