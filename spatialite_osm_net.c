@@ -238,7 +238,7 @@ arcs_insert (struct aux_params *params, sqlite3_int64 id, const char *class,
 /* Inserts an Arc into the Graph */
     int ret;
     if (params->ins_arcs_stmt == NULL)
-	return;
+	return 1;
     sqlite3_reset (params->ins_arcs_stmt);
     sqlite3_clear_bindings (params->ins_arcs_stmt);
     sqlite3_bind_int64 (params->ins_arcs_stmt, 1, id);
@@ -318,8 +318,6 @@ consume_way_1 (const void *user_data, const readosm_way * way)
     const readosm_tag *p_tag;
     int i_tag;
     int i_ref;
-    const char *class = NULL;
-    const char *name = "*** Unknown ****";
     int ret;
     sqlite3_int64 id;
     int include = 0;
@@ -335,10 +333,7 @@ consume_way_1 (const void *user_data, const readosm_way * way)
       {
 	  p_tag = way->tags + i_tag;
 	  if (find_include_class (params, p_tag->key, p_tag->value))
-	    {
-		include = 1;
-		class = p_tag->value;
-	    }
+	      include = 1;
 	  if (find_ignore_class (params, p_tag->key, p_tag->value))
 	      ignore = 1;
       }
@@ -389,6 +384,7 @@ consume_way_2 (const void *user_data, const readosm_way * way)
     int ret;
     int include = 0;
     int ignore = 0;
+    gaiaGeomCollPtr geom;
 
     for (i_tag = 0; i_tag < way->tag_count; i_tag++)
       {
@@ -456,7 +452,7 @@ consume_way_2 (const void *user_data, const readosm_way * way)
 	    }
       }
 
-    gaiaGeomCollPtr geom = build_linestrings (params, way);
+    geom = build_linestrings (params, way);
     if (geom)
       {
 	  gaiaLinestringPtr ln = geom->FirstLinestring;
@@ -835,7 +831,8 @@ set_lengths_costs (struct aux_params *params, const char *table)
 	  if (ret == SQLITE_ROW)
 	    {
 		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
-		const char *class = sqlite3_column_text (query_stmt, 1);
+		const char *class =
+		    (const char *) sqlite3_column_text (query_stmt, 1);
 		double length = sqlite3_column_double (query_stmt, 2);
 		double cost = compute_cost (params, class, length);
 

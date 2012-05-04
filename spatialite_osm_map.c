@@ -928,7 +928,7 @@ tmp_ways_insert (struct aux_params *params, sqlite3_int64 id, int area,
 {
     int ret;
     if (params->ins_tmp_ways_stmt == NULL)
-	return;
+	return 1;
     sqlite3_reset (params->ins_tmp_ways_stmt);
     sqlite3_clear_bindings (params->ins_tmp_ways_stmt);
     sqlite3_bind_int64 (params->ins_tmp_ways_stmt, 1, id);
@@ -1245,7 +1245,6 @@ build_multilinestring (sqlite3 * db_handle, const readosm_relation * relation)
     int how_many;
     int ind;
     int ret;
-    int count;
     char sql[8192];
     sqlite3_stmt *stmt;
     sqlite3_int64 id;
@@ -1254,7 +1253,6 @@ build_multilinestring (sqlite3 * db_handle, const readosm_relation * relation)
     gaiaGeomCollPtr org_geom;
     static struct way_refs *refs = NULL;
     int i_member;
-    const readosm_member *p_member;
 
     refs = create_way_refs (relation);
     if (refs == NULL)
@@ -1578,7 +1576,6 @@ build_multipolygon (sqlite3 * db_handle, const readosm_relation * relation)
     int how_many;
     int ind;
     int ret;
-    int count;
     char sql[8192];
     sqlite3_stmt *stmt;
     sqlite3_int64 id;
