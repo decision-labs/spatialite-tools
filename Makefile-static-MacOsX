@@ -77,8 +77,12 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libproj.a \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
+	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
+	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip ./static_bin/spatialite_osm_net
 
@@ -89,9 +93,11 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip ./static_bin/spatialite_osm_map
 
@@ -115,9 +121,11 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/opt/local/lib/libgeos_c.a \
 	/opt/local/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/opt/local/lib/libiconv.a \
 	/opt/local/lib/libcharset.a \
 	/opt/local/lib/libexpat.a \
+	/opt/local/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip ./static_bin/spatialite_osm_raw
 

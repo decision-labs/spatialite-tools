@@ -80,7 +80,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/usr/local/lib/libiconv.a \
+	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
 	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_net.exe
 
@@ -93,7 +96,9 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libiconv.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
 	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_map.exe
 
@@ -118,8 +123,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/usr/local/lib/libiconv.a \
 	/usr/local/lib/libexpat.a \
+	/usr/local/lib/libz.a \
 	-lm -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_raw.exe
 

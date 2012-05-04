@@ -34,8 +34,6 @@
 #include <string.h>
 #include <float.h>
 
-#include <expat.h>
-
 #include "config.h"
 
 #ifdef SPATIALITE_AMALGAMATION
@@ -46,30 +44,12 @@
 
 #include <spatialite/gaiageo.h>
 #include <spatialite.h>
+#include <readosm.h>
 
 #define ARG_NONE		0
 #define ARG_OSM_PATH	1
 #define ARG_DB_PATH		2
 #define ARG_CACHE_SIZE	3
-
-#define MAX_TAG		16
-
-#if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	_stricmp
-#endif /* not WIN32 */
-
-#if defined(_WIN32)
-#define atol_64		_atoi64
-#else
-#define atol_64		atoll
-#endif
-
-#define BUFFSIZE	8192
-
-#define CURRENT_TAG_UNKNOWN	0
-#define CURRENT_TAG_IS_NODE	1
-#define CURRENT_TAG_IS_WAY	2
-#define CURRENT_TAG_IS_RELATION	3
 
 struct aux_params
 {
@@ -81,7 +61,6 @@ struct aux_params
     sqlite3_stmt *ins_addresses_stmt;
     sqlite3_stmt *ins_generic_linestring_stmt;
     sqlite3_stmt *ins_generic_polygon_stmt;
-    int current_tag;
 };
 
 struct layers
@@ -164,57 +143,28 @@ struct layers
     {
 NULL, 0, 0, 0, NULL, NULL, NULL},};
 
-struct tag
+struct node_refs
 {
-    char *k;
-    char *v;
-    struct tag *next;
+    int count;
+    sqlite3_int64 *id;
+    char *found;
 };
 
-struct node
+struct way_refs
 {
-    sqlite3_int64 id;
-    double lat;
-    double lon;
-    struct tag *first;
-    struct tag *last;
-} glob_node;
-
-struct nd
-{
-    sqlite3_int64 ref;
-    char found;
-    struct nd *next;
+    int count;
+    sqlite3_int64 *id;
+    char *found;
 };
 
-struct way
+struct ring_refs
 {
-    sqlite3_int64 id;
-    struct nd *first_nd;
-    struct nd *last_nd;
-    struct tag *first;
-    struct tag *last;
-} glob_way;
-
-struct member
-{
-    sqlite3_int64 ref;
-    int is_node;
-    int is_way;
-    char found;
-    char *role;
-    gaiaGeomCollPtr geom;
-    struct member *next;
+    int count;
+    sqlite3_int64 *id;
+    gaiaGeomCollPtr *geom;
+    char *outer;
+    char *found;
 };
-
-struct relation
-{
-    sqlite3_int64 id;
-    struct member *first_member;
-    struct member *last_member;
-    struct tag *first;
-    struct tag *last;
-} glob_relation;
 
 static void
 create_point_table (struct aux_params *params, struct layers *layer)
@@ -360,49 +310,10 @@ create_polygon_table (struct aux_params *params, struct layers *layer)
     layer->ins_polygon_stmt = stmt;
 }
 
-static void
-free_tag (struct tag *p)
-{
-    if (p->k)
-	free (p->k);
-    if (p->v)
-	free (p->v);
-    free (p);
-}
-
-static void
-free_member (struct member *p)
-{
-    if (p->role)
-	free (p->role);
-    free (p);
-}
-
-static void
-start_node (struct aux_params *params, const char **attr)
-{
-    int i;
-    glob_node.id = -1;
-    glob_node.lat = DBL_MAX;
-    glob_node.lon = DBL_MAX;
-    glob_node.first = NULL;
-    glob_node.last = NULL;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_node.id = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "lat") == 0)
-	      glob_node.lat = atof (attr[i + 1]);
-	  if (strcmp (attr[i], "lon") == 0)
-	      glob_node.lon = atof (attr[i + 1]);
-      }
-    params->current_tag = CURRENT_TAG_IS_NODE;
-}
-
-static void
+static int
 point_layer_insert (struct aux_params *params, const char *layer_name,
-		    sqlite3_int64 id, double lat, double lon,
-		    const char *sub_type, const char *name)
+		    const readosm_node * node, const char *sub_type,
+		    const char *name)
 {
     struct layers *layer;
     int i = 0;
@@ -410,7 +321,7 @@ point_layer_insert (struct aux_params *params, const char *layer_name,
       {
 	  layer = &(base_layers[i++]);
 	  if (layer->name == NULL)
-	      return;
+	      return 1;
 	  if (strcmp (layer->name, layer_name) == 0)
 	    {
 		if (layer->ok_point == 0)
@@ -425,10 +336,11 @@ point_layer_insert (struct aux_params *params, const char *layer_name,
 		      int blob_size;
 		      gaiaGeomCollPtr geom = gaiaAllocGeomColl ();
 		      geom->Srid = 4326;
-		      gaiaAddPointToGeomColl (geom, lon, lat);
+		      gaiaAddPointToGeomColl (geom, node->longitude,
+					      node->latitude);
 		      sqlite3_reset (layer->ins_point_stmt);
 		      sqlite3_clear_bindings (layer->ins_point_stmt);
-		      sqlite3_bind_int64 (layer->ins_point_stmt, 1, id);
+		      sqlite3_bind_int64 (layer->ins_point_stmt, 1, node->id);
 		      if (sub_type == NULL)
 			  sqlite3_bind_null (layer->ins_point_stmt, 2);
 		      else
@@ -446,20 +358,22 @@ point_layer_insert (struct aux_params *params, const char *layer_name,
 					 blob_size, free);
 		      ret = sqlite3_step (layer->ins_point_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  return;
+			  return 1;
 		      fprintf (stderr, "sqlite3_step() error: INS_POINT %s\n",
 			       layer_name);
 		      sqlite3_finalize (layer->ins_point_stmt);
 		      layer->ins_point_stmt = NULL;
+		      return 0;
 		  }
-		return;
+		return 1;
 	    }
       }
+    return 1;
 }
 
-static void
-point_generic_insert (struct aux_params *params, sqlite3_int64 id, double lat,
-		      double lon, const char *name)
+static int
+point_generic_insert (struct aux_params *params, const readosm_node * node,
+		      const char *name)
 {
     if (params->ins_generic_point_stmt)
       {
@@ -468,10 +382,10 @@ point_generic_insert (struct aux_params *params, sqlite3_int64 id, double lat,
 	  int blob_size;
 	  gaiaGeomCollPtr geom = gaiaAllocGeomColl ();
 	  geom->Srid = 4326;
-	  gaiaAddPointToGeomColl (geom, lon, lat);
+	  gaiaAddPointToGeomColl (geom, node->longitude, node->latitude);
 	  sqlite3_reset (params->ins_generic_point_stmt);
 	  sqlite3_clear_bindings (params->ins_generic_point_stmt);
-	  sqlite3_bind_int64 (params->ins_generic_point_stmt, 1, id);
+	  sqlite3_bind_int64 (params->ins_generic_point_stmt, 1, node->id);
 	  if (name == NULL)
 	      sqlite3_bind_null (params->ins_generic_point_stmt, 2);
 	  else
@@ -483,19 +397,20 @@ point_generic_insert (struct aux_params *params, sqlite3_int64 id, double lat,
 			     blob_size, free);
 	  ret = sqlite3_step (params->ins_generic_point_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POINT\n");
 	  sqlite3_finalize (params->ins_generic_point_stmt);
 	  params->ins_generic_point_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
-address_insert (struct aux_params *params, sqlite3_int64 id, double lat,
-		double lon, const char *country, const char *city,
-		const char *postcode,
-		const char *street,
-		const char *housename, const char *housenumber)
+static int
+address_insert (struct aux_params *params, const readosm_node * node,
+		const char *country, const char *city, const char *postcode,
+		const char *street, const char *housename,
+		const char *housenumber)
 {
     if (params->ins_addresses_stmt)
       {
@@ -504,10 +419,10 @@ address_insert (struct aux_params *params, sqlite3_int64 id, double lat,
 	  int blob_size;
 	  gaiaGeomCollPtr geom = gaiaAllocGeomColl ();
 	  geom->Srid = 4326;
-	  gaiaAddPointToGeomColl (geom, lon, lat);
+	  gaiaAddPointToGeomColl (geom, node->longitude, node->latitude);
 	  sqlite3_reset (params->ins_addresses_stmt);
 	  sqlite3_clear_bindings (params->ins_addresses_stmt);
-	  sqlite3_bind_int64 (params->ins_addresses_stmt, 1, id);
+	  sqlite3_bind_int64 (params->ins_addresses_stmt, 1, node->id);
 	  if (country == NULL)
 	      sqlite3_bind_null (params->ins_addresses_stmt, 2);
 	  else
@@ -544,149 +459,182 @@ address_insert (struct aux_params *params, sqlite3_int64 id, double lat,
 			     free);
 	  ret = sqlite3_step (params->ins_addresses_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr, "sqlite3_step() error: INS_ADDRESSES\n");
 	  sqlite3_finalize (params->ins_addresses_stmt);
 	  params->ins_addresses_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
-eval_node (struct aux_params *params)
+static int
+tmp_nodes_insert (struct aux_params *params, const readosm_node * node)
 {
-    struct tag *p_tag;
+    int ret;
+    if (params->ins_tmp_nodes_stmt == NULL)
+	return 1;
+    sqlite3_reset (params->ins_tmp_nodes_stmt);
+    sqlite3_clear_bindings (params->ins_tmp_nodes_stmt);
+    sqlite3_bind_int64 (params->ins_tmp_nodes_stmt, 1, node->id);
+    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 2, node->latitude);
+    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 3, node->longitude);
+    ret = sqlite3_step (params->ins_tmp_nodes_stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	return 1;
+    fprintf (stderr, "sqlite3_step() error: INS_TMP_NODES\n");
+    sqlite3_finalize (params->ins_tmp_nodes_stmt);
+    params->ins_tmp_nodes_stmt = NULL;
+    return 0;
+}
+
+static int
+consume_node (const void *user_data, const readosm_node * node)
+{
+/* processing an OSM Node (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    const readosm_tag *p_tag;
+    int i_tag;
     const char *p;
-    int i = 0;
+    int i_lyr = 0;
+    int ret;
     const char *layer_name = NULL;
-    char *sub_type = NULL;
-    char *name = NULL;
-    char *country = NULL;
-    char *city = NULL;
-    char *postcode = NULL;
-    char *street = NULL;
-    char *housename = NULL;
-    char *housenumber = NULL;
-    if (glob_node.first == NULL)
-	return;
+    const char *sub_type = NULL;
+    const char *name = NULL;
+    const char *country = NULL;
+    const char *city = NULL;
+    const char *postcode = NULL;
+    const char *street = NULL;
+    const char *housename = NULL;
+    const char *housenumber = NULL;
+
+    if (!tmp_nodes_insert (params, node))
+	return READOSM_ABORT;
+
     while (1)
       {
-	  p = base_layers[i++].name;
+	  p = base_layers[i_lyr++].name;
 	  if (!p)
 	      break;
-	  p_tag = glob_node.first;
-	  while (p_tag)
+	  for (i_tag = 0; i_tag < node->tag_count; i_tag++)
 	    {
-		if (strcmp (p_tag->k, p) == 0)
+		p_tag = node->tags + i_tag;
+		if (strcmp (p_tag->key, p) == 0)
 		  {
 		      layer_name = p;
-		      sub_type = p_tag->v;
+		      sub_type = p_tag->value;
 		  }
-		if (strcmp (p_tag->k, "name") == 0)
-		    name = p_tag->v;
-		p_tag = p_tag->next;
+		if (strcmp (p_tag->key, "name") == 0)
+		    name = p_tag->value;
 	    }
 	  if (layer_name)
 	      break;
       }
+
     if (layer_name)
       {
-	  point_layer_insert (params, layer_name, glob_node.id, glob_node.lat,
-			      glob_node.lon, sub_type, name);
-	  return;
+	  ret = point_layer_insert (params, layer_name, node, sub_type, name);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
     else if (name != NULL)
       {
-	  point_generic_insert (params, glob_node.id, glob_node.lat,
-				glob_node.lon, name);
-	  return;
+	  ret = point_generic_insert (params, node, name);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
 
 /* may be an house address */
-    p_tag = glob_node.first;
-    while (p_tag)
+    for (i_tag = 0; i_tag < node->tag_count; i_tag++)
       {
-	  if (strcmp (p_tag->k, "addr:country") == 0)
-	      country = p_tag->v;
-	  if (strcmp (p_tag->k, "addr:city") == 0)
-	      city = p_tag->v;
-	  if (strcmp (p_tag->k, "addr:postcode") == 0)
-	      postcode = p_tag->v;
-	  if (strcmp (p_tag->k, "addr:street") == 0)
-	      street = p_tag->v;
-	  if (strcmp (p_tag->k, "addr:housename") == 0)
-	      housename = p_tag->v;
-	  if (strcmp (p_tag->k, "addr:housenumber") == 0)
-	      housenumber = p_tag->v;
-	  p_tag = p_tag->next;
+	  p_tag = node->tags + i_tag;
+	  if (strcmp (p_tag->key, "addr:country") == 0)
+	      country = p_tag->value;
+	  if (strcmp (p_tag->key, "addr:city") == 0)
+	      city = p_tag->value;
+	  if (strcmp (p_tag->key, "addr:postcode") == 0)
+	      postcode = p_tag->value;
+	  if (strcmp (p_tag->key, "addr:street") == 0)
+	      street = p_tag->value;
+	  if (strcmp (p_tag->key, "addr:housename") == 0)
+	      housename = p_tag->value;
+	  if (strcmp (p_tag->key, "addr:housenumber") == 0)
+	      housenumber = p_tag->value;
       }
     if (country || city || postcode || street || housename || housenumber)
-	address_insert (params, glob_node.id, glob_node.lat, glob_node.lon,
-			country, city, postcode, street, housename,
-			housenumber);
-}
-
-static void
-tmp_nodes_insert (struct aux_params *params, sqlite3_int64 id, double lat,
-		  double lon)
-{
-    int ret;
-    if (params->ins_tmp_nodes_stmt == NULL)
-	return;
-    sqlite3_reset (params->ins_tmp_nodes_stmt);
-    sqlite3_clear_bindings (params->ins_tmp_nodes_stmt);
-    sqlite3_bind_int64 (params->ins_tmp_nodes_stmt, 1, id);
-    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 2, lat);
-    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 3, lon);
-    ret = sqlite3_step (params->ins_tmp_nodes_stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	return;
-    fprintf (stderr, "sqlite3_step() error: INS_TMP_NODES\n");
-    sqlite3_finalize (params->ins_tmp_nodes_stmt);
-    params->ins_tmp_nodes_stmt = NULL;
-}
-
-static void
-end_node (struct aux_params *params)
-{
-    struct tag *p_tag;
-    struct tag *p_tag2;
-
-    tmp_nodes_insert (params, glob_node.id, glob_node.lat, glob_node.lon);
-    eval_node (params);
-    p_tag = glob_node.first;
-    while (p_tag)
       {
-	  p_tag2 = p_tag->next;
-	  free_tag (p_tag);
-	  p_tag = p_tag2;
+	  ret = address_insert (params, node, country, city, postcode, street,
+				housename, housenumber);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
-    glob_node.id = -1;
-    glob_node.lat = DBL_MAX;
-    glob_node.lon = DBL_MAX;
-    glob_node.first = NULL;
-    glob_node.last = NULL;
-    params->current_tag = CURRENT_TAG_UNKNOWN;
+    return READOSM_OK;
+}
+
+static struct node_refs *
+create_node_refs (const readosm_way * way)
+{
+/* creating and initializing the node_refs helper struct */
+    int i_ref;
+    struct node_refs *refs = malloc (sizeof (struct node_refs));
+    if (refs == NULL)
+	return NULL;
+    refs->count = way->node_ref_count;
+    refs->id = malloc (sizeof (sqlite3_int64) * refs->count);
+    if (refs->id == NULL)
+      {
+	  free (refs);
+	  return NULL;
+      }
+    refs->found = malloc (refs->count);
+    if (refs->found == NULL)
+      {
+	  free (refs->id);
+	  free (refs);
+	  return NULL;
+      }
+    for (i_ref = 0; i_ref < way->node_ref_count; i_ref++)
+      {
+	  *(refs->id + i_ref) = *(way->node_refs + i_ref);
+	  *(refs->found + i_ref) = 'N';
+      }
+    return refs;
 }
 
 static void
-start_way (struct aux_params *params, const char **attr)
+update_node_refs (struct node_refs *nodes, gaiaLinestringPtr ln,
+		  sqlite3_int64 id, double lat, double lon)
 {
-    int i;
-    glob_way.id = -1;
-    glob_way.first_nd = NULL;
-    glob_way.last_nd = NULL;
-    glob_way.first = NULL;
-    glob_way.last = NULL;
-    for (i = 0; attr[i]; i += 2)
+/* updating the node_refs helper struct */
+    int i_ref;
+    for (i_ref = 0; i_ref < nodes->count; i_ref++)
       {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_way.id = atol_64 (attr[i + 1]);
+	  if (*(nodes->id + i_ref) == id)
+	    {
+		*(nodes->found + i_ref) = 'Y';
+		gaiaSetPoint (ln->Coords, i_ref, lon, lat);
+	    }
       }
-    params->current_tag = CURRENT_TAG_IS_WAY;
+}
+
+static void
+destroy_node_refs (struct node_refs *nodes)
+{
+/* destroying the node_refs helper struct */
+    if (nodes == NULL)
+	return;
+    if (nodes->id != NULL)
+	free (nodes->id);
+    if (nodes->found != NULL)
+	free (nodes->found);
+    free (nodes);
 }
 
 static gaiaGeomCollPtr
-build_linestring (sqlite3 * db_handle)
+build_linestring (sqlite3 * db_handle, const readosm_way * way)
 {
     gaiaGeomCollPtr geom;
     gaiaLinestringPtr ln;
@@ -703,13 +651,14 @@ build_linestring (sqlite3 * db_handle)
     sqlite3_int64 id;
     double lat;
     double lon;
-    struct nd *p_nd = glob_way.first_nd;
-    while (p_nd)
-      {
-	  points++;
-	  p_nd = p_nd->next;
-      }
+    int i_ref;
+    struct node_refs *refs = NULL;
+
+    points = way->node_ref_count;
     if (!points)
+	return NULL;
+    refs = create_node_refs (way);
+    if (refs == NULL)
 	return NULL;
     geom = gaiaAllocGeomColl ();
     geom->Srid = 4326;
@@ -746,22 +695,15 @@ build_linestring (sqlite3 * db_handle)
 	  sqlite3_reset (stmt);
 	  sqlite3_clear_bindings (stmt);
 	  ind = 1;
-	  count = 0;
-	  p_nd = glob_way.first_nd;
-	  while (p_nd)
+	  for (i_ref = 0; i_ref < refs->count; i_ref++)
 	    {
-		if (count < base)
-		  {
-		      count++;
-		      p_nd = p_nd->next;
-		      continue;
-		  }
-		if (count >= (base + how_many))
+		if (i_ref < base)
+		    continue;
+		if (i_ref >= (base + how_many))
 		    break;
-		sqlite3_bind_int64 (stmt, ind, p_nd->ref);
+		sqlite3_bind_int64 (stmt, ind, *(refs->id + i_ref));
 		ind++;
 		count++;
-		p_nd = p_nd->next;
 	    }
 	  while (1)
 	    {
@@ -778,18 +720,7 @@ build_linestring (sqlite3 * db_handle)
 		      id = sqlite3_column_int64 (stmt, 0);
 		      lat = sqlite3_column_double (stmt, 1);
 		      lon = sqlite3_column_double (stmt, 2);
-		      p_nd = glob_way.first_nd;
-		      count = 0;
-		      while (p_nd)
-			{
-			    if (p_nd->ref == id)
-			      {
-				  p_nd->found = 1;
-				  gaiaSetPoint (ln->Coords, count, lon, lat);
-			      }
-			    count++;
-			    p_nd = p_nd->next;
-			}
+		      update_node_refs (refs, ln, id, lat, lon);
 		  }
 		else
 		  {
@@ -806,26 +737,27 @@ build_linestring (sqlite3 * db_handle)
       }
 
 /* final checkout */
-    p_nd = glob_way.first_nd;
-    while (p_nd)
+    for (i_ref = 0; i_ref < refs->count; i_ref++)
       {
-	  if (p_nd->found == 0)
+	  if (*(refs->found + i_ref) == 'N')
 	    {
 #if defined(_WIN32) || defined(__MINGW32__)
 		/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
-		fprintf (stderr, "UNRESOLVED-NODE %I64d\n", p_nd->ref);
+		fprintf (stderr, "UNRESOLVED-NODE %I64d\n",
+			 *(refs->id + i_ref));
 #else
-		fprintf (stderr, "UNRESOLVED-NODE %lld\n", p_nd->ref);
+		fprintf (stderr, "UNRESOLVED-NODE %lld\n", *(refs->id + i_ref));
 #endif
 		gaiaFreeGeomColl (geom);
+		destroy_node_refs (refs);
 		return NULL;
 	    }
-	  p_nd = p_nd->next;
       }
+    destroy_node_refs (refs);
     return geom;
 }
 
-static void
+static int
 line_layer_insert (struct aux_params *params, const char *layer_name,
 		   sqlite3_int64 id, unsigned char *blob, int blob_size,
 		   const char *sub_type, const char *name)
@@ -836,7 +768,7 @@ line_layer_insert (struct aux_params *params, const char *layer_name,
       {
 	  layer = &(base_layers[i++]);
 	  if (layer->name == NULL)
-	      return;
+	      return 1;
 	  if (strcmp (layer->name, layer_name) == 0)
 	    {
 		if (layer->ok_linestring == 0)
@@ -866,19 +798,21 @@ line_layer_insert (struct aux_params *params, const char *layer_name,
 					 blob_size, SQLITE_STATIC);
 		      ret = sqlite3_step (layer->ins_linestring_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  return;
+			  return 1;
 		      fprintf (stderr,
 			       "sqlite3_step() error: INS_LINESTRING %s\n",
 			       layer_name);
 		      sqlite3_finalize (layer->ins_linestring_stmt);
 		      layer->ins_linestring_stmt = NULL;
+		      return 0;
 		  }
-		return;
+		return 1;
 	    }
       }
+    return 1;
 }
 
-static void
+static int
 polygon_layer_insert (struct aux_params *params, const char *layer_name,
 		      sqlite3_int64 id, unsigned char *blob, int blob_size,
 		      const char *sub_type, const char *name)
@@ -889,7 +823,7 @@ polygon_layer_insert (struct aux_params *params, const char *layer_name,
       {
 	  layer = &(base_layers[i++]);
 	  if (layer->name == NULL)
-	      return;
+	      return 1;
 	  if (strcmp (layer->name, layer_name) == 0)
 	    {
 		if (layer->ok_polygon == 0)
@@ -918,19 +852,21 @@ polygon_layer_insert (struct aux_params *params, const char *layer_name,
 					 blob_size, SQLITE_STATIC);
 		      ret = sqlite3_step (layer->ins_polygon_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  return;
+			  return 1;
 		      fprintf (stderr,
 			       "sqlite3_step() error: INS_POLYGON %s\n",
 			       layer_name);
 		      sqlite3_finalize (layer->ins_polygon_stmt);
 		      layer->ins_polygon_stmt = NULL;
+		      return 0;
 		  }
-		return;
+		return 1;
 	    }
       }
+    return 1;
 }
 
-static void
+static int
 line_generic_insert (struct aux_params *params, sqlite3_int64 id,
 		     unsigned char *blob, int blob_size, const char *name)
 {
@@ -949,14 +885,16 @@ line_generic_insert (struct aux_params *params, sqlite3_int64 id,
 			     blob_size, SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_generic_linestring_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_LINESTRING\n");
 	  sqlite3_finalize (params->ins_generic_linestring_stmt);
 	  params->ins_generic_linestring_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
+static int
 polygon_generic_insert (struct aux_params *params, sqlite3_int64 id,
 			unsigned char *blob, int blob_size, const char *name)
 {
@@ -975,14 +913,16 @@ polygon_generic_insert (struct aux_params *params, sqlite3_int64 id,
 			     blob_size, SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_generic_polygon_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POLYGON\n");
 	  sqlite3_finalize (params->ins_generic_polygon_stmt);
 	  params->ins_generic_polygon_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
+static int
 tmp_ways_insert (struct aux_params *params, sqlite3_int64 id, int area,
 		 unsigned char *blob, int blob_size)
 {
@@ -998,40 +938,42 @@ tmp_ways_insert (struct aux_params *params, sqlite3_int64 id, int area,
     ret = sqlite3_step (params->ins_tmp_ways_stmt);
 
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	return;
+	return 1;
     fprintf (stderr, "sqlite3_step() error: INS_TMP_WAYS\n");
     sqlite3_finalize (params->ins_tmp_ways_stmt);
     params->ins_tmp_ways_stmt = NULL;
+    return 0;
 }
 
-static void
-eval_way (struct aux_params *params, int area, unsigned char *blob,
-	  int blob_size)
+static int
+eval_way (struct aux_params *params, const readosm_way * way, int area,
+	  unsigned char *blob, int blob_size)
 {
-    struct tag *p_tag;
+    int i_tag;
+    const readosm_tag *p_tag;
     const char *p;
     int i = 0;
     const char *layer_name = NULL;
-    char *sub_type = NULL;
-    char *name = NULL;
-    if (glob_way.first == NULL)
-	return;
+    const char *sub_type = NULL;
+    const char *name = NULL;
+    int ret;
+    if (way->tag_count == 0)
+	return 1;
     while (1)
       {
 	  p = base_layers[i++].name;
 	  if (!p)
 	      break;
-	  p_tag = glob_way.first;
-	  while (p_tag)
+	  for (i_tag = 0; i_tag < way->tag_count; i_tag++)
 	    {
-		if (strcmp (p_tag->k, p) == 0)
+		p_tag = way->tags + i_tag;
+		if (strcmp (p_tag->key, p) == 0)
 		  {
 		      layer_name = p;
-		      sub_type = p_tag->v;
+		      sub_type = p_tag->value;
 		  }
-		if (strcmp (p_tag->k, "name") == 0)
-		    name = p_tag->v;
-		p_tag = p_tag->next;
+		if (strcmp (p_tag->key, "name") == 0)
+		    name = p_tag->value;
 	    }
 	  if (layer_name)
 	      break;
@@ -1039,44 +981,46 @@ eval_way (struct aux_params *params, int area, unsigned char *blob,
     if (layer_name)
       {
 	  if (area)
-	      polygon_layer_insert (params, layer_name, glob_way.id, blob,
-				    blob_size, sub_type, name);
+	      ret = polygon_layer_insert (params, layer_name, way->id, blob,
+					  blob_size, sub_type, name);
 	  else
-	      line_layer_insert (params, layer_name, glob_way.id, blob,
-				 blob_size, sub_type, name);
-	  return;
+	      ret = line_layer_insert (params, layer_name, way->id, blob,
+				       blob_size, sub_type, name);
+	  return ret;
       }
     else if (name != NULL)
       {
 	  if (area)
-	      polygon_generic_insert (params, glob_way.id, blob, blob_size,
-				      name);
+	      ret = polygon_generic_insert (params, way->id, blob, blob_size,
+					    name);
 	  else
-	      line_generic_insert (params, glob_way.id, blob, blob_size, name);
-	  return;
+	      ret =
+		  line_generic_insert (params, way->id, blob, blob_size, name);
+	  return ret;
       }
+    return 1;
 }
 
 static int
-is_areal_layer ()
+is_areal_layer (const readosm_way * way)
 {
-    struct tag *p_tag;
+    int i_tag;
+    const readosm_tag *p_tag;
     const char *p;
-    int i = 0;
     const char *layer_name = NULL;
-    if (glob_way.first == NULL)
-	return;
+    int i = 0;
+    if (way->tag_count == 0)
+	return 0;
     while (1)
       {
 	  p = base_layers[i++].name;
 	  if (!p)
 	      break;
-	  p_tag = glob_way.first;
-	  while (p_tag)
+	  for (i_tag = 0; i_tag < way->tag_count; i_tag++)
 	    {
-		if (strcmp (p_tag->k, p) == 0)
+		p_tag = way->tags + i_tag;
+		if (strcmp (p_tag->key, p) == 0)
 		    layer_name = p;
-		p_tag = p_tag->next;
 	    }
 	  if (layer_name)
 	      break;
@@ -1150,35 +1094,36 @@ convert_to_polygon (gaiaGeomCollPtr old)
     return geom;
 }
 
-static void
-end_way (struct aux_params *params)
+static int
+consume_way (const void *user_data, const readosm_way * way)
 {
-    struct tag *p_tag;
-    struct tag *p_tag2;
-    struct nd *p_nd;
-    struct nd *p_nd2;
+/* processing an OSM Way (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    const readosm_tag *p_tag;
+    int i_tag;
     unsigned char *blob;
     int blob_size;
     int area = 0;
+    int ret;
 
-    gaiaGeomCollPtr geom = build_linestring (params->db_handle);
+    gaiaGeomCollPtr geom = build_linestring (params->db_handle, way);
     if (geom)
       {
 	  geom->DeclaredType = GAIA_MULTILINESTRING;
 	  gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
-	  tmp_ways_insert (params, glob_way.id, area, blob, blob_size);
+	  if (!tmp_ways_insert (params, way->id, area, blob, blob_size))
+	      return READOSM_ABORT;
 	  area = 0;
-	  p_tag = glob_way.first;
-	  while (p_tag)
+	  for (i_tag = 0; i_tag < way->tag_count; i_tag++)
 	    {
-		if (strcmp (p_tag->k, "area") == 0
-		    && strcmp (p_tag->v, "yes") == 0)
+		p_tag = way->tags + i_tag;
+		if (strcmp (p_tag->key, "area") == 0
+		    && strcmp (p_tag->value, "yes") == 0)
 		    area = 1;
-		p_tag = p_tag->next;
 	    }
 
 	  /* attempting to recover undeclared areas */
-	  if (is_areal_layer () && is_closed (geom))
+	  if (is_areal_layer (way) && is_closed (geom))
 	      area = 1;
 
 	  if (area)
@@ -1188,168 +1133,109 @@ end_way (struct aux_params *params)
 		gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
 	    }
 	  gaiaFreeGeomColl (geom);
-	  eval_way (params, area, blob, blob_size);
+	  ret = eval_way (params, way, area, blob, blob_size);
 	  free (blob);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
-    p_tag = glob_way.first;
-    while (p_tag)
-      {
-	  p_tag2 = p_tag->next;
-	  free_tag (p_tag);
-	  p_tag = p_tag2;
-      }
-    p_nd = glob_way.first_nd;
-    while (p_nd)
-      {
-	  p_nd2 = p_nd->next;
-	  free (p_nd);
-	  p_nd = p_nd2;
-      }
-    glob_way.id = -1;
-    glob_way.first_nd = NULL;
-    glob_way.last_nd = NULL;
-    glob_way.first = NULL;
-    glob_way.last = NULL;
-    params->current_tag = CURRENT_TAG_UNKNOWN;
+    return READOSM_OK;
 }
 
-static void
-start_nd (const char **attr)
+static struct way_refs *
+create_way_refs (const readosm_relation * relation)
 {
-    struct nd *p_nd = malloc (sizeof (struct nd));
-    int i;
-    p_nd->ref = -1;
-    p_nd->found = 0;
-    p_nd->next = NULL;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "ref") == 0)
-	      p_nd->ref = atol_64 (attr[i + 1]);
-      }
-    if (glob_way.first_nd == NULL)
-	glob_way.first_nd = p_nd;
-    if (glob_way.last_nd != NULL)
-	glob_way.last_nd->next = p_nd;
-    glob_way.last_nd = p_nd;
-}
+/* creating and initializing the way_refs helper struct */
+    int i_member;
+    const readosm_member *p_member;
+    struct way_refs *refs = NULL;
+    int count = 0;
 
-static void
-start_xtag (struct aux_params *params, const char **attr)
-{
-    struct tag *p_tag = malloc (sizeof (struct tag));
-    int i;
-    int len;
-    p_tag->k = NULL;
-    p_tag->v = NULL;
-    p_tag->next = NULL;
-    for (i = 0; attr[i]; i += 2)
+    for (i_member = 0; i_member < relation->member_count; i_member++)
       {
-	  if (strcmp (attr[i], "k") == 0)
+	  p_member = relation->members + i_member;
+	  if (p_member->member_type == READOSM_MEMBER_WAY)
+	      count++;
+      }
+    if (!count)
+	return NULL;
+    refs = malloc (sizeof (struct way_refs));
+    if (refs == NULL)
+	return NULL;
+    refs->count = count;
+    refs->id = malloc (sizeof (sqlite3_int64) * refs->count);
+    if (refs->id == NULL)
+      {
+	  free (refs);
+	  return NULL;
+      }
+    refs->found = malloc (refs->count);
+    if (refs->found == NULL)
+      {
+	  free (refs->id);
+	  free (refs);
+	  return NULL;
+      }
+    count = 0;
+    for (i_member = 0; i_member < relation->member_count; i_member++)
+      {
+	  p_member = relation->members + i_member;
+	  if (p_member->member_type == READOSM_MEMBER_WAY)
 	    {
-		len = strlen (attr[i + 1]);
-		p_tag->k = malloc (len + 1);
-		strcpy (p_tag->k, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "v") == 0)
-	    {
-		len = strlen (attr[i + 1]);
-		p_tag->v = malloc (len + 1);
-		strcpy (p_tag->v, attr[i + 1]);
+		*(refs->id + count) = p_member->id;
+		*(refs->found + count) = 'N';
+		count++;
 	    }
       }
-    if (params->current_tag == CURRENT_TAG_IS_NODE)
-      {
-	  if (glob_node.first == NULL)
-	      glob_node.first = p_tag;
-	  if (glob_node.last != NULL)
-	      glob_node.last->next = p_tag;
-	  glob_node.last = p_tag;
-      }
-    if (params->current_tag == CURRENT_TAG_IS_WAY)
-      {
-	  if (glob_way.first == NULL)
-	      glob_way.first = p_tag;
-	  if (glob_way.last != NULL)
-	      glob_way.last->next = p_tag;
-	  glob_way.last = p_tag;
-      }
-    if (params->current_tag == CURRENT_TAG_IS_RELATION)
-      {
-	  if (glob_relation.first == NULL)
-	      glob_relation.first = p_tag;
-	  if (glob_relation.last != NULL)
-	      glob_relation.last->next = p_tag;
-	  glob_relation.last = p_tag;
-      }
+    return refs;
 }
 
 static void
-start_member (const char **attr)
+update_way_refs (struct way_refs *ways, sqlite3_int64 id, gaiaGeomCollPtr geom,
+		 gaiaGeomCollPtr org_geom)
 {
-    struct member *p_member = malloc (sizeof (struct member));
-    int i;
-    int len;
-    p_member->ref = -1;
-    p_member->is_node = 0;
-    p_member->is_way = 0;
-    p_member->found = 0;
-    p_member->role = NULL;
-    p_member->next = NULL;
-    for (i = 0; attr[i]; i += 2)
+/* updating the way_refs helper struct */
+    int i_ref;
+    gaiaLinestringPtr ln1;
+    for (i_ref = 0; i_ref < ways->count; i_ref++)
       {
-	  if (strcmp (attr[i], "type") == 0)
+	  if (*(ways->id + i_ref) == id)
 	    {
-		if (strcmp (attr[i + 1], "node") == 0)
+		*(ways->found + i_ref) = 'Y';
+		ln1 = org_geom->FirstLinestring;
+		while (ln1)
 		  {
-		      p_member->is_node = 1;
-		      p_member->is_way = 0;
-		  }
-		else if (strcmp (attr[i + 1], "way") == 0)
-		  {
-		      p_member->is_node = 0;
-		      p_member->is_way = 1;
-		  }
-		else
-		  {
-		      p_member->is_node = 0;
-		      p_member->is_way = 0;
+		      int iv;
+		      gaiaLinestringPtr ln2 =
+			  gaiaAddLinestringToGeomColl (geom, ln1->Points);
+		      for (iv = 0; iv < ln1->Points; iv++)
+			{
+			    double x;
+			    double y;
+			    gaiaGetPoint (ln1->Coords, iv, &x, &y);
+			    gaiaSetPoint (ln2->Coords, iv, x, y);
+			}
+		      ln1 = ln1->Next;
 		  }
 	    }
-	  if (strcmp (attr[i], "ref") == 0)
-	      p_member->ref = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "role") == 0)
-	    {
-		len = strlen (attr[i + 1]);
-		p_member->role = malloc (len + 1);
-		strcpy (p_member->role, attr[i + 1]);
-	    }
       }
-    if (glob_relation.first_member == NULL)
-	glob_relation.first_member = p_member;
-    if (glob_relation.last_member != NULL)
-	glob_relation.last_member->next = p_member;
-    glob_relation.last_member = p_member;
 }
 
 static void
-start_relation (struct aux_params *params, const char **attr)
+destroy_way_refs (struct way_refs *ways)
 {
-    int i;
-    glob_relation.id = -1;
-    glob_relation.first_member = NULL;
-    glob_relation.last_member = NULL;
-    glob_relation.first = NULL;
-    glob_relation.last = NULL;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_relation.id = atol_64 (attr[i + 1]);
-      }
-    params->current_tag = CURRENT_TAG_IS_RELATION;
+/* destroying the way_refs helper struct */
+    if (ways == NULL)
+	return;
+    if (ways->id != NULL)
+	free (ways->id);
+    if (ways->found != NULL)
+	free (ways->found);
+    free (ways);
 }
 
 static gaiaGeomCollPtr
-build_multilinestring (sqlite3 * db_handle)
+build_multilinestring (sqlite3 * db_handle, const readosm_relation * relation)
 {
     gaiaGeomCollPtr geom;
     int lines = 0;
@@ -1366,12 +1252,14 @@ build_multilinestring (sqlite3 * db_handle)
     const unsigned char *blob = NULL;
     int blob_size;
     gaiaGeomCollPtr org_geom;
-    struct member *p_member = glob_relation.first_member;
-    while (p_member)
-      {
-	  lines++;
-	  p_member = p_member->next;
-      }
+    static struct way_refs *refs = NULL;
+    int i_member;
+    const readosm_member *p_member;
+
+    refs = create_way_refs (relation);
+    if (refs == NULL)
+	return NULL;
+    lines = refs->count;
     if (!lines)
 	return NULL;
     geom = gaiaAllocGeomColl ();
@@ -1382,7 +1270,7 @@ build_multilinestring (sqlite3 * db_handle)
       {
 	  /* 
 	     / fetching ways
-	     / requesting max 128 points at each time 
+	     / requesting max 128 ways at each time 
 	   */
 	  if (tbd < block)
 	      how_many = tbd;
@@ -1409,22 +1297,14 @@ build_multilinestring (sqlite3 * db_handle)
 	  sqlite3_reset (stmt);
 	  sqlite3_clear_bindings (stmt);
 	  ind = 1;
-	  count = 0;
-	  p_member = glob_relation.first_member;
-	  while (p_member)
+	  for (i_member = 0; i_member < refs->count; i_member++)
 	    {
-		if (count < base)
-		  {
-		      count++;
-		      p_member = p_member->next;
-		      continue;
-		  }
-		if (count >= (base + how_many))
+		if (i_member < base)
+		    continue;
+		if (i_member >= (base + how_many))
 		    break;
-		sqlite3_bind_int64 (stmt, ind, p_member->ref);
+		sqlite3_bind_int64 (stmt, ind, *(refs->id + i_member));
 		ind++;
-		count++;
-		p_member = p_member->next;
 	    }
 	  while (1)
 	    {
@@ -1445,37 +1325,7 @@ build_multilinestring (sqlite3 * db_handle)
 
 		      if (org_geom)
 			{
-			    p_member = glob_relation.first_member;
-			    count = 0;
-			    while (p_member)
-			      {
-				  if (p_member->ref == id)
-				    {
-					gaiaLinestringPtr ln1;
-					p_member->found = 1;
-					ln1 = org_geom->FirstLinestring;
-					while (ln1)
-					  {
-					      int iv;
-					      gaiaLinestringPtr ln2 =
-						  gaiaAddLinestringToGeomColl
-						  (geom, ln1->Points);
-					      for (iv = 0; iv < ln2->Points;
-						   iv++)
-						{
-						    double x;
-						    double y;
-						    gaiaGetPoint (ln1->Coords,
-								  iv, &x, &y);
-						    gaiaSetPoint (ln2->Coords,
-								  iv, x, y);
-						}
-					      ln1 = ln1->Next;
-					  }
-				    }
-				  count++;
-				  p_member = p_member->next;
-			      }
+			    update_way_refs (refs, id, geom, org_geom);
 			    gaiaFreeGeomColl (org_geom);
 			}
 		  }
@@ -1494,28 +1344,29 @@ build_multilinestring (sqlite3 * db_handle)
       }
 
 /* final checkout */
-    p_member = glob_relation.first_member;
-    while (p_member)
+    for (ind = 0; ind < refs->count; ind++)
       {
-	  if (p_member->found == 0)
+	  if (*(refs->found + ind) == 'N')
 	    {
 #if defined(_WIN32) || defined(__MINGW32__)
 		/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
-		fprintf (stderr, "UNRESOLVED-WAY %I64d\n", p_member->ref);
+		fprintf (stderr, "UNRESOLVED-WAY %I64d\n", *(refs->id + ind));
 #else
-		fprintf (stderr, "UNRESOLVED-WAY %lld\n", p_member->ref);
+		fprintf (stderr, "UNRESOLVED-WAY %lld\n", *(refs->id + ind));
 #endif
 		gaiaFreeGeomColl (geom);
+		destroy_way_refs (refs);
 		return NULL;
 	    }
-	  p_member = p_member->next;
       }
+    destroy_way_refs (refs);
     return geom;
 }
 
-static void
+static int
 multiline_layer_insert (struct aux_params *params, const char *layer_name,
-			const char *sub_type, const char *name)
+			const char *sub_type, const readosm_relation * relation,
+			const char *name)
 {
     gaiaGeomCollPtr geom;
     unsigned char *blob = NULL;
@@ -1526,7 +1377,7 @@ multiline_layer_insert (struct aux_params *params, const char *layer_name,
       {
 	  layer = &(base_layers[i++]);
 	  if (layer->name == NULL)
-	      return;
+	      return 1;
 	  if (strcmp (layer->name, layer_name) == 0)
 	    {
 		if (layer->ok_linestring == 0)
@@ -1534,7 +1385,7 @@ multiline_layer_insert (struct aux_params *params, const char *layer_name,
 		      layer->ok_linestring = 1;
 		      create_linestring_table (params, layer);
 		  }
-		geom = build_multilinestring (params->db_handle);
+		geom = build_multilinestring (params->db_handle, relation);
 		if (geom)
 		  {
 		      gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
@@ -1546,7 +1397,7 @@ multiline_layer_insert (struct aux_params *params, const char *layer_name,
 		      sqlite3_reset (layer->ins_linestring_stmt);
 		      sqlite3_clear_bindings (layer->ins_linestring_stmt);
 		      sqlite3_bind_int64 (layer->ins_linestring_stmt, 1,
-					  glob_relation.id);
+					  relation->id);
 		      if (sub_type == NULL)
 			  sqlite3_bind_null (layer->ins_linestring_stmt, 2);
 		      else
@@ -1563,23 +1414,159 @@ multiline_layer_insert (struct aux_params *params, const char *layer_name,
 					 blob_size, free);
 		      ret = sqlite3_step (layer->ins_linestring_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  return;
+			  return 1;
 		      fprintf (stderr,
 			       "sqlite3_step() error: INS_MULTILINESTRING %s\n",
 			       layer_name);
 		      sqlite3_finalize (layer->ins_linestring_stmt);
 		      layer->ins_linestring_stmt = NULL;
+		      return 0;
 		  }
-		return;
+		return 1;
+	    }
+      }
+    return 1;
+}
+
+static struct ring_refs *
+create_ring_refs (const readosm_relation * relation)
+{
+/* creating and initializing the ring_refs helper struct */
+    int i_member;
+    const readosm_member *p_member;
+    struct ring_refs *refs = NULL;
+    int count = 0;
+
+    for (i_member = 0; i_member < relation->member_count; i_member++)
+      {
+	  p_member = relation->members + i_member;
+	  if (p_member->member_type == READOSM_MEMBER_WAY)
+	    {
+		if (p_member->role)
+		  {
+		      if (strcmp (p_member->role, "inner") == 0
+			  || strcmp (p_member->role, "outer") == 0)
+			  count++;
+		  }
+	    }
+      }
+    if (!count)
+	return NULL;
+    refs = malloc (sizeof (struct ring_refs));
+    if (refs == NULL)
+	return NULL;
+    refs->count = count;
+    refs->id = malloc (sizeof (sqlite3_int64) * refs->count);
+    if (refs->id == NULL)
+      {
+	  free (refs);
+	  return NULL;
+      }
+    refs->found = malloc (refs->count);
+    if (refs->found == NULL)
+      {
+	  free (refs->id);
+	  free (refs);
+	  return NULL;
+      }
+    refs->geom = malloc (sizeof (gaiaGeomCollPtr) * refs->count);
+    if (refs->geom == NULL)
+      {
+	  free (refs->id);
+	  free (refs->found);
+	  free (refs);
+	  return NULL;
+      }
+    refs->outer = malloc (refs->count);
+    if (refs->outer == NULL)
+      {
+	  free (refs->id);
+	  free (refs->found);
+	  free (refs->geom);
+	  free (refs);
+	  return NULL;
+      }
+    memset (refs->outer, 'N', refs->count);
+    memset (refs->found, 'N', refs->count);
+    count = 0;
+    for (i_member = 0; i_member < relation->member_count; i_member++)
+      {
+	  p_member = relation->members + i_member;
+	  if (p_member->member_type == READOSM_MEMBER_WAY)
+	    {
+		int is_outer = 0;
+		int ok = 0;
+		if (p_member->role)
+		  {
+		      if (strcmp (p_member->role, "inner") == 0)
+			  ok = 1;
+		      if (strcmp (p_member->role, "outer") == 0)
+			{
+			    is_outer = 1;
+			    ok = 1;
+			}
+		  }
+		if (!ok)
+		    continue;
+		*(refs->id + count) = p_member->id;
+		*(refs->geom + count) = NULL;
+		if (is_outer)
+		    *(refs->outer + count) = 'Y';
+		count++;
+	    }
+      }
+    return refs;
+}
+
+static void
+update_ring_refs (struct ring_refs *rings, sqlite3_int64 id,
+		  gaiaGeomCollPtr geom)
+{
+/* updating the ring_refs helper struct */
+    int i_ref;
+    for (i_ref = 0; i_ref < rings->count; i_ref++)
+      {
+	  if (*(rings->id + i_ref) == id)
+	    {
+		*(rings->found + i_ref) = 'Y';
+		*(rings->geom + i_ref) = geom;
 	    }
       }
 }
 
+static void
+destroy_ring_refs (struct ring_refs *rings)
+{
+/* destroying the ring_refs helper struct */
+    int i;
+    gaiaGeomCollPtr g;
+
+    if (rings == NULL)
+	return;
+    if (rings->id != NULL)
+	free (rings->id);
+    if (rings->found != NULL)
+	free (rings->found);
+    if (rings->outer != NULL)
+	free (rings->outer);
+    if (rings->geom != NULL)
+      {
+	  for (i = 0; i < rings->count; i++)
+	    {
+		g = *(rings->geom + i);
+		if (g)
+		    gaiaFreeGeomColl (g);
+	    }
+	  free (rings->geom);
+      }
+    free (rings);
+}
+
 static gaiaGeomCollPtr
-build_multipolygon (sqlite3 * db_handle)
+build_multipolygon (sqlite3 * db_handle, const readosm_relation * relation)
 {
     gaiaGeomCollPtr geom;
-    gaiaPolygonPtr pg2 = NULL;
+    gaiaPolygonPtr pg = NULL;
     int rings = 0;
     int interiors = 0;
     int exteriors = 0;
@@ -1599,18 +1586,24 @@ build_multipolygon (sqlite3 * db_handle)
     const unsigned char *blob = NULL;
     int blob_size;
     gaiaGeomCollPtr org_geom;
-    struct member *p_member = glob_relation.first_member;
-    while (p_member)
+    int i_member;
+    const readosm_member *p_member;
+    struct ring_refs *refs = NULL;
+
+    for (i_member = 0; i_member < relation->member_count; i_member++)
       {
-	  rings++;
-	  if (p_member->role)
+	  p_member = relation->members + i_member;
+	  if (p_member->member_type == READOSM_MEMBER_WAY)
 	    {
-		if (strcmp (p_member->role, "inner") == 0)
-		    interiors++;
-		if (strcmp (p_member->role, "outer") == 0)
-		    exteriors++;
+		rings++;
+		if (p_member->role)
+		  {
+		      if (strcmp (p_member->role, "inner") == 0)
+			  interiors++;
+		      if (strcmp (p_member->role, "outer") == 0)
+			  exteriors++;
+		  }
 	    }
-	  p_member = p_member->next;
       }
     if (!rings)
 	return NULL;
@@ -1618,6 +1611,7 @@ build_multipolygon (sqlite3 * db_handle)
 	return NULL;
     if (interiors + 1 != rings)
 	return NULL;
+    refs = create_ring_refs (relation);
     geom = gaiaAllocGeomColl ();
     geom->Srid = 4326;
     geom->DeclaredType = GAIA_MULTIPOLYGON;
@@ -1653,22 +1647,15 @@ build_multipolygon (sqlite3 * db_handle)
 	  sqlite3_reset (stmt);
 	  sqlite3_clear_bindings (stmt);
 	  ind = 1;
-	  count = 0;
-	  p_member = glob_relation.first_member;
-	  while (p_member)
+
+	  for (i_member = 0; i_member < refs->count; i_member++)
 	    {
-		if (count < base)
-		  {
-		      count++;
-		      p_member = p_member->next;
-		      continue;
-		  }
-		if (count >= (base + how_many))
+		if (i_member < base)
+		    continue;
+		if (i_member >= (base + how_many))
 		    break;
-		sqlite3_bind_int64 (stmt, ind, p_member->ref);
+		sqlite3_bind_int64 (stmt, ind, *(refs->id + i_member));
 		ind++;
-		count++;
-		p_member = p_member->next;
 	    }
 	  while (1)
 	    {
@@ -1687,17 +1674,7 @@ build_multipolygon (sqlite3 * db_handle)
 		      blob_size = sqlite3_column_bytes (stmt, 2);
 		      org_geom = gaiaFromSpatiaLiteBlobWkb (blob, blob_size);
 		      if (org_geom)
-			{
-			    while (p_member)
-			      {
-				  if (p_member->ref == id)
-				    {
-					p_member->geom = org_geom;
-					p_member->found = 1;
-				    }
-				  p_member = p_member->next;
-			      }
-			}
+			  update_ring_refs (refs, id, org_geom);
 		  }
 		else
 		  {
@@ -1715,75 +1692,72 @@ build_multipolygon (sqlite3 * db_handle)
 
 /* final checkout */
     ext_pts = 0;
-    p_member = glob_relation.first_member;
-    while (p_member)
+    for (i_member = 0; i_member < refs->count; i_member++)
       {
-	  if (p_member->found == 0)
+	  if (*(refs->found + i_member) == 'N')
 	    {
+		id = *(refs->id + i_member);
 #if defined(_WIN32) || defined(__MINGW32__)
 		/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
-		fprintf (stderr, "UNRESOLVED-WAY %I64d\n", p_member->ref);
+		fprintf (stderr, "UNRESOLVED-WAY %I64d\n", id);
 #else
-		fprintf (stderr, "UNRESOLVED-WAY %lld\n", p_member->ref);
+		fprintf (stderr, "UNRESOLVED-WAY %lld\n", id);
 #endif
 		gaiaFreeGeomColl (geom);
+		destroy_ring_refs (refs);
 		return NULL;
 	    }
-	  if (strcmp (p_member->role, "outer") == 0)
+	  if (*(refs->outer + i_member) == 'Y')
 	    {
-		if (p_member->geom)
+		gaiaGeomCollPtr g = *(refs->geom + i_member);
+		if (g)
 		  {
-		      if (p_member->geom->FirstPolygon)
-			  ext_pts =
-			      p_member->geom->FirstPolygon->Exterior->Points;
+		      if (g->FirstLinestring)
+			  ext_pts = g->FirstLinestring->Points;
 		  }
 	    }
-	  p_member = p_member->next;
       }
     if (!ext_pts)
       {
 #if defined(_WIN32) || defined(__MINGW32__)
 	  /* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
-	  fprintf (stderr, "ILLEGAL MULTIPOLYGON %I64d\n", p_member->ref);
+	  fprintf (stderr, "ILLEGAL MULTIPOLYGON %I64d\n", id);
 #else
-	  fprintf (stderr, "ILLEGAL MULTIPOLYGON %lld\n", p_member->ref);
+	  fprintf (stderr, "ILLEGAL MULTIPOLYGON %lld\n", id);
 #endif
 	  gaiaFreeGeomColl (geom);
+	  destroy_ring_refs (refs);
 	  return NULL;
       }
 
-    pg2 = gaiaAddPolygonToGeomColl (geom, ext_pts, interiors);
-    p_member = glob_relation.first_member;
-    while (p_member)
+    pg = gaiaAddPolygonToGeomColl (geom, ext_pts, interiors);
+    for (i_member = 0; i_member < refs->count; i_member++)
       {
-	  gaiaPolygonPtr pg1;
-	  pg1 = org_geom->FirstPolygon;
-	  while (pg1)
+	  gaiaLinestringPtr ln;
+	  int iv;
+	  gaiaRingPtr rng;
+	  org_geom = *(refs->geom + i_member);
+	  ln = org_geom->FirstLinestring;
+	  if (*(refs->outer + i_member) == 'Y')
+	      rng = pg->Exterior;
+	  else
+	      rng = gaiaAddInteriorRing (pg, ib++, ln->Points);
+	  for (iv = 0; iv < ln->Points; iv++)
 	    {
-		int iv;
-		gaiaRingPtr rng1 = pg1->Exterior;
-		gaiaRingPtr rng2;
-		if (strcmp (p_member->role, "outer") == 0)
-		    rng2 = pg2->Exterior;
-		else
-		    rng2 = pg2->Interiors + ib++;
-		for (iv = 0; iv < rng2->Points; iv++)
-		  {
-		      double x;
-		      double y;
-		      gaiaGetPoint (rng1->Coords, iv, &x, &y);
-		      gaiaSetPoint (rng2->Coords, iv, x, y);
-		  }
-		pg1 = pg1->Next;
+		double x;
+		double y;
+		gaiaGetPoint (ln->Coords, iv, &x, &y);
+		gaiaSetPoint (rng->Coords, iv, x, y);
 	    }
-	  p_member = p_member->next;
       }
+    destroy_ring_refs (refs);
     return geom;
 }
 
-static void
+static int
 multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
-			   const char *sub_type, const char *name)
+			   const char *sub_type,
+			   const readosm_relation * relation, const char *name)
 {
     gaiaGeomCollPtr geom;
     unsigned char *blob = NULL;
@@ -1794,7 +1768,7 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
       {
 	  layer = &(base_layers[i++]);
 	  if (layer->name == NULL)
-	      return;
+	      return 1;
 	  if (strcmp (layer->name, layer_name) == 0)
 	    {
 		if (layer->ok_polygon == 0)
@@ -1802,7 +1776,7 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
 		      layer->ok_polygon = 1;
 		      create_polygon_table (params, layer);
 		  }
-		geom = build_multipolygon (params->db_handle);
+		geom = build_multipolygon (params->db_handle, relation);
 		if (geom)
 		  {
 		      gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
@@ -1814,7 +1788,7 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
 		      sqlite3_reset (layer->ins_polygon_stmt);
 		      sqlite3_clear_bindings (layer->ins_polygon_stmt);
 		      sqlite3_bind_int64 (layer->ins_polygon_stmt, 1,
-					  glob_relation.id);
+					  relation->id);
 		      if (sub_type == NULL)
 			  sqlite3_bind_null (layer->ins_polygon_stmt, 2);
 		      else
@@ -1830,25 +1804,28 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
 					 blob_size, SQLITE_STATIC);
 		      ret = sqlite3_step (layer->ins_polygon_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  return;
+			  return 1;
 		      fprintf (stderr,
 			       "sqlite3_step() error: INS_MULTIPOLYGON %s\n",
 			       layer_name);
 		      sqlite3_finalize (layer->ins_polygon_stmt);
 		      layer->ins_polygon_stmt = NULL;
+		      return 0;
 		  }
-		return;
+		return 1;
 	    }
       }
+    return 1;
 }
 
-static void
-multiline_generic_insert (struct aux_params *params, const char *name)
+static int
+multiline_generic_insert (struct aux_params *params,
+			  const readosm_relation * relation, const char *name)
 {
     gaiaGeomCollPtr geom;
     unsigned char *blob = NULL;
     int blob_size;
-    geom = build_multilinestring (params->db_handle);
+    geom = build_multilinestring (params->db_handle, relation);
     if (geom)
       {
 	  gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
@@ -1860,7 +1837,7 @@ multiline_generic_insert (struct aux_params *params, const char *name)
 	  sqlite3_reset (params->ins_generic_linestring_stmt);
 	  sqlite3_clear_bindings (params->ins_generic_linestring_stmt);
 	  sqlite3_bind_int64 (params->ins_generic_linestring_stmt, 1,
-			      glob_relation.id);
+			      relation->id);
 	  if (name == NULL)
 	      sqlite3_bind_null (params->ins_generic_linestring_stmt, 2);
 	  else
@@ -1870,21 +1847,25 @@ multiline_generic_insert (struct aux_params *params, const char *name)
 			     blob_size, SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_generic_linestring_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr,
 		   "sqlite3_step() error: INS_GENERIC_MULTILINESTRING\n");
 	  sqlite3_finalize (params->ins_generic_linestring_stmt);
 	  params->ins_generic_linestring_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
-multipolygon_generic_insert (struct aux_params *params, const char *name)
+static int
+multipolygon_generic_insert (struct aux_params *params,
+			     const readosm_relation * relation,
+			     const char *name)
 {
     gaiaGeomCollPtr geom;
     unsigned char *blob = NULL;
     int blob_size;
-    geom = build_multipolygon (params->db_handle);
+    geom = build_multipolygon (params->db_handle, relation);
     if (geom)
       {
 	  gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
@@ -1896,7 +1877,7 @@ multipolygon_generic_insert (struct aux_params *params, const char *name)
 	  sqlite3_reset (params->ins_generic_polygon_stmt);
 	  sqlite3_clear_bindings (params->ins_generic_polygon_stmt);
 	  sqlite3_bind_int64 (params->ins_generic_polygon_stmt, 1,
-			      glob_relation.id);
+			      relation->id);
 	  if (name == NULL)
 	      sqlite3_bind_null (params->ins_generic_polygon_stmt, 2);
 	  else
@@ -1906,124 +1887,78 @@ multipolygon_generic_insert (struct aux_params *params, const char *name)
 			     blob_size, SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_generic_polygon_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      return;
+	      return 1;
 	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_MULTIPOLYGON\n");
 	  sqlite3_finalize (params->ins_generic_polygon_stmt);
 	  params->ins_generic_polygon_stmt = NULL;
+	  return 0;
       }
+    return 1;
 }
 
-static void
-eval_relation (struct aux_params *params)
+static int
+consume_relation (const void *user_data, const readosm_relation * relation)
 {
-    struct tag *p_tag;
+/* processing an OSM Relation (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    const readosm_tag *p_tag;
     const char *p;
-    int i = 0;
+    int i_tag = 0;
+    int i_lyr = 0;
+    int ret;
     const char *layer_name = NULL;
-    char *sub_type = NULL;
-    char *name = NULL;
+    const char *sub_type = NULL;
+    const char *name = NULL;
     int multipolygon = 0;
-    if (glob_relation.first == NULL)
-	return;
+
     while (1)
       {
-	  p = base_layers[i++].name;
+	  p = base_layers[i_lyr++].name;
 	  if (!p)
 	      break;
-	  p_tag = glob_relation.first;
-	  while (p_tag)
+	  for (i_tag = 0; i_tag < relation->tag_count; i_tag++)
 	    {
-		if (strcmp (p_tag->k, p) == 0)
+		p_tag = relation->tags + i_tag;
+		if (strcmp (p_tag->key, p) == 0)
 		  {
 		      layer_name = p;
-		      sub_type = p_tag->v;
+		      sub_type = p_tag->value;
 		  }
-		if (strcmp (p_tag->k, "name") == 0)
-		    name = p_tag->v;
-		if (strcmp (p_tag->k, "type") == 0
-		    && strcmp (p_tag->v, "multipolygon") == 0)
+		if (strcmp (p_tag->key, "name") == 0)
+		    name = p_tag->value;
+		if (strcmp (p_tag->key, "type") == 0
+		    && strcmp (p_tag->value, "multipolygon") == 0)
 		    multipolygon = 1;
-		p_tag = p_tag->next;
 	    }
 	  if (layer_name)
 	      break;
       }
+
     if (layer_name)
       {
 	  if (multipolygon)
-	      multipolygon_layer_insert (params, layer_name, sub_type, name);
+	      ret =
+		  multipolygon_layer_insert (params, layer_name, sub_type,
+					     relation, name);
 	  else
-	      multiline_layer_insert (params, layer_name, sub_type, name);
-	  return;
+	      ret =
+		  multiline_layer_insert (params, layer_name, sub_type,
+					  relation, name);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
     else if (name != NULL)
       {
 	  if (multipolygon)
-	      multipolygon_generic_insert (params, name);
+	      ret = multipolygon_generic_insert (params, relation, name);
 	  else
-	      multiline_generic_insert (params, name);
-	  return;
+	      ret = multiline_generic_insert (params, relation, name);
+	  if (ret)
+	      return READOSM_OK;
+	  return READOSM_ABORT;
       }
-}
-
-static void
-end_relation (struct aux_params *params)
-{
-    struct tag *p_tag;
-    struct tag *p_tag2;
-    struct member *p_member;
-    struct member *p_member2;
-    eval_relation (params);
-    p_tag = glob_relation.first;
-    while (p_tag)
-      {
-	  p_tag2 = p_tag->next;
-	  free_tag (p_tag);
-	  p_tag = p_tag2;
-      }
-    p_member = glob_relation.first_member;
-    while (p_member)
-      {
-	  p_member2 = p_member->next;
-	  free_member (p_member);
-	  p_member = p_member2;
-      }
-    glob_relation.id = -1;
-    glob_relation.first_member = NULL;
-    glob_relation.last_member = NULL;
-    glob_relation.first = NULL;
-    glob_relation.last = NULL;
-    params->current_tag = CURRENT_TAG_UNKNOWN;
-}
-
-static void
-start_tag (void *data, const char *el, const char **attr)
-{
-    struct aux_params *params = (struct aux_params *) data;
-    if (strcmp (el, "node") == 0)
-	start_node (params, attr);
-    if (strcmp (el, "tag") == 0)
-	start_xtag (params, attr);
-    if (strcmp (el, "way") == 0)
-	start_way (params, attr);
-    if (strcmp (el, "nd") == 0)
-	start_nd (attr);
-    if (strcmp (el, "relation") == 0)
-	start_relation (params, attr);
-    if (strcmp (el, "member") == 0)
-	start_member (attr);
-}
-
-static void
-end_tag (void *data, const char *el)
-{
-    struct aux_params *params = (struct aux_params *) data;
-    if (strcmp (el, "node") == 0)
-	end_node (params);
-    if (strcmp (el, "way") == 0)
-	end_way (params);
-    if (strcmp (el, "relation") == 0)
-	end_relation (params);
+    return READOSM_OK;
 }
 
 static void
@@ -2384,7 +2319,7 @@ finalize_sql_stmts (struct aux_params *params)
 }
 
 static void
-create_sql_stmts (struct aux_params *params)
+create_sql_stmts (struct aux_params *params, int journal_off)
 {
     sqlite3_stmt *ins_tmp_nodes_stmt;
     sqlite3_stmt *ins_tmp_ways_stmt;
@@ -2395,6 +2330,21 @@ create_sql_stmts (struct aux_params *params)
     char sql[1024];
     int ret;
     char *sql_err = NULL;
+
+    if (journal_off)
+      {
+	  /* disabling the journal: unsafe but faster */
+	  ret =
+	      sqlite3_exec (params->db_handle, "PRAGMA journal_mode = OFF",
+			    NULL, NULL, &sql_err);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "PRAGMA journal_mode=OFF error: %s\n",
+			 sql_err);
+		sqlite3_free (sql_err);
+		return;
+	    }
+      }
 
 /* the complete operation is handled as an unique SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
@@ -2585,6 +2535,10 @@ do_help ()
 	     "-h or --help                    print this help message\n");
     fprintf (stderr, "-o or --osm-path pathname       the OSM-XML file path\n");
     fprintf (stderr,
+	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
+    fprintf (stderr,
+	     "                 (*.osm.pbf) are indifferenctly supported.\n\n");
+    fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
     fprintf (stderr,
@@ -2593,6 +2547,8 @@ do_help ()
 	     "-m or --in-memory               using IN-MEMORY database\n");
     fprintf (stderr,
 	     "-n or --no-spatial-index        suppress R*Trees generation\n");
+    fprintf (stderr,
+	     "-jo or --journal-off            unsafe [but faster] mode\n");
 }
 
 int
@@ -2606,16 +2562,11 @@ main (int argc, char *argv[])
     const char *db_path = NULL;
     int in_memory = 0;
     int cache_size = 0;
+    int journal_off = 0;
     int spatial_index = 1;
     int error = 0;
-    char Buff[BUFFSIZE];
-    int done = 0;
-    int len;
-    XML_Parser parser;
     struct aux_params params;
-    FILE *xml_file;
-    int last_line_no = 0;
-    int curr_line_no = 0;
+    const void *osm_handle;
 
 /* initializing the aux-struct */
     params.db_handle = NULL;
@@ -2625,7 +2576,7 @@ main (int argc, char *argv[])
     params.ins_addresses_stmt = NULL;
     params.ins_generic_linestring_stmt = NULL;
     params.ins_generic_polygon_stmt = NULL;
-    params.current_tag = CURRENT_TAG_UNKNOWN;
+
 
     for (i = 1; i < argc; i++)
       {
@@ -2685,9 +2636,21 @@ main (int argc, char *argv[])
 		next_arg = ARG_NONE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "-in-memory") == 0)
+	  if (strcasecmp (argv[i], "--in-memory") == 0)
 	    {
 		in_memory = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "-jo") == 0)
+	    {
+		journal_off = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--journal-off") == 0)
+	    {
+		journal_off = 1;
 		next_arg = ARG_NONE;
 		continue;
 	    }
@@ -2776,54 +2739,28 @@ main (int argc, char *argv[])
     params.db_handle = handle;
 
 /* creating SQL prepared statements */
-    create_sql_stmts (&params);
+    create_sql_stmts (&params, journal_off);
 
-/* XML parsing */
-    xml_file = fopen (osm_path, "rb");
-    if (!xml_file)
+/* parsing the input OSM-file */
+    if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
       {
 	  fprintf (stderr, "cannot open %s\n", osm_path);
+	  finalize_sql_stmts (&params);
 	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
 	  return -1;
       }
-    parser = XML_ParserCreate (NULL);
-    if (!parser)
+    if (readosm_parse
+	(osm_handle, &params, consume_node, consume_way,
+	 consume_relation) != READOSM_OK)
       {
-	  fprintf (stderr, "Couldn't allocate memory for parser\n");
+	  fprintf (stderr, "unrecoverable error while parsing %s\n", osm_path);
+	  finalize_sql_stmts (&params);
 	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
 	  return -1;
       }
-    XML_SetUserData (parser, &params);
-    XML_SetElementHandler (parser, start_tag, end_tag);
-    while (!done)
-      {
-	  len = fread (Buff, 1, BUFFSIZE, xml_file);
-	  if (ferror (xml_file))
-	    {
-		fprintf (stderr, "XML Read error\n");
-		sqlite3_close (handle);
-		return -1;
-	    }
-	  done = feof (xml_file);
-	  if (!XML_Parse (parser, Buff, len, done))
-	    {
-		fprintf (stderr, "Parse error at line %d:\n%s\n",
-			 (int) XML_GetCurrentLineNumber (parser),
-			 XML_ErrorString (XML_GetErrorCode (parser)));
-		sqlite3_close (handle);
-		return -1;
-	    }
-	  curr_line_no = (int) XML_GetCurrentLineNumber (parser);
-	  if ((curr_line_no - last_line_no) > 1000)
-	    {
-		last_line_no = curr_line_no;
-		printf ("Parsing XML line: %d\r", curr_line_no);
-		fflush (stdout);
-	    }
-      }
-    XML_ParserFree (parser);
-    fclose (xml_file);
-    printf ("                                                         \r");
+    readosm_close (osm_handle);
 
 /* finalizing SQL prepared statements */
     finalize_sql_stmts (&params);

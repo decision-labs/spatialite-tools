@@ -43,542 +43,586 @@
 
 #include <spatialite/gaiageo.h>
 #include <spatialite.h>
+#include <readosm.h>
 
 #define ARG_NONE		0
 #define ARG_OSM_PATH	1
 #define ARG_DB_PATH		2
 #define ARG_TABLE		3
 #define ARG_CACHE_SIZE	4
+#define ARG_TEMPLATE_PATH	5
 
-#define MAX_TAG		16
+#define NODE_STRAT_NONE	0
+#define NODE_STRAT_ALL	1
+#define NODE_STRAT_ENDS	2
+#define ONEWAY_STRAT_NONE	0
+#define ONEWAY_STRAT_FULL	1
+#define ONEWAY_STRAT_NO_ROUND	2
+#define ONEWAY_STRAT_NO_MOTOR	3
+#define ONEWAY_STRAT_NO_BOTH	4
 
-#if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	_stricmp
-#endif /* not WIN32 */
-
-#if defined(_WIN32)
-#define atol_64		_atoi64
-#else
-#define atol_64		atoll
-#endif
-
-struct dup_node_id
+struct aux_speed
 {
-    sqlite3_int64 id;
-    struct dup_node_id *next;
+/* an auxiliary struct for Speeds */
+    char *class_name;
+    double speed;
+    struct aux_speed *next;
 };
 
-struct dup_node
+struct aux_class
 {
-    double lon;
-    double lat;
-    int refcount;
-    struct dup_node_id *first;
-    struct dup_node_id *last;
-    struct dup_node *next;
+/* an auxiliary struct for road Classes */
+    char *class_name;
+    char *sub_class;
+    struct aux_class *next;
 };
 
-struct kv
+struct aux_params
 {
-    char *k;
-    char *v;
-    struct kv *next;
+/* an auxiliary struct used for OSM parsing */
+    sqlite3 *db_handle;
+    const char *table;
+    int noding_strategy;
+    int oneway_strategy;
+    struct aux_speed *first_speed;
+    struct aux_speed *last_speed;
+    double default_speed;
+    struct aux_class *first_include;
+    struct aux_class *last_include;
+    struct aux_class *first_ignore;
+    struct aux_class *last_ignore;
+    sqlite3_stmt *ins_tmp_nodes_stmt;
+    sqlite3_stmt *upd_tmp_nodes_stmt;
+    sqlite3_stmt *rd_tmp_nodes_stmt;
+    sqlite3_stmt *ins_arcs_stmt;
 };
 
-struct node_ref
+static void
+save_current_line (gaiaGeomCollPtr geom, gaiaDynamicLinePtr dyn)
 {
-    sqlite3_int64 id;
-    sqlite3_int64 alias;
-    double lat;
-    double lon;
-    int refcount;
-    int ignore;
-    struct node_ref *next;
-};
+/* inserting a GraphArc from a splitted Way */
+    gaiaPointPtr pt;
+    gaiaLinestringPtr ln;
+    int iv;
+    int points = 0;
 
-struct arc
+    pt = dyn->First;
+    while (pt)
+      {
+	  /* counting how many points are there */
+	  points++;
+	  pt = pt->Next;
+      }
+    if (points < 2)
+	return;
+    ln = gaiaAddLinestringToGeomColl (geom, points);
+    iv = 0;
+    pt = dyn->First;
+    while (pt)
+      {
+	  gaiaSetPoint (ln->Coords, iv, pt->X, pt->Y);
+	  iv++;
+	  pt = pt->Next;
+      }
+}
+
+static gaiaGeomCollPtr
+build_linestrings (struct aux_params *params, const readosm_way * way)
 {
-    sqlite3_int64 from;
-    sqlite3_int64 to;
-    gaiaDynamicLinePtr dyn;
+/* building the Arcs of the Graph [may be, splitting a Way in more Arcs] */
+    int i_ref;
+    int ret;
     gaiaGeomCollPtr geom;
-    double length;
-    double cost;
-    struct arc *next;
-};
+    gaiaDynamicLinePtr dyn = gaiaAllocDynamicLine ();
+    gaiaPointPtr pt;
 
-struct way
-{
-    sqlite3_int64 id;
-    char *class;
-    char *name;
-    int oneway;
-    int reverse;
-    struct node_ref *first;
-    struct node_ref *last;
-    struct kv *first_kv;
-    struct kv *last_kv;
-    struct arc *first_arc;
-    struct arc *last_arc;
-};
+    geom = gaiaAllocGeomColl ();
+    geom->Srid = 4326;
 
-struct check_tag
-{
-    char buf[MAX_TAG + 1];
-    int pos;
-    int max;
-};
-
-static void
-init_tag (struct check_tag *tag, int max)
-{
-    tag->pos = 0;
-    tag->max = max;
-    memset (tag->buf, '\0', MAX_TAG + 1);
-}
-
-static void
-update_tag (struct check_tag *tag, const char c)
-{
-/* updating the tag control struct */
-    int i;
-    if (tag->pos == (tag->max - 1))
+    for (i_ref = 0; i_ref < way->node_ref_count; i_ref++)
       {
-	  for (i = 0; i < tag->max; i++)
-	    {
-		/* rotating the buffer */
-		*(tag->buf + i) = *(tag->buf + i + 1);
-	    }
-	  *(tag->buf + tag->pos) = c;
-	  return;
-      }
-    *(tag->buf + tag->pos) = c;
-    tag->pos++;
-}
+	  /* fetching point coords */
+	  sqlite3_int64 id = *(way->node_refs + i_ref);
+	  double x;
+	  double y;
+	  int ref_count;
 
-static int
-parse_node_id (const char *buf, sqlite3_int64 * id)
-{
-/* parsing <node id="value" > */
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 4);
-    while (*p != '\0')
-      {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "id=\"", 4) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		*id = atol_64 (value);
-		return 1;
-	    }
-      }
-    return 0;
-}
+	  sqlite3_reset (params->rd_tmp_nodes_stmt);
+	  sqlite3_clear_bindings (params->rd_tmp_nodes_stmt);
+	  sqlite3_bind_int64 (params->rd_tmp_nodes_stmt, 1, id);
 
-static int
-parse_node_lat (const char *buf, double *lat)
-{
-/* parsing <node lat="value" >*/
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 5);
-    while (*p != '\0')
-      {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "lat=\"", 5) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		*lat = atof (value);
-		return 1;
-	    }
-      }
-    return 0;
-}
-
-static int
-parse_node_lon (const char *buf, double *lon)
-{
-/* parsing <node lon="value" >*/
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 5);
-    while (*p != '\0')
-      {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "lon=\"", 5) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		*lon = atof (value);
-		return 1;
-	    }
-      }
-    return 0;
-}
-
-static int
-parse_node_tag (const char *buf, sqlite3_int64 * id, double *lat, double *lon)
-{
-/* parsing a <node> tag */
-    if (!parse_node_id (buf, id))
-	return 0;
-    if (!parse_node_lat (buf, lat))
-	return 0;
-    if (!parse_node_lon (buf, lon))
-	return 0;
-    return 1;
-}
-
-static int
-insert_node (sqlite3 * handle, sqlite3_stmt * stmt, sqlite3_int64 id,
-	     double lat, double lon)
-{
-/* inserting a temporary node into the DB */
-    int ret;
-    sqlite3_reset (stmt);
-    sqlite3_clear_bindings (stmt);
-    sqlite3_bind_int64 (stmt, 1, id);
-    sqlite3_bind_int64 (stmt, 2, id);
-    sqlite3_bind_double (stmt, 3, lat);
-    sqlite3_bind_double (stmt, 4, lon);
-    sqlite3_bind_int (stmt, 5, 0);
-    ret = sqlite3_step (stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	return 1;
-    fprintf (stderr, "sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
-    sqlite3_finalize (stmt);
-    return 0;
-}
-
-static int
-parse_nodes (FILE * xml, sqlite3 * handle)
-{
-/* parsing <node> tags from XML file */
-    sqlite3_stmt *stmt;
-    int ret;
-    char *sql_err = NULL;
-    sqlite3_int64 id;
-    double lat;
-    double lon;
-    int opened;
-    int count = 0;
-    int node = 0;
-    int c;
-    int last_c;
-    char value[65536];
-    char *p;
-    struct check_tag tag;
-    init_tag (&tag, 6);
-
-/* the complete operation is handled as an unique SQL Transaction */
-    ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
-	  sqlite3_free (sql_err);
-	  return -1;
-      }
-/* preparing the SQL statement */
-    strcpy (value,
-	    "INSERT INTO osm_tmp_nodes (id, alias, lat, lon, refcount) ");
-    strcat (value, "VALUES (?, ?, ?, ?, ?)");
-    ret = sqlite3_prepare_v2 (handle, value, strlen (value), &stmt, NULL);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "SQL error: %s\n%s\n", value,
-		   sqlite3_errmsg (handle));
-	  return -1;
-      }
-
-    while ((c = getc (xml)) != EOF)
-      {
-	  if (node)
-	    {
-		/* we are inside a <node> tag */
-		*p++ = c;
-		if (c == '<')
-		    opened++;
-		if (!opened && c == '>' && last_c == '/')
-		  {
-		      /* closing a <node /> tag */
-		      *p = '\0';
-		      if (!parse_node_tag (value, &id, &lat, &lon))
-			{
-			    fprintf (stderr, "ERROR: invalid <node>\n");
-			    return -1;
-			}
-		      else
-			{
-			    if (!insert_node (handle, stmt, id, lat, lon))
-				return -1;
-			    count++;
-			}
-		      node = 0;
-		      continue;
-		  }
-		last_c = c;
-	    }
-	  update_tag (&tag, c);
-	  if (strncmp (tag.buf, "<node ", 6) == 0)
-	    {
-		/* opening a <node> tag */
-		node = 1;
-		last_c = '\0';
-		opened = 0;
-		strcpy (value, "<node ");
-		p = value + 6;
-		continue;
-	    }
-	  if (strncmp (tag.buf, "</node", 6) == 0)
-	    {
-		/* closing a <node> tag */
-		*p = '\0';
-		if (!parse_node_tag (value, &id, &lat, &lon))
-		  {
-		      fprintf (stderr, "ERROR: invalid <node>\n");
-		      return -1;
-		  }
-		else
-		  {
-		      if (!insert_node (handle, stmt, id, lat, lon))
-			  return -1;
-		      count++;
-		  }
-		node = 0;
-		continue;
-	    }
-      }
-/* finalizing the INSERT INTO prepared statement */
-    sqlite3_finalize (stmt);
-
-/* committing the still pending SQL Transaction */
-    ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
-	  sqlite3_free (sql_err);
-	  return -1;
-      }
-    return count;
-}
-
-static int
-disambiguate_nodes (sqlite3 * handle)
-{
-/* disambiguating duplicate NODEs */
-    int ret;
-    sqlite3_stmt *stmt;
-    sqlite3_int64 id;
-    int refcount;
-    double lon;
-    double lat;
-    char sql[8192];
-    int count = 0;
-    struct dup_node *first = NULL;
-    struct dup_node *last = NULL;
-    struct dup_node *p;
-    struct dup_node *pn;
-    struct dup_node_id *pid;
-    struct dup_node_id *pidn;
-    char *sql_err = NULL;
-/* creating an index */
-    strcpy (sql, "CREATE INDEX latlon ON osm_tmp_nodes (lat, lon)");
-    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "CREATE INDEX latlon: %s\n", sql_err);
-	  sqlite3_free (sql_err);
-	  return -1;
-      }
-/* identifying the duplicate nodes by coords */
-    strcpy (sql, "SELECT lat, lon, Sum(refcount) FROM osm_tmp_nodes ");
-    strcat (sql, "WHERE refcount > 0 GROUP BY lat, lon ");
-    strcat (sql, "HAVING count(*) > 1");
-    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "SQL error: %s\n%s\n", sql, sqlite3_errmsg (handle));
-	  return -1;
-      }
-    while (1)
-      {
 	  /* scrolling the result set */
-	  ret = sqlite3_step (stmt);
+	  ret = sqlite3_step (params->rd_tmp_nodes_stmt);
 	  if (ret == SQLITE_DONE)
 	    {
-		/* there are no more rows to fetch - we can stop looping */
-		break;
+		/* empty resultset - no coords !!! */
+#if defined(_WIN32) || defined(__MINGW32__)
+		/* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
+		fprintf (stderr, "UNRESOLVED-NODE %I64d\n", id);
+#else
+		fprintf (stderr, "UNRESOLVED-NODE %lld\n", id);
+#endif
+		gaiaFreeDynamicLine (dyn);
+		gaiaFreeGeomColl (geom);
+		return NULL;
 	    }
-	  if (ret == SQLITE_ROW)
+	  else if (ret == SQLITE_ROW)
 	    {
 		/* ok, we've just fetched a valid row */
-		lat = sqlite3_column_double (stmt, 0);
-		lon = sqlite3_column_double (stmt, 1);
-		refcount = sqlite3_column_int (stmt, 2);
-		p = malloc (sizeof (struct dup_node));
-		p->lat = lat;
-		p->lon = lon;
-		p->refcount = refcount;
-		p->first = NULL;
-		p->last = NULL;
-		p->next = NULL;
-		if (!first)
-		    first = p;
-		if (last)
-		    last->next = p;
-		last = p;
+		x = sqlite3_column_double (params->rd_tmp_nodes_stmt, 0);
+		y = sqlite3_column_double (params->rd_tmp_nodes_stmt, 1);
+		ref_count = sqlite3_column_int (params->rd_tmp_nodes_stmt, 2);
+
+		pt = dyn->Last;
+		if (pt)
+		  {
+		      if (pt->X == x && pt->Y == y)
+			{
+			    /* skipping any repeated point */
+			    continue;
+			}
+		  }
+
+		/* appending the point to the current line anyway */
+		gaiaAppendPointToDynamicLine (dyn, x, y);
+		if (params->noding_strategy != NODE_STRAT_NONE)
+		  {
+		      /* attempting to renode the Graph */
+		      int limit = 1;
+		      if (params->noding_strategy == NODE_STRAT_ENDS)
+			{
+			    /* renoding each Way terminal point */
+			    limit = 0;
+			}
+		      if ((ref_count > limit)
+			  && (i_ref > 0 && i_ref < (way->node_ref_count - 1)))
+			{
+			    /* found an internal Node: saving the current line */
+			    save_current_line (geom, dyn);
+			    /* starting a further line */
+			    gaiaFreeDynamicLine (dyn);
+			    dyn = gaiaAllocDynamicLine ();
+			    /* inserting the current point in the new line */
+			    gaiaAppendPointToDynamicLine (dyn, x, y);
+			}
+		  }
 	    }
 	  else
 	    {
 		/* some unexpected error occurred */
 		fprintf (stderr, "sqlite3_step() error: %s\n",
-			 sqlite3_errmsg (handle));
-		sqlite3_finalize (stmt);
-		return -1;
+			 sqlite3_errmsg (params->db_handle));
+		sqlite3_finalize (params->rd_tmp_nodes_stmt);
+		gaiaFreeGeomColl (geom);
+		gaiaFreeDynamicLine (dyn);
+		return NULL;
 	    }
       }
-    sqlite3_finalize (stmt);
-/* retrieving the dup-nodes IDs */
-    p = first;
-    while (p)
+/* saving the last line */
+    save_current_line (geom, dyn);
+    gaiaFreeDynamicLine (dyn);
+
+    if (geom->FirstLinestring == NULL)
       {
-	  strcpy (sql, "SELECT id FROM osm_tmp_nodes ");
-	  strcat (sql, "WHERE lat = ? AND lon = ?");
-	  ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
-	  if (ret != SQLITE_OK)
+	  /* invalid geometry: no lines */
+	  gaiaFreeGeomColl (geom);
+	  return NULL;
+      }
+    return geom;
+}
+
+static int
+arcs_insert (struct aux_params *params, sqlite3_int64 id, const char *class,
+	     const char *name, int oneway, unsigned char *blob, int blob_size)
+{
+/* Inserts an Arc into the Graph */
+    int ret;
+    if (params->ins_arcs_stmt == NULL)
+	return;
+    sqlite3_reset (params->ins_arcs_stmt);
+    sqlite3_clear_bindings (params->ins_arcs_stmt);
+    sqlite3_bind_int64 (params->ins_arcs_stmt, 1, id);
+    sqlite3_bind_text (params->ins_arcs_stmt, 2, class, strlen (class),
+		       SQLITE_STATIC);
+    sqlite3_bind_text (params->ins_arcs_stmt, 3, name, strlen (name),
+		       SQLITE_STATIC);
+    if (oneway > 0)
+      {
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 0);
+      }
+    else if (oneway < 0)
+      {
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 0);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+      }
+    else
+      {
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+      }
+    sqlite3_bind_blob (params->ins_arcs_stmt, 6, blob, blob_size, free);
+    ret = sqlite3_step (params->ins_arcs_stmt);
+
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	return 1;
+    fprintf (stderr, "sqlite3_step() error: INS_ARCS\n");
+    sqlite3_finalize (params->ins_arcs_stmt);
+    params->ins_arcs_stmt = NULL;
+    return 0;
+}
+
+static int
+find_include_class (struct aux_params *params, const char *class,
+		    const char *sub_class)
+{
+/* testing if this Way belongs to some class to be Included */
+    struct aux_class *pc = params->first_include;
+    while (pc)
+      {
+	  if (strcmp (pc->class_name, class) == 0)
 	    {
-		fprintf (stderr, "SQL error: %s\n%s\n", sql,
-			 sqlite3_errmsg (handle));
-		return -1;
+		if (pc->sub_class == NULL)
+		    return 1;
+		if (strcmp (pc->sub_class, sub_class) == 0)
+		    return 1;
 	    }
-	  sqlite3_reset (stmt);
-	  sqlite3_clear_bindings (stmt);
-	  sqlite3_bind_double (stmt, 1, p->lat);
-	  sqlite3_bind_double (stmt, 2, p->lon);
-	  while (1)
+	  pc = pc->next;
+      }
+    return 0;
+}
+
+static int
+find_ignore_class (struct aux_params *params, const char *class,
+		   const char *sub_class)
+{
+/* testing if this Way belongs to some class to be Ignored */
+    struct aux_class *pc = params->first_ignore;
+    while (pc)
+      {
+	  if (strcmp (pc->class_name, class) == 0)
 	    {
-		/* scrolling the result set */
-		ret = sqlite3_step (stmt);
-		if (ret == SQLITE_DONE)
-		  {
-		      /* there are no more rows to fetch - we can stop looping */
-		      break;
-		  }
-		if (ret == SQLITE_ROW)
-		  {
-		      /* ok, we've just fetched a valid row */
-		      id = sqlite3_column_int64 (stmt, 0);
-		      pid = malloc (sizeof (struct dup_node_id));
-		      pid->id = id;
-		      pid->next = NULL;
-		      if (p->first == NULL)
-			  p->first = pid;
-		      if (p->last != NULL)
-			  p->last->next = pid;
-		      p->last = pid;
-		  }
-		else
-		  {
-		      /* some unexpected error occurred */
-		      fprintf (stderr, "sqlite3_step() error: %s\n",
-			       sqlite3_errmsg (handle));
-		      sqlite3_finalize (stmt);
-		      return -1;
-		  }
+		if (strcmp (pc->sub_class, sub_class) == 0)
+		    return 1;
 	    }
-	  sqlite3_finalize (stmt);
-	  p = p->next;
+	  pc = pc->next;
+      }
+    return 0;
+}
+
+static int
+consume_way_1 (const void *user_data, const readosm_way * way)
+{
+/* processing an OSM Way - Pass#1 (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    const readosm_tag *p_tag;
+    int i_tag;
+    int i_ref;
+    const char *class = NULL;
+    const char *name = "*** Unknown ****";
+    int ret;
+    sqlite3_int64 id;
+    int include = 0;
+    int ignore = 0;
+
+    if (params->noding_strategy == NODE_STRAT_NONE)
+      {
+	  /* renoding the graph isn't required, we can skip all this */
+	  return READOSM_OK;
       }
 
-/* the complete operation is handled as an unique SQL Transaction */
+    for (i_tag = 0; i_tag < way->tag_count; i_tag++)
+      {
+	  p_tag = way->tags + i_tag;
+	  if (find_include_class (params, p_tag->key, p_tag->value))
+	    {
+		include = 1;
+		class = p_tag->value;
+	    }
+	  if (find_ignore_class (params, p_tag->key, p_tag->value))
+	      ignore = 1;
+      }
+    if (!include || ignore)
+	return READOSM_OK;
+
+    for (i_ref = 0; i_ref < way->node_ref_count; i_ref++)
+      {
+	  if (params->noding_strategy == NODE_STRAT_ENDS)
+	    {
+		/* checking only the Way extreme points */
+		if (i_ref == 0 || i_ref == (way->node_ref_count - 1))
+		    ;
+		else
+		    continue;
+	    }
+	  id = *(way->node_refs + i_ref);
+	  sqlite3_reset (params->upd_tmp_nodes_stmt);
+	  sqlite3_clear_bindings (params->upd_tmp_nodes_stmt);
+	  sqlite3_bind_int64 (params->upd_tmp_nodes_stmt, 1, id);
+	  ret = sqlite3_step (params->upd_tmp_nodes_stmt);
+	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	      ;
+	  else
+	    {
+		fprintf (stderr, "sqlite3_step() error: %s\n",
+			 sqlite3_errmsg (params->db_handle));
+		sqlite3_finalize (params->upd_tmp_nodes_stmt);
+		return READOSM_ABORT;
+	    }
+      }
+
+    return READOSM_OK;
+}
+
+static int
+consume_way_2 (const void *user_data, const readosm_way * way)
+{
+/* processing an OSM Way - Pass#2 (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    const readosm_tag *p_tag;
+    int i_tag;
+    unsigned char *blob;
+    int blob_size;
+    const char *class = NULL;
+    const char *name = "*** Unknown ****";
+    int oneway = 0;
+    int ret;
+    int include = 0;
+    int ignore = 0;
+
+    for (i_tag = 0; i_tag < way->tag_count; i_tag++)
+      {
+	  p_tag = way->tags + i_tag;
+	  if (find_include_class (params, p_tag->key, p_tag->value))
+	    {
+		include = 1;
+		class = p_tag->value;
+	    }
+	  if (find_ignore_class (params, p_tag->key, p_tag->value))
+	      ignore = 1;
+      }
+    if (!include || ignore)
+	return READOSM_OK;
+
+    for (i_tag = 0; i_tag < way->tag_count; i_tag++)
+      {
+	  /* retrieving the road name */
+	  p_tag = way->tags + i_tag;
+	  if (strcmp (p_tag->key, "name") == 0)
+	    {
+		name = p_tag->value;
+		break;
+	    }
+      }
+
+    if (params->oneway_strategy != ONEWAY_STRAT_NONE)
+      {
+	  /* checking for Oneeays */
+	  for (i_tag = 0; i_tag < way->tag_count; i_tag++)
+	    {
+		/* checking for one-ways */
+		p_tag = way->tags + i_tag;
+		if (strcmp (p_tag->key, "oneway") == 0)
+		  {
+		      if (strcmp (p_tag->value, "yes") == 0
+			  || strcmp (p_tag->value, "true") == 0
+			  || strcmp (p_tag->value, "1") == 0)
+			  oneway = 1;
+		      if (strcmp (p_tag->value, "-1") == 0
+			  || strcmp (p_tag->value, "reverse") == 0)
+			  oneway = -1;
+		  }
+		if (params->oneway_strategy != ONEWAY_STRAT_NO_BOTH
+		    && params->oneway_strategy != ONEWAY_STRAT_NO_ROUND)
+		  {
+		      /* testing for junction:roundabout */
+		      if (strcmp (p_tag->key, "junction") == 0)
+			{
+			    if (strcmp (p_tag->value, "roundabout") == 0)
+				oneway = 1;
+			}
+		  }
+		if (params->oneway_strategy != ONEWAY_STRAT_NO_BOTH
+		    && params->oneway_strategy != ONEWAY_STRAT_NO_MOTOR)
+		  {
+		      /* testing for highway_motorway or highway_motorway_link */
+		      if (strcmp (p_tag->key, "highway") == 0)
+			{
+			    if (strcmp (p_tag->value, "motorway") == 0
+				|| strcmp (p_tag->value, "motorway_link") == 0)
+				oneway = 1;
+			}
+		  }
+	    }
+      }
+
+    gaiaGeomCollPtr geom = build_linestrings (params, way);
+    if (geom)
+      {
+	  gaiaLinestringPtr ln = geom->FirstLinestring;
+	  while (ln)
+	    {
+		/* inserting any splitted Arc */
+		gaiaGeomCollPtr g;
+		gaiaLinestringPtr ln2;
+		int iv;
+		if (gaiaIsClosed (ln))
+		  {
+		      ln = ln->Next;
+		      continue;
+		  }
+		/* building a new Geometry - simple line */
+		g = gaiaAllocGeomColl ();
+		g->Srid = 4326;
+		ln2 = gaiaAddLinestringToGeomColl (g, ln->Points);
+		for (iv = 0; iv < ln->Points; iv++)
+		  {
+		      /* copying line's points */
+		      double x;
+		      double y;
+		      gaiaGetPoint (ln->Coords, iv, &x, &y);
+		      gaiaSetPoint (ln2->Coords, iv, x, y);
+		  }
+		gaiaToSpatiaLiteBlobWkb (g, &blob, &blob_size);
+		ret =
+		    arcs_insert (params, way->id, class, name, oneway, blob,
+				 blob_size);
+		gaiaFreeGeomColl (g);
+		if (!ret)
+		    return READOSM_ABORT;
+		ln = ln->Next;
+	    }
+	  gaiaFreeGeomColl (geom);
+      }
+    return READOSM_OK;
+}
+
+static int
+tmp_nodes_insert (struct aux_params *params, const readosm_node * node)
+{
+/* inserts a node into the corresponding temporary table */
+    int ret;
+    if (params->ins_tmp_nodes_stmt == NULL)
+	return 1;
+    sqlite3_reset (params->ins_tmp_nodes_stmt);
+    sqlite3_clear_bindings (params->ins_tmp_nodes_stmt);
+    sqlite3_bind_int64 (params->ins_tmp_nodes_stmt, 1, node->id);
+    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 2, node->latitude);
+    sqlite3_bind_double (params->ins_tmp_nodes_stmt, 3, node->longitude);
+    ret = sqlite3_step (params->ins_tmp_nodes_stmt);
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	return 1;
+    fprintf (stderr, "sqlite3_step() error: INS_TMP_NODES\n");
+    sqlite3_finalize (params->ins_tmp_nodes_stmt);
+    params->ins_tmp_nodes_stmt = NULL;
+    return 0;
+}
+
+static int
+consume_node (const void *user_data, const readosm_node * node)
+{
+/* processing an OSM Node (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+
+    if (!tmp_nodes_insert (params, node))
+	return READOSM_ABORT;
+    return READOSM_OK;
+}
+
+static int
+populate_graph_nodes (sqlite3 * handle, const char *table)
+{
+    int ret;
+    char *sql_err = NULL;
+    char sql[8192];
+    char sql2[1024];
+    sqlite3_stmt *query_stmt = NULL;
+    sqlite3_stmt *update_stmt = NULL;
+
+/* populating GRAPH_NODES */
+    strcpy (sql, "INSERT OR IGNORE INTO graph_nodes (lon, lat) ");
+    strcat (sql, "SELECT ST_X(ST_StartPoint(Geometry)), ");
+    strcat (sql, "ST_Y(ST_StartPoint(Geometry)) ");
+    sprintf (sql2, "FROM \"%s\" ", table);
+    strcat (sql, sql2);
+    strcat (sql, "UNION ");
+    strcat (sql, "SELECT ST_X(ST_EndPoint(Geometry)), ");
+    strcat (sql, "ST_Y(ST_EndPoint(Geometry)) ");
+    sprintf (sql2, "FROM \"%s\"", table);
+    strcat (sql, sql2);
+
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "GraphNodes SQL error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+
+/* setting OSM-IDs to graph-nodes */
+/* the complete operation is handled as a unique SQL Transaction */
     ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
+	  return 0;
       }
-/* preparing the SQL statement */
-    strcpy (sql, "UPDATE osm_tmp_nodes SET alias = ?, refcount = ? ");
-    strcat (sql, "WHERE id = ?");
-    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+
+    strcpy (sql, "SELECT n.ROWID, t.id FROM osm_tmp_nodes AS t ");
+    strcat (sql, "JOIN graph_nodes AS n ON (t.lon = n.lon AND t.lat = n.lat)");
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &query_stmt, NULL);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "SQL error: %s\n%s\n", sql, sqlite3_errmsg (handle));
-	  return -1;
+	  goto error;
       }
 
-    p = first;
-    while (p)
+    strcpy (sql, "UPDATE graph_nodes SET osm_id = ? ");
+    strcat (sql, "WHERE ROWID = ?");
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &update_stmt, NULL);
+    if (ret != SQLITE_OK)
       {
-	  pid = p->first;
-	  while (pid)
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql, sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
 	    {
-		if (pid == p->first)
-		  {
-		      /* fixing the master node */
-		      sqlite3_reset (stmt);
-		      sqlite3_clear_bindings (stmt);
-		      sqlite3_bind_int64 (stmt, 1, pid->id);
-		      sqlite3_bind_int (stmt, 2, p->refcount);
-		      sqlite3_bind_int64 (stmt, 3, pid->id);
-		      ret = sqlite3_step (stmt);
-		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  count++;
-		      else
-			{
-			    fprintf (stderr, "sqlite3_step() error: %s\n",
-				     sqlite3_errmsg (handle));
-			    sqlite3_finalize (stmt);
-			    return -1;
-			}
-		  }
+		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
+		sqlite3_int64 osm_id = sqlite3_column_int64 (query_stmt, 1);
+
+		/* udating the GraphNote */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_int64 (update_stmt, 1, osm_id);
+		sqlite3_bind_int64 (update_stmt, 2, id);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
 		else
 		  {
-		      /* disambiguating the node */
-		      sqlite3_reset (stmt);
-		      sqlite3_clear_bindings (stmt);
-		      sqlite3_bind_int64 (stmt, 1, p->first->id);
-		      sqlite3_bind_int (stmt, 2, p->refcount);
-		      sqlite3_bind_int64 (stmt, 3, pid->id);
-		      ret = sqlite3_step (stmt);
-		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-			  count++;
-		      else
-			{
-			    fprintf (stderr, "sqlite3_step() error: %s\n",
-				     sqlite3_errmsg (handle));
-			    sqlite3_finalize (stmt);
-			    return -1;
-			}
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (handle));
+		      goto error;
 		  }
-		pid = pid->next;
 	    }
-	  p = p->next;
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
+		goto error;
+	    }
       }
-/* finalizing the INSERT INTO prepared statement */
-    sqlite3_finalize (stmt);
+
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
 
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
@@ -586,1457 +630,699 @@ disambiguate_nodes (sqlite3 * handle)
       {
 	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
       }
+    return 1;
 
-/* freeing the dup-nodes list */
-    p = first;
-    while (p)
-      {
-	  pn = p->next;
-	  pid = p->first;
-	  while (pid)
-	    {
-		pidn = pid->next;
-		free (pid);
-		pid = pidn;
-	    }
-	  free (p);
-	  p = pn;
-      }
-    return count;
-}
+  error:
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
 
-static int
-parse_way_id (const char *buf, sqlite3_int64 * id)
-{
-/* parsing <way id="value" > */
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 4);
-    while (*p != '\0')
+    ret = sqlite3_exec (handle, "ROLLBACK", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
       {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "id=\"", 4) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		*id = atol_64 (value);
-		return 1;
-	    }
+	  fprintf (stderr, "ROLLBACK TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
       }
     return 0;
 }
 
 static int
-parse_nd_id (const char *buf, sqlite3_int64 * id)
+set_node_ids (sqlite3 * handle, const char *table)
 {
-/* parsing <nd ref="value" > */
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 5);
-    while (*p != '\0')
-      {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "ref=\"", 5) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		*id = atol_64 (value);
-		return 1;
-	    }
-      }
-    return 0;
-}
+/* assigning IDs to Nodes of the Graph */
+    int ret;
+    char *sql_err = NULL;
+    char sql[8192];
+    char sql2[1024];
+    sqlite3_stmt *query_stmt = NULL;
+    sqlite3_stmt *update_stmt = NULL;
 
-static int
-parse_tag_k (const char *buf, char *k)
-{
-/* parsing <tag k="value" > */
-    char value[128];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 3);
-    while (*p != '\0')
+/* the complete operation is handled as a unique SQL Transaction */
+    ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
       {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "k=\"", 3) == 0)
-	    {
-		while (*p != '\"')
-		  {
-		      *out++ = *p++;
-		  }
-		*out = '\0';
-		strcpy (k, value);
-		return 1;
-	    }
+	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
       }
-    return 0;
-}
 
-static void
-from_xml_string (const char *xml, char *clean)
-{
-/* cleans XML markers */
-    char marker[16];
-    char *pm;
-    int is_marker = 0;
-    const char *in = xml;
-    char *out = clean;
-    while (*in != '\0')
+/* querying NodeIds */
+    strcpy (sql, "SELECT w.id, n1.ROWID, n2.ROWID ");
+    sprintf (sql2, "FROM \"%s\" AS w, ", table);
+    strcat (sql, sql2);
+    strcat (sql, "graph_nodes AS n1, graph_nodes AS n2 ");
+    strcat (sql, "WHERE n1.lon = ST_X(ST_StartPoint(w.Geometry)) ");
+    strcat (sql, "AND n1.lat = ST_Y(ST_StartPoint(w.Geometry)) ");
+    strcat (sql, "AND n2.lon = ST_X(ST_EndPoint(w.Geometry)) ");
+    strcat (sql, "AND n2.lat = ST_Y(ST_EndPoint(w.Geometry))");
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &query_stmt, NULL);
+    if (ret != SQLITE_OK)
       {
-	  if (is_marker)
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql, sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+/* updating Arcs */
+    sprintf (sql, "UPDATE \"%s\" SET node_from = ?, node_to = ? ", table);
+    strcat (sql, "WHERE id = ?");
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &update_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql, sqlite3_errmsg (handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
 	    {
-		if (*in == ';')
-		  {
-		      /* closing an XML marker */
-		      in++;
-		      is_marker = 0;
-		      *pm = '\0';
-		      if (strcmp (marker, "&amp") == 0)
-			  *out++ = '&';
-		      if (strcmp (marker, "&lt") == 0)
-			  *out++ = '<';
-		      if (strcmp (marker, "&gt") == 0)
-			  *out++ = '>';
-		      if (strcmp (marker, "&quot") == 0)
-			  *out++ = '"';
-		      if (strcmp (marker, "&apos") == 0)
-			  *out++ = '\'';
-		  }
+		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
+		sqlite3_int64 node_from = sqlite3_column_int64 (query_stmt, 1);
+		sqlite3_int64 node_to = sqlite3_column_int64 (query_stmt, 2);
+
+		/* udating the Arc */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_int64 (update_stmt, 1, node_from);
+		sqlite3_bind_int64 (update_stmt, 2, node_to);
+		sqlite3_bind_int64 (update_stmt, 3, id);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
 		else
-		    *pm++ = *in++;
-		continue;
-	    }
-	  if (*in == '&')
-	    {
-		/* found an XML marker */
-		in++;
-		is_marker = 1;
-		pm = marker;
-		*pm++ = '&';
-		continue;
-	    }
-	  *out++ = *in++;
-      }
-    *out = '\0';
-}
-
-static int
-parse_tag_v (const char *buf, char *v)
-{
-/* parsing <tag v="value" > */
-    char value[8192];
-    char *out = value;
-    const char *p = buf;
-    struct check_tag tag;
-    init_tag (&tag, 3);
-    while (*p != '\0')
-      {
-	  update_tag (&tag, *p);
-	  p++;
-	  if (strncmp (tag.buf, "v=\"", 3) == 0)
-	    {
-		while (*p != '\"')
 		  {
-		      *out++ = *p++;
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (handle));
+		      goto error;
 		  }
-		*out = '\0';
-		from_xml_string (value, v);
-		return 1;
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
+		goto error;
 	    }
       }
-    return 0;
-}
 
-static int
-parse_tag_kv (const char *buf, char *k, char *v)
-{
-/* parsing a <tag> tag */
-    if (!parse_tag_k (buf, k))
-	return 0;
-    if (!parse_tag_v (buf, v))
-	return 0;
-    return 1;
-}
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
 
-static int
-parse_way_tag (const char *buf, struct way *xway)
-{
-/* parsing a <way> tag */
-    int nd = 0;
-    int tg = 0;
-    const char *in;
-    char value[65536];
-    char k[8192];
-    char v[8192];
-    char *p;
-    char c;
-    int opened;
-    int last_c;
-    sqlite3_int64 id;
-    struct check_tag tag;
-    if (!parse_way_id (buf, &(xway->id)))
-	return 0;
-/* parsing the <nd> list */
-    in = buf;
-    init_tag (&tag, 4);
-    while (*in != '\0')
+/* committing the still pending SQL Transaction */
+    ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
       {
-	  c = *in++;
-	  if (nd)
-	    {
-		/* we are inside a <nd> tag */
-		*p++ = c;
-		if (c == '<')
-		    opened++;
-		if (!opened && c == '>' && last_c == '/')
-		  {
-		      /* closing a <nd /> tag */
-		      *p = '\0';
-		      if (!parse_nd_id (value, &id))
-			{
-			    fprintf (stderr, "ERROR: invalid <nd>\n");
-			    return 0;
-			}
-		      else
-			{
-			    struct node_ref *node =
-				malloc (sizeof (struct node_ref));
-			    node->id = id;
-			    node->ignore = 1;
-			    node->next = NULL;
-			    if (xway->first == NULL)
-				xway->first = node;
-			    if (xway->last != NULL)
-				xway->last->next = node;
-			    xway->last = node;
-			}
-		      nd = 0;
-		      continue;
-		  }
-		last_c = c;
-	    }
-	  update_tag (&tag, c);
-	  if (strncmp (tag.buf, "<nd ", 4) == 0)
-	    {
-		/* opening a <nd> tag */
-		nd = 1;
-		last_c = '\0';
-		opened = 0;
-		strcpy (value, "<nd ");
-		p = value + 4;
-		continue;
-	    }
-      }
-/* parsing the <tag> list */
-    in = buf;
-    init_tag (&tag, 5);
-    while (*in != '\0')
-      {
-	  c = *in++;
-	  if (tg)
-	    {
-		/* we are inside a <tag> tag */
-		*p++ = c;
-		if (c == '<')
-		    opened++;
-		if (!opened && c == '>' && last_c == '/')
-		  {
-		      /* closing a <tag /> tag */
-		      *p = '\0';
-		      if (!parse_tag_kv (value, k, v))
-			{
-			    fprintf (stderr, "ERROR: invalid <tag>\n");
-			    return 0;
-			}
-		      else
-			{
-			    struct kv *key_value = malloc (sizeof (struct kv));
-			    key_value->k = malloc (strlen (k) + 1);
-			    strcpy (key_value->k, k);
-			    key_value->v = malloc (strlen (v) + 1);
-			    strcpy (key_value->v, v);
-			    key_value->next = NULL;
-			    if (xway->first_kv == NULL)
-				xway->first_kv = key_value;
-			    if (xway->last_kv != NULL)
-				xway->last_kv->next = key_value;
-			    xway->last_kv = key_value;
-			}
-		      tg = 0;
-		      continue;
-		  }
-		last_c = c;
-	    }
-	  update_tag (&tag, c);
-	  if (strncmp (tag.buf, "<tag ", 5) == 0)
-	    {
-		/* opening a <tag> tag */
-		tg = 1;
-		last_c = '\0';
-		opened = 0;
-		strcpy (value, "<tag ");
-		p = value + 5;
-		continue;
-	    }
+	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
       }
     return 1;
-}
 
-static void
-clean_way (struct way *xway)
-{
-/* memory clean up */
-    struct node_ref *p;
-    struct node_ref *pn;
-    struct kv *pkv;
-    struct kv *pkvn;
-    struct arc *pa;
-    struct arc *pan;
-    p = xway->first;
-    while (p)
-      {
-	  pn = p->next;
-	  free (p);
-	  p = pn;
-      }
-    xway->first = NULL;
-    xway->last = NULL;
-    pkv = xway->first_kv;
-    while (pkv)
-      {
-	  pkvn = pkv->next;
-	  free (pkv->k);
-	  free (pkv->v);
-	  free (pkv);
-	  pkv = pkvn;
-      }
-    xway->first_kv = NULL;
-    xway->last_kv = NULL;
-    pa = xway->first_arc;
-    while (pa)
-      {
-	  pan = pa->next;
-	  if (pa->dyn)
-	      gaiaFreeDynamicLine (pa->dyn);
-	  if (pa->geom)
-	      gaiaFreeGeomColl (pa->geom);
-	  free (pa);
-	  pa = pan;
-      }
-    xway->first_arc = NULL;
-    xway->last_arc = NULL;
-    if (xway->class)
-	free (xway->class);
-    xway->class = NULL;
-    if (xway->name)
-	free (xway->name);
-    xway->name = NULL;
-}
+  error:
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
 
-static void
-set_way_name (struct way *xway)
-{
-/* trying to fetch the road name */
-    struct kv *pkv;
-    pkv = xway->first_kv;
-    while (pkv)
+    ret = sqlite3_exec (handle, "ROLLBACK", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
       {
-	  if (strcmp (pkv->k, "name") == 0)
-	    {
-		if (xway->name)
-		    free (xway->name);
-		xway->name = malloc (strlen (pkv->v) + 1);
-		strcpy (xway->name, pkv->v);
-		return;
-	    }
-	  if (strcmp (pkv->k, "ref") == 0)
-	    {
-		if (xway->name == NULL)
-		  {
-		      xway->name = malloc (strlen (pkv->v) + 1);
-		      strcpy (xway->name, pkv->v);
-		      return;
-		  }
-	    }
-	  pkv = pkv->next;
-      }
-}
-
-static int
-is_valid_way (const char *key, const char *class, int railways)
-{
-/* checks if this one is an valid road to be included into the network */
-    if (strcmp (key, "highway") == 0 && !railways)
-      {
-	  if (strcmp (class, "pedestrian") == 0)
-	      return 0;
-	  if (strcmp (class, "track") == 0)
-	      return 0;
-	  if (strcmp (class, "services") == 0)
-	      return 0;
-	  if (strcmp (class, "bus_guideway") == 0)
-	      return 0;
-	  if (strcmp (class, "path") == 0)
-	      return 0;
-	  if (strcmp (class, "cycleway") == 0)
-	      return 0;
-	  if (strcmp (class, "footway") == 0)
-	      return 0;
-	  if (strcmp (class, "bridleway") == 0)
-	      return 0;
-	  if (strcmp (class, "byway") == 0)
-	      return 0;
-	  if (strcmp (class, "steps") == 0)
-	      return 0;
-	  return 1;
-      }
-    if (strcmp (key, "railway") == 0 && railways)
-      {
-	  return 1;
-      }
-    return 0;
-}
-
-static void
-set_oneway (struct way *xway)
-{
-/* setting up the oneway markers */
-    struct kv *pkv;
-    xway->oneway = 0;
-    xway->reverse = 0;
-    pkv = xway->first_kv;
-    while (pkv)
-      {
-	  if (strcmp (pkv->k, "oneway") == 0)
-	    {
-		if (strcmp (pkv->v, "yes") == 0 || strcmp (pkv->v, "yes") == 0
-		    || strcmp (pkv->v, "1") == 0)
-		  {
-		      xway->oneway = 1;
-		      xway->reverse = 0;
-		  }
-		if (strcmp (pkv->v, "-1") == 0)
-		  {
-		      xway->oneway = 1;
-		      xway->reverse = 1;
-		  }
-	    }
-	  pkv = pkv->next;
-      }
-}
-
-static int
-check_way (struct way *xway, int railways)
-{
-/* checks if <way> is interesting to build the road network */
-    struct kv *pkv;
-    pkv = xway->first_kv;
-    while (pkv)
-      {
-	  if (is_valid_way (pkv->k, pkv->v, railways))
-	    {
-		xway->class = malloc (strlen (pkv->v) + 1);
-		strcpy (xway->class, pkv->v);
-		set_way_name (xway);
-		set_oneway (xway);
-		return 1;
-	    }
-	  pkv = pkv->next;
-      }
-    return 0;
-}
-
-static sqlite3_int64
-find_node (struct way *xway, double lon, double lat)
-{
-/* finding a node by coords */
-    struct node_ref *p = xway->first;
-    while (p)
-      {
-	  if (p->ignore == 0)
-	    {
-		if (p->lon == lon && p->lat == lat)
-		    return p->alias;
-	    }
-	  p = p->next;
+	  fprintf (stderr, "ROLLBACK TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
       }
     return 0;
 }
 
 static double
-compute_time (const char *class, double length)
+compute_cost (struct aux_params *params, const char *class, double length)
 {
-/* computing traval time */
-    double speed = 30.0;	/* speed, in Km/h */
+/* computing the travel time [cost] */
+    double speed = params->default_speed;	/* speed, in Km/h */
     double msec;
-    if (strcmp (class, "motorway") == 0 || strcmp (class, "trunk") == 0)
-	speed = 110;
-    if (strcmp (class, "primary") == 0)
-	speed = 90;
-    if (strcmp (class, "secondary") == 0)
-	speed = 70;
-    if (strcmp (class, "tertiary") == 0)
-	speed = 50;
+
+    if (class != NULL)
+      {
+	  struct aux_speed *ps = params->first_speed;
+	  while (ps)
+	    {
+		if (strcmp (ps->class_name, class) == 0)
+		  {
+		      speed = ps->speed;
+		      break;
+		  }
+		ps = ps->next;
+	    }
+      }
+
     msec = speed * 1000.0 / 3600.0;	/* transforming speed in m/sec */
     return length / msec;
 }
 
 static int
-build_geometry (sqlite3 * handle, struct way *xway)
+set_lengths_costs (struct aux_params *params, const char *table)
 {
-/* building geometry representing an ARC */
-    int ret;
-    sqlite3_stmt *stmt;
-    sqlite3_int64 id;
-    sqlite3_int64 alias;
-    int refcount;
-    double lon;
-    double lat;
-    char sql[8192];
-    int ind;
-    int points = 0;
-    int tbd;
-    int count;
-    int base = 0;
-    int block = 128;
-    int how_many;
-    struct node_ref *p;
-    struct node_ref *prev;
-    struct arc *pa;
-    gaiaLinestringPtr line;
-    double a;
-    double b;
-    double rf;
-    p = xway->first;
-    while (p)
-      {
-	  points++;
-	  p = p->next;
-      }
-    if (points < 2)
-      {
-	  /* discarding stupid degenerated lines - oh yes, there are lots of them !!! */
-	  return -1;
-      }
-    tbd = points;
-    while (tbd > 0)
-      {
-	  /* 
-	     / fetching node coords
-	     / requesting max 128 points at each time 
-	   */
-	  if (tbd < block)
-	      how_many = tbd;
-	  else
-	      how_many = block;
-	  strcpy (sql,
-		  "SELECT id, alias, lat, lon, refcount FROM osm_tmp_nodes ");
-	  strcat (sql, "WHERE id IN (");
-	  for (ind = 0; ind < how_many; ind++)
-	    {
-		if (ind == 0)
-		    strcat (sql, "?");
-		else
-		    strcat (sql, ",?");
-	    }
-	  strcat (sql, ")");
-	  ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
-	  if (ret != SQLITE_OK)
-	    {
-		fprintf (stderr, "SQL error: %s\n%s\n", sql,
-			 sqlite3_errmsg (handle));
-		return 0;
-	    }
-	  sqlite3_reset (stmt);
-	  sqlite3_clear_bindings (stmt);
-	  ind = 1;
-	  count = 0;
-	  p = xway->first;
-	  while (p)
-	    {
-		if (count < base)
-		  {
-		      count++;
-		      p = p->next;
-		      continue;
-		  }
-		if (count >= (base + how_many))
-		    break;
-		sqlite3_bind_int64 (stmt, ind, p->id);
-		ind++;
-		count++;
-		p = p->next;
-	    }
-	  while (1)
-	    {
-		/* scrolling the result set */
-		ret = sqlite3_step (stmt);
-		if (ret == SQLITE_DONE)
-		  {
-		      /* there are no more rows to fetch - we can stop looping */
-		      break;
-		  }
-		if (ret == SQLITE_ROW)
-		  {
-		      /* ok, we've just fetched a valid row */
-		      id = sqlite3_column_int64 (stmt, 0);
-		      alias = sqlite3_column_int64 (stmt, 1);
-		      lat = sqlite3_column_double (stmt, 2);
-		      lon = sqlite3_column_double (stmt, 3);
-		      refcount = sqlite3_column_int (stmt, 4);
-		      p = xway->first;
-		      while (p)
-			{
-			    if (p->id == id)
-			      {
-				  p->lat = lat;
-				  p->lon = lon;
-				  p->alias = alias;
-				  p->refcount = refcount;
-				  p->ignore = 0;
-			      }
-			    p = p->next;
-			}
-		  }
-		else
-		  {
-		      /* some unexpected error occurred */
-		      fprintf (stderr, "sqlite3_step() error: %s\n",
-			       sqlite3_errmsg (handle));
-		      sqlite3_finalize (stmt);
-		      return 0;
-		  }
-	    }
-	  sqlite3_finalize (stmt);
-	  tbd -= how_many;
-	  base += how_many;
-      }
-    prev = NULL;
-    p = xway->first;
-    while (p)
-      {
-	  /* marking repeated points as invalid */
-	  if (p->ignore)
-	    {
-		p = p->next;
-		continue;
-	    }
-	  if (prev)
-	    {
-		if (p->lon == prev->lon && p->lat == prev->lat)
-		    p->ignore = 1;
-	    }
-	  prev = p;
-	  p = p->next;
-      }
-    points = 0;
-    p = xway->first;
-    while (p)
-      {
-	  if (p->ignore == 0)
-	      points++;
-	  p = p->next;
-      }
-    if (points < 2)
-      {
-	  /* discarding stupid degenerated lines - oh yes, there are lots of them !!! */
-	  return -1;
-      }
-/* creating a new ARC */
-    pa = malloc (sizeof (struct arc));
-    pa->geom = NULL;
-    pa->next = NULL;
-    xway->first_arc = pa;
-    xway->last_arc = pa;
-    pa->dyn = gaiaAllocDynamicLine ();
-    p = xway->first;
-    while (p)
-      {
-	  /* setting up dynamic lines */
-	  if (p->ignore)
-	    {
-		/* skipping invalid points */
-		p = p->next;
-		continue;
-	    }
-	  if (pa->dyn->First == NULL)
-	      pa->from = p->alias;
-	  gaiaAppendPointToDynamicLine (pa->dyn, p->lon, p->lat);
-	  pa->to = p->alias;
-	  if (p != xway->first && p != xway->last)
-	    {
-		if (p->refcount > 1)
-		  {
-		      /* found a graph NODE: creating a new ARC */
-		      pa = malloc (sizeof (struct arc));
-		      pa->geom = NULL;
-		      pa->next = NULL;
-		      xway->last_arc->next = pa;
-		      xway->last_arc = pa;
-		      pa->from = p->alias;
-		      pa->to = p->alias;
-		      pa->dyn = gaiaAllocDynamicLine ();
-		      gaiaAppendPointToDynamicLine (pa->dyn, p->lon, p->lat);
-		  }
-	    }
-	  p = p->next;
-      }
-    pa = xway->first_arc;
-    while (pa)
-      {
-	  /* splitting self-closed arcs [rings] */
-	  if (pa->dyn->First == NULL)
-	    {
-		/* skipping empty lines */
-		pa = pa->next;
-		continue;
-	    }
-	  if (pa->dyn->First == pa->dyn->Last)
-	    {
-		/* skipping one-point-only lines */
-		pa = pa->next;
-		continue;
-	    }
-	  if (pa->dyn->First->X == pa->dyn->Last->X
-	      && pa->dyn->First->Y == pa->dyn->Last->Y)
-	    {
-		/* found a self-closure */
-		gaiaDynamicLinePtr saved = pa->dyn;
-		struct arc *pbis;
-		gaiaPointPtr pt;
-		int limit;
-		sqlite3_int64 node_id;
-		points = 0;
-		pt = saved->First;
-		while (pt)
-		  {
-		      /* counting how many points are there */
-		      points++;
-		      pt = pt->Next;
-		  }
-		limit = points / 2;
-		/* appending a new arc */
-		pbis = malloc (sizeof (struct arc));
-		pbis->geom = NULL;
-		pbis->next = NULL;
-		xway->last_arc->next = pbis;
-		xway->last_arc = pbis;
-		pbis->to = pa->to;
-		pbis->dyn = gaiaAllocDynamicLine ();
-		pa->dyn = gaiaAllocDynamicLine ();
-		ind = 0;
-		pt = saved->First;
-		while (pt)
-		  {
-		      /* appending points */
-		      if (ind < limit)
-			  gaiaAppendPointToDynamicLine (pa->dyn, pt->X, pt->Y);
-		      else if (ind == limit)
-			{
-			    gaiaAppendPointToDynamicLine (pa->dyn, pt->X,
-							  pt->Y);
-			    gaiaAppendPointToDynamicLine (pbis->dyn, pt->X,
-							  pt->Y);
-			    node_id = find_node (xway, pt->X, pt->Y);
-			}
-		      else
-			  gaiaAppendPointToDynamicLine (pbis->dyn, pt->X,
-							pt->Y);
-		      ind++;
-		      pt = pt->Next;
-		  }
-		/* adjusting the node */
-		pa->to = node_id;
-		pbis->from = node_id;
-		gaiaFreeDynamicLine (saved);
-	    }
-	  pa = pa->next;
-      }
-    gaiaEllipseParams ("WGS84", &a, &b, &rf);
-    pa = xway->first_arc;
-    while (pa)
-      {
-	  /* setting up geometries */
-	  gaiaPointPtr pt;
-	  if (pa->dyn->First == NULL)
-	    {
-		/* skipping empty lines */
-		pa = pa->next;
-		continue;
-	    }
-	  if (pa->dyn->First == pa->dyn->Last)
-	    {
-		/* skipping one-point-only lines */
-		pa = pa->next;
-		continue;
-	    }
-	  points = 0;
-	  pt = pa->dyn->First;
-	  while (pt)
-	    {
-		/* counting how many points are there */
-		points++;
-		pt = pt->Next;
-	    }
-	  pa->geom = gaiaAllocGeomColl ();
-	  pa->geom->Srid = 4326;
-	  line = gaiaAddLinestringToGeomColl (pa->geom, points);
-	  ind = 0;
-	  pt = pa->dyn->First;
-	  while (pt)
-	    {
-		/* setting up linestring coords */
-		gaiaSetPoint (line->Coords, ind, pt->X, pt->Y);
-		ind++;
-		pt = pt->Next;
-	    }
-	  gaiaFreeDynamicLine (pa->dyn);
-	  pa->dyn = NULL;
-	  pa->length =
-	      gaiaGreatCircleTotalLength (a, b,
-					  pa->geom->FirstLinestring->
-					  DimensionModel,
-					  pa->geom->FirstLinestring->Coords,
-					  pa->geom->FirstLinestring->Points);
-	  pa->cost = compute_time (xway->class, pa->length);
-	  pa = pa->next;
-      }
-    return 1;
-}
-
-static int
-insert_arc_bidir (sqlite3 * handle, sqlite3_stmt * stmt, struct way *xway,
-		  struct arc *xarc)
-{
-/* inserting a bidirectional ARC [OSM road] into the DB */
-    int ret;
-    unsigned char *blob;
-    int blob_size;
-    const char *unknown = "unknown";
-    sqlite3_reset (stmt);
-    sqlite3_clear_bindings (stmt);
-    sqlite3_bind_int64 (stmt, 1, xway->id);
-    sqlite3_bind_text (stmt, 2, xway->class, strlen (xway->class),
-		       SQLITE_STATIC);
-    sqlite3_bind_int64 (stmt, 3, xarc->from);
-    sqlite3_bind_int64 (stmt, 4, xarc->to);
-    if (xway->name)
-	sqlite3_bind_text (stmt, 5, xway->name, strlen (xway->name),
-			   SQLITE_STATIC);
-    else
-	sqlite3_bind_text (stmt, 5, unknown, strlen (unknown), SQLITE_STATIC);
-    if (xway->oneway)
-      {
-	  /* oneway arc */
-	  if (xway->reverse)
-	    {
-		/* reverse */
-		sqlite3_bind_int (stmt, 6, 0);
-		sqlite3_bind_int (stmt, 7, 1);
-	    }
-	  else
-	    {
-		/* conformant */
-		sqlite3_bind_int (stmt, 6, 1);
-		sqlite3_bind_int (stmt, 7, 0);
-	    }
-      }
-    else
-      {
-	  /* bidirectional arc */
-	  sqlite3_bind_int (stmt, 6, 1);
-	  sqlite3_bind_int (stmt, 7, 1);
-      }
-    sqlite3_bind_double (stmt, 8, xarc->length);
-    sqlite3_bind_double (stmt, 9, xarc->cost);
-    gaiaToSpatiaLiteBlobWkb (xarc->geom, &blob, &blob_size);
-    sqlite3_bind_blob (stmt, 10, blob, blob_size, free);
-    ret = sqlite3_step (stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	return 1;
-    fprintf (stderr, "sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
-    sqlite3_finalize (stmt);
-    return 0;
-}
-
-static int
-insert_arc_unidir (sqlite3 * handle, sqlite3_stmt * stmt, struct way *xway,
-		   struct arc *xarc)
-{
-/* inserting an unidirectional ARC [OSM road] into the DB */
-    int ret;
-    unsigned char *blob;
-    int blob_size;
-    const char *unknown = "unknown";
-    int straight = 0;
-    int reverse = 0;
-    int count = 0;
-    if (xway->oneway)
-      {
-	  /* oneway arc */
-	  if (xway->reverse)
-	    {
-		/* reverse */
-		reverse = 1;
-	    }
-	  else
-	    {
-		/* conformant */
-		straight = 1;
-	    }
-      }
-    else
-      {
-	  /* bidirectional arc */
-	  straight = 1;
-	  reverse = 1;
-      }
-    if (straight)
-      {
-	  /* inserting to FromTo arc */
-	  sqlite3_reset (stmt);
-	  sqlite3_clear_bindings (stmt);
-	  sqlite3_bind_int64 (stmt, 1, xway->id);
-	  sqlite3_bind_text (stmt, 2, xway->class, strlen (xway->class),
-			     SQLITE_STATIC);
-	  sqlite3_bind_int64 (stmt, 3, xarc->from);
-	  sqlite3_bind_int64 (stmt, 4, xarc->to);
-	  if (xway->name)
-	      sqlite3_bind_text (stmt, 5, xway->name, strlen (xway->name),
-				 SQLITE_STATIC);
-	  else
-	      sqlite3_bind_text (stmt, 5, unknown, strlen (unknown),
-				 SQLITE_STATIC);
-	  sqlite3_bind_double (stmt, 6, xarc->length);
-	  sqlite3_bind_double (stmt, 7, xarc->cost);
-	  gaiaToSpatiaLiteBlobWkb (xarc->geom, &blob, &blob_size);
-	  sqlite3_bind_blob (stmt, 8, blob, blob_size, free);
-	  ret = sqlite3_step (stmt);
-	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      count++;
-	  else
-	    {
-		fprintf (stderr, "sqlite3_step() error: %s\n",
-			 sqlite3_errmsg (handle));
-		sqlite3_finalize (stmt);
-		return 0;
-	    }
-      }
-    if (reverse)
-      {
-	  /* inserting to ToFrom arc */
-	  gaiaLinestringPtr ln1;
-	  gaiaLinestringPtr ln2;
-	  int iv;
-	  int iv2;
-	  double x;
-	  double y;
-	  sqlite3_reset (stmt);
-	  sqlite3_clear_bindings (stmt);
-	  sqlite3_bind_int64 (stmt, 1, xway->id);
-	  sqlite3_bind_text (stmt, 2, xway->class, strlen (xway->class),
-			     SQLITE_STATIC);
-	  sqlite3_bind_int64 (stmt, 3, xarc->to);
-	  sqlite3_bind_int64 (stmt, 4, xarc->from);
-	  if (xway->name)
-	      sqlite3_bind_text (stmt, 5, xway->name, strlen (xway->name),
-				 SQLITE_STATIC);
-	  else
-	      sqlite3_bind_text (stmt, 5, unknown, strlen (unknown),
-				 SQLITE_STATIC);
-	  /* reversing the linestring */
-	  ln1 = xarc->geom->FirstLinestring;
-	  ln2 = gaiaAllocLinestring (ln1->Points);
-	  xarc->geom->FirstLinestring = ln2;
-	  iv2 = 0;
-	  for (iv = ln1->Points - 1; iv >= 0; iv--)
-	    {
-		gaiaGetPoint (ln1->Coords, iv, &x, &y);
-		gaiaSetPoint (ln2->Coords, iv2, x, y);
-		iv2++;
-	    }
-	  gaiaFreeLinestring (ln1);
-	  sqlite3_bind_double (stmt, 6, xarc->length);
-	  sqlite3_bind_double (stmt, 7, xarc->cost);
-	  gaiaToSpatiaLiteBlobWkb (xarc->geom, &blob, &blob_size);
-	  sqlite3_bind_blob (stmt, 8, blob, blob_size, free);
-	  ret = sqlite3_step (stmt);
-	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      count++;
-	  else
-	    {
-		fprintf (stderr, "sqlite3_step() error: %s\n",
-			 sqlite3_errmsg (handle));
-		sqlite3_finalize (stmt);
-		return 0;
-	    }
-      }
-    return count;
-}
-
-static int
-parse_ways_pass_2 (FILE * xml, sqlite3 * handle, const char *table,
-		   int double_arcs, char *value, int railways)
-{
-/* parsing <way> tags from XML file - Step II */
-    sqlite3_stmt *stmt;
+/* assigning lengths and costs to each Arc of the Graph */
     int ret;
     char *sql_err = NULL;
-    struct way xway;
-    int way = 0;
-    int count = 0;
-    int c;
-    char *p;
-    struct check_tag tag;
-    struct arc *xarc;
-    init_tag (&tag, 5);
-    xway.first = NULL;
-    xway.last = NULL;
-    xway.first_kv = NULL;
-    xway.last_kv = NULL;
-    xway.first_arc = NULL;
-    xway.last_arc = NULL;
-    xway.class = NULL;
-    xway.name = NULL;
+    char sql[8192];
+    char sql2[1024];
+    sqlite3_stmt *query_stmt = NULL;
+    sqlite3_stmt *update_stmt = NULL;
 
-/* the complete operation is handled as an unique SQL Transaction */
-    ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
+/* the complete operation is handled as a unique SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
+	  return 0;
       }
 
-/* preparing the SQL statement */
-    if (double_arcs)
-      {
-	  /* unidirectional arcs */
-	  sprintf (value, "INSERT OR IGNORE INTO \"%s\" ", table);
-	  strcat (value, "(id, osm_id, class, node_from, node_to, name, ");
-	  strcat (value, "length, cost, geometry) VALUES ");
-	  strcat (value, "(NULL, ?, ?, ?, ?, ?, ?, ?, ?)");
-      }
-    else
-      {
-	  /* bidirectional arcs */
-	  sprintf (value, "INSERT OR IGNORE INTO \"%s\" ", table);
-	  strcat (value, "(id, osm_id, class, node_from, node_to, name, ");
-	  strcat (value,
-		  "oneway_fromto, oneway_tofrom, length, cost, geometry) ");
-	  strcat (value, "VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-      }
-    ret = sqlite3_prepare_v2 (handle, value, strlen (value), &stmt, NULL);
+/* querying Arcs */
+    strcpy (sql, "SELECT id, class, GreatCircleLength(Geometry) ");
+    sprintf (sql2, "FROM \"%s\"", table);
+    strcat (sql, sql2);
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &query_stmt, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "SQL error: %s\n%s\n", value,
-		   sqlite3_errmsg (handle));
-	  return -1;
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
       }
 
-    while ((c = getc (xml)) != EOF)
+/* updating Arcs */
+    sprintf (sql, "UPDATE \"%s\" SET length = ?, cost = ? ", table);
+    strcat (sql, "WHERE id = ?");
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &update_stmt, NULL);
+    if (ret != SQLITE_OK)
       {
-	  if (way)
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
 	    {
-		/* we are inside a <way> tag */
-		*p++ = c;
-	    }
-	  update_tag (&tag, c);
-	  if (strncmp (tag.buf, "<way ", 5) == 0)
-	    {
-		/* opening a <way> tag */
-		way = 1;
-		strcpy (value, "<way ");
-		p = value + 5;
-		continue;
-	    }
-	  if (strncmp (tag.buf, "</way", 5) == 0)
-	    {
-		/* closing a <way> tag */
-		*p = '\0';
-		if (!parse_way_tag (value, &xway))
-		  {
-		      clean_way (&xway);
-		      fprintf (stderr, "ERROR: invalid <way>\n");
-		      sqlite3_finalize (stmt);
-		      return -1;
-		  }
+		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
+		const char *class = sqlite3_column_text (query_stmt, 1);
+		double length = sqlite3_column_double (query_stmt, 2);
+		double cost = compute_cost (params, class, length);
+
+		/* udating the Arc */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_double (update_stmt, 1, length);
+		sqlite3_bind_double (update_stmt, 2, cost);
+		sqlite3_bind_int64 (update_stmt, 3, id);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
 		else
 		  {
-		      if (check_way (&xway, railways))
-			{
-			    ret = build_geometry (handle, &xway);
-			    if (ret == 0)
-			      {
-				  fprintf (stderr,
-					   "ERROR: invalid geometry <way>\n");
-				  clean_way (&xway);
-				  sqlite3_finalize (stmt);
-				  return -1;
-			      }
-			    else if (ret < 0)
-				;
-			    else
-			      {
-				  xarc = xway.first_arc;
-				  while (xarc)
-				    {
-					if (xarc->geom == NULL)
-					  {
-					      /* skipping empty geometries */
-					      xarc = xarc->next;
-					      continue;
-					  }
-					if (double_arcs)
-					    ret =
-						insert_arc_unidir (handle, stmt,
-								   &xway, xarc);
-					else
-					    ret =
-						insert_arc_bidir (handle, stmt,
-								  &xway, xarc);
-					if (!ret)
-					  {
-					      clean_way (&xway);
-					      sqlite3_finalize (stmt);
-					      return -1;
-					  }
-					count += ret;
-					xarc = xarc->next;
-				    }
-			      }
-			}
-		      clean_way (&xway);
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
 		  }
-		way = 0;
-		continue;
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n",
+			sqlite3_errmsg (params->db_handle));
+		goto error;
 	    }
       }
-/* finalizing the INSERT INTO prepared statement */
-    sqlite3_finalize (stmt);
+
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
 
 /* committing the still pending SQL Transaction */
-    ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
+    ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
-      }
-    return count;
-}
-
-static int
-pre_check_way (struct way *xway, int railways)
-{
-/* checks if <way> is interesting to build the road network */
-    struct kv *pkv;
-    pkv = xway->first_kv;
-    while (pkv)
-      {
-	  if (is_valid_way (pkv->k, pkv->v, railways))
-	      return 1;
-	  pkv = pkv->next;
-      }
-    return 0;
-}
-
-static int
-update_node (sqlite3 * handle, sqlite3_stmt * stmt, sqlite3_int64 id)
-{
-/* updating the node reference count */
-    int ret;
-    sqlite3_reset (stmt);
-    sqlite3_clear_bindings (stmt);
-    sqlite3_bind_int64 (stmt, 1, id);
-    ret = sqlite3_step (stmt);
-    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	return 1;
-    fprintf (stderr, "sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
-    sqlite3_finalize (stmt);
-    return 0;
-}
-
-static int
-mark_nodes (sqlite3 * handle, sqlite3_stmt * stmt_upd, struct way *xway)
-{
-/* examining the node-reference list representing an ARC */
-    int ret;
-    sqlite3_stmt *stmt;
-    sqlite3_int64 id;
-    double lon;
-    double lat;
-    char sql[8192];
-    int ind;
-    int points = 0;
-    int tbd;
-    int count;
-    int base = 0;
-    int block = 128;
-    int how_many;
-    struct node_ref *p;
-    p = xway->first;
-    while (p)
-      {
-	  points++;
-	  p = p->next;
-      }
-    tbd = points;
-    while (tbd > 0)
-      {
-	  /* requesting max 128 points at each time */
-	  if (tbd < block)
-	      how_many = tbd;
-	  else
-	      how_many = block;
-	  strcpy (sql, "SELECT id, lat, lon FROM osm_tmp_nodes ");
-	  strcat (sql, "WHERE id IN (");
-	  for (ind = 0; ind < how_many; ind++)
-	    {
-		if (ind == 0)
-		    strcat (sql, "?");
-		else
-		    strcat (sql, ",?");
-	    }
-	  strcat (sql, ")");
-	  ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
-	  if (ret != SQLITE_OK)
-	    {
-		fprintf (stderr, "SQL error: %s\n%s\n", sql,
-			 sqlite3_errmsg (handle));
-		return 0;
-	    }
-	  sqlite3_reset (stmt);
-	  sqlite3_clear_bindings (stmt);
-	  ind = 1;
-	  count = 0;
-	  p = xway->first;
-	  while (p)
-	    {
-		if (count < base)
-		  {
-		      count++;
-		      p = p->next;
-		      continue;
-		  }
-		if (count >= (base + how_many))
-		    break;
-		sqlite3_bind_int64 (stmt, ind, p->id);
-		ind++;
-		count++;
-		p = p->next;
-	    }
-	  while (1)
-	    {
-		/* scrolling the result set */
-		ret = sqlite3_step (stmt);
-		if (ret == SQLITE_DONE)
-		  {
-		      /* there are no more rows to fetch - we can stop looping */
-		      break;
-		  }
-		if (ret == SQLITE_ROW)
-		  {
-		      /* ok, we've just fetched a valid row */
-		      id = sqlite3_column_int (stmt, 0);
-		      lat = sqlite3_column_double (stmt, 1);
-		      lon = sqlite3_column_double (stmt, 2);
-		      p = xway->first;
-		      while (p)
-			{
-			    if (p->id == id)
-			      {
-				  p->lat = lat;
-				  p->lon = lon;
-				  p->ignore = 0;
-			      }
-			    p = p->next;
-			}
-		  }
-		else
-		  {
-		      /* some unexpected error occurred */
-		      fprintf (stderr, "sqlite3_step() error: %s\n",
-			       sqlite3_errmsg (handle));
-		      sqlite3_finalize (stmt);
-		      return 0;
-		  }
-	    }
-	  sqlite3_finalize (stmt);
-	  tbd -= how_many;
-	  base += how_many;
-      }
-    p = xway->first;
-    while (p)
-      {
-	  /* updating nodes ref-count */
-	  if (p->ignore == 0)
-	      update_node (handle, stmt_upd, p->id);
-	  p = p->next;
       }
     return 1;
+
+  error:
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
+
+    ret = sqlite3_exec (params->db_handle, "ROLLBACK", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "ROLLBACK TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+      }
+    return 0;
 }
 
 static int
-parse_ways_pass_1 (FILE * xml, sqlite3 * handle, char *value, int railways)
+create_qualified_nodes (struct aux_params *params, const char *table)
 {
-/* parsing <way> tags from XML file - Pass I */
-    sqlite3_stmt *stmt;
+/* creating and feeding the helper table representing Nodes of the Graph */
     int ret;
     char *sql_err = NULL;
-    struct way xway;
-    int way = 0;
-    int count = 0;
-    int c;
-    char *p;
-    struct check_tag tag;
-    init_tag (&tag, 5);
-    xway.first = NULL;
-    xway.last = NULL;
-    xway.first_kv = NULL;
-    xway.last_kv = NULL;
-    xway.first_arc = NULL;
-    xway.last_arc = NULL;
-    xway.class = NULL;
-    xway.name = NULL;
+    char sql[8192];
+    char sql2[1024];
+    sqlite3_stmt *query_stmt = NULL;
+    sqlite3_stmt *insert_stmt = NULL;
+    sqlite3_stmt *update_stmt = NULL;
+    char *err_msg = NULL;
 
-/* the complete operation is handled as an unique SQL Transaction */
-    ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
+    printf ("\nCreating helper table '%s_nodes' ... wait please ...\n", table);
+    sprintf (sql, "CREATE TABLE \"%s_nodes\" (\n", table);
+    strcat (sql, "node_id INTEGER NOT NULL PRIMARY KEY,\n");
+    strcat (sql, "osm_id INTEGER,\n");
+    strcat (sql, "cardinality INTEGER NOT NULL)\n");
+    ret = sqlite3_exec (params->db_handle, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "CREATE TABLE '%s_nodes' error: %s\n", table,
+		   err_msg);
+	  sqlite3_free (err_msg);
+	  sqlite3_close (params->db_handle);
+	  return 0;
+      }
+
+    sprintf (sql, "SELECT AddGeometryColumn('%s_nodes', 'geometry', ", table);
+    strcat (sql, " 4326, 'POINT', 'XY')");
+    ret = sqlite3_exec (params->db_handle, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "AddGeometryColumn() error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  sqlite3_close (params->db_handle);
+	  return 0;
+      }
+
+/* the complete operation is handled as a unique SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
+	  return 0;
       }
-/* preparing the SQL statement */
-    strcpy (value, "UPDATE osm_tmp_nodes SET refcount = refcount + 1 ");
-    strcat (value, "WHERE id = ?");
-    ret = sqlite3_prepare_v2 (handle, value, strlen (value), &stmt, NULL);
+
+/* querying Arcs */
+    strcpy (sql, "SELECT node_from, ST_StartPoint(Geometry), ");
+    strcat (sql, "node_to, ST_EndPoint(Geometry) ");
+    sprintf (sql2, "FROM \"%s\"", table);
+    strcat (sql, sql2);
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &query_stmt, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "SQL error: %s\n%s\n", value,
-		   sqlite3_errmsg (handle));
-	  return -1;
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
       }
 
-    while ((c = getc (xml)) != EOF)
+/* Inserting Nodes */
+    sprintf (sql,
+	     "INSERT OR IGNORE INTO \"%s_nodes\" (node_id, cardinality, geometry) ",
+	     table);
+    strcat (sql, "VALUES (?, 0, ?)");
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &insert_stmt, NULL);
+    if (ret != SQLITE_OK)
       {
-	  if (way)
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
 	    {
-		/* we are inside a <way> tag */
-		*p++ = c;
-	    }
-	  update_tag (&tag, c);
-	  if (strncmp (tag.buf, "<way ", 5) == 0)
-	    {
-		/* opening a <way> tag */
-		way = 1;
-		strcpy (value, "<way ");
-		p = value + 5;
-		continue;
-	    }
-	  if (strncmp (tag.buf, "</way", 5) == 0)
-	    {
-		/* closing a <way> tag */
-		*p = '\0';
-		if (!parse_way_tag (value, &xway))
-		  {
-		      clean_way (&xway);
-		      fprintf (stderr, "ERROR: invalid <way>\n");
-		      return -1;
-		  }
+		sqlite3_int64 id1 = sqlite3_column_int64 (query_stmt, 0);
+		const void *blob1 = sqlite3_column_blob (query_stmt, 1);
+		int len1 = sqlite3_column_bytes (query_stmt, 1);
+		sqlite3_int64 id2 = sqlite3_column_int64 (query_stmt, 2);
+		const void *blob2 = sqlite3_column_blob (query_stmt, 3);
+		int len2 = sqlite3_column_bytes (query_stmt, 3);
+
+		/* inserting the Node (from) */
+		sqlite3_reset (insert_stmt);
+		sqlite3_clear_bindings (insert_stmt);
+		sqlite3_bind_int64 (insert_stmt, 1, id1);
+		sqlite3_bind_blob (insert_stmt, 2, blob1, len1, SQLITE_STATIC);
+		ret = sqlite3_step (insert_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
 		else
 		  {
-		      if (pre_check_way (&xway, railways))
-			{
-			    if (!mark_nodes (handle, stmt, &xway))
-			      {
-				  fprintf (stderr,
-					   "ERROR: invalid node-reference list: <way>\n");
-				  clean_way (&xway);
-				  return -1;
-			      }
-			    count++;
-			}
-		      clean_way (&xway);
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
 		  }
-		way = 0;
-		continue;
+
+		/* inserting the Node (to) */
+		sqlite3_reset (insert_stmt);
+		sqlite3_clear_bindings (insert_stmt);
+		sqlite3_bind_int64 (insert_stmt, 1, id2);
+		sqlite3_bind_blob (insert_stmt, 2, blob2, len2, SQLITE_STATIC);
+		ret = sqlite3_step (insert_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
+		else
+		  {
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
+		  }
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n",
+			sqlite3_errmsg (params->db_handle));
+		goto error;
 	    }
       }
-/* finalizing the INSERT INTO prepared statement */
-    sqlite3_finalize (stmt);
+
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (insert_stmt != NULL)
+	sqlite3_finalize (insert_stmt);
 
 /* committing the still pending SQL Transaction */
-    ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
+    ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
-	  return -1;
       }
-    return count;
+/* re-opening a Transaction */
+    ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+
+/* re-querying Arcs */
+    strcpy (sql, "SELECT node_from, node_to ");
+    sprintf (sql2, "FROM \"%s\"", table);
+    strcat (sql, sql2);
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &query_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+/* Updating Nodes */
+    sprintf (sql, "UPDATE \"%s_nodes\" SET cardinality = (cardinality + 1) ",
+	     table);
+    strcat (sql, "WHERE node_id = ?");
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &update_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		sqlite3_int64 id1 = sqlite3_column_int64 (query_stmt, 0);
+		sqlite3_int64 id2 = sqlite3_column_int64 (query_stmt, 1);
+
+		/* udating the Node (from) */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_double (update_stmt, 1, id1);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
+		else
+		  {
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
+		  }
+
+		/* udating the Node (to) */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_double (update_stmt, 1, id2);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
+		else
+		  {
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
+		  }
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n",
+			sqlite3_errmsg (params->db_handle));
+		goto error;
+	    }
+      }
+
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
+
+/* committing the still pending SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+      }
+/* re-opening a Transaction */
+    ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+
+/* querying Nodes */
+    strcpy (sql, "SELECT n.node_id, t.osm_id ");
+    sprintf (sql2, "FROM \"%s_nodes\" AS n ", table);
+    strcat (sql, sql2);
+    strcat (sql, "JOIN graph_nodes AS t ON (");
+    strcat (sql, "ST_X(n.Geometry) = t.lon AND ");
+    strcat (sql, "ST_Y(n.Geometry) = t.lat)");
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &query_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+/* Updating Nodes */
+    sprintf (sql, "UPDATE \"%s_nodes\" SET osm_id = ? ", table);
+    strcat (sql, "WHERE node_id = ?");
+    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			      &update_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  goto error;
+      }
+
+    while (1)
+      {
+	  ret = sqlite3_step (query_stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
+		sqlite3_int64 osm_id = sqlite3_column_int64 (query_stmt, 1);
+
+		/* udating the Node OSM-ID */
+		sqlite3_reset (update_stmt);
+		sqlite3_clear_bindings (update_stmt);
+		sqlite3_bind_int64 (update_stmt, 1, osm_id);
+		sqlite3_bind_int64 (update_stmt, 2, id);
+		ret = sqlite3_step (update_stmt);
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+		    ;
+		else
+		  {
+		      printf ("sqlite3_step() error: %s\n",
+			      sqlite3_errmsg (params->db_handle));
+		      goto error;
+		  }
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n",
+			sqlite3_errmsg (params->db_handle));
+		goto error;
+	    }
+      }
+/* committing the still pending SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+      }
+    printf ("\tHelper table '%s_nodes' succesfully created\n", table);
+    return 1;
+
+  error:
+    if (query_stmt != NULL)
+	sqlite3_finalize (query_stmt);
+    if (insert_stmt != NULL)
+	sqlite3_finalize (insert_stmt);
+    if (update_stmt != NULL)
+	sqlite3_finalize (update_stmt);
+
+    ret = sqlite3_exec (params->db_handle, "ROLLBACK", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "ROLLBACK TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+      }
+    return 0;
 }
 
 static void
-db_cleanup (sqlite3 * handle)
+finalize_sql_stmts (struct aux_params *params)
 {
+/* memory cleanup - prepared statements */
     int ret;
     char *sql_err = NULL;
-/* dropping the OSM_TMP_NODES table */
-    printf ("\nDropping temporary table 'osm_tmp_nodes' ... wait please ...\n");
+
+    if (params->ins_tmp_nodes_stmt != NULL)
+	sqlite3_finalize (params->ins_tmp_nodes_stmt);
+    if (params->upd_tmp_nodes_stmt != NULL)
+	sqlite3_finalize (params->upd_tmp_nodes_stmt);
+    if (params->rd_tmp_nodes_stmt != NULL)
+	sqlite3_finalize (params->rd_tmp_nodes_stmt);
+    if (params->ins_arcs_stmt != NULL)
+	sqlite3_finalize (params->ins_arcs_stmt);
+
+/* committing the still pending SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+}
+
+static void
+create_sql_stmts (struct aux_params *params)
+{
+/* creating prepared SQL statements */
+    sqlite3_stmt *ins_tmp_nodes_stmt;
+    sqlite3_stmt *upd_tmp_nodes_stmt;
+    sqlite3_stmt *rd_tmp_nodes_stmt;
+    sqlite3_stmt *ins_arcs_stmt;
+    char sql[1024];
+    int ret;
+    char *sql_err = NULL;
+
+/* the complete operation is handled as a unique SQL Transaction */
+    ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "BEGIN TRANSACTION error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "INSERT INTO osm_tmp_nodes (id, lat, lon, ref_count) ");
+    strcat (sql, "VALUES (?, ?, ?, 0)");
     ret =
-	sqlite3_exec (handle, "DROP TABLE osm_tmp_nodes", NULL, NULL, &sql_err);
+	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			    &ins_tmp_nodes_stmt, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "'DROP TABLE osm_tmp_nodes' error: %s\n", sql_err);
-	  sqlite3_free (sql_err);
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  finalize_sql_stmts (params);
 	  return;
       }
-    printf ("\tDropped table 'osm_tmp_nodes'\n");
-/* dropping the 'from_to' index */
-    printf ("\nDropping index 'from_to' ... wait please ...\n");
-    ret = sqlite3_exec (handle, "DROP INDEX from_to", NULL, NULL, &sql_err);
+    strcpy (sql, "UPDATE osm_tmp_nodes SET ref_count = (ref_count + 1) ");
+    strcat (sql, "WHERE id = ?");
+    ret =
+	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			    &upd_tmp_nodes_stmt, NULL);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "'DROP INDEX from_to' error: %s\n", sql_err);
-	  sqlite3_free (sql_err);
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  finalize_sql_stmts (params);
 	  return;
       }
-    printf ("\tDropped index 'from_to'\n");
-}
+    strcpy (sql, "SELECT lon, lat, ref_count FROM osm_tmp_nodes ");
+    strcat (sql, "WHERE id = ?");
+    ret =
+	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			    &rd_tmp_nodes_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  finalize_sql_stmts (params);
+	  return;
+      }
+    sprintf (sql, "INSERT INTO \"%s\" ", params->table);
+    strcat (sql, "(id, osm_id, node_from, node_to, class, ");
+    strcat (sql,
+	    "name, oneway_fromto, oneway_tofrom, length, cost, geometry) ");
+    strcat (sql, "VALUES (NULL, ?, -1, -1, ?, ?, ?, ?, -1, -1, ?)");
+    ret =
+	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			    &ins_arcs_stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
+		   sqlite3_errmsg (params->db_handle));
+	  finalize_sql_stmts (params);
+	  return;
+      }
 
-static void
-db_vacuum (sqlite3 * handle)
-{
-    int ret;
-    char *sql_err = NULL;
-/* VACUUMing the DB */
-    printf ("\nVACUUMing the DB ... wait please ...\n");
-    ret = sqlite3_exec (handle, "VACUUM", NULL, NULL, &sql_err);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "VACUUM error: %s\n", sql_err);
-	  sqlite3_free (sql_err);
-	  return;
-      }
-    printf ("\tAll done: OSM graph was succesfully loaded\n");
+    params->ins_tmp_nodes_stmt = ins_tmp_nodes_stmt;
+    params->upd_tmp_nodes_stmt = upd_tmp_nodes_stmt;
+    params->rd_tmp_nodes_stmt = rd_tmp_nodes_stmt;
+    params->ins_arcs_stmt = ins_arcs_stmt;
 }
 
 static void
@@ -2196,14 +1482,27 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
 /* creating the OSM related tables */
     strcpy (sql, "CREATE TABLE osm_tmp_nodes (\n");
     strcat (sql, "id INTEGER NOT NULL PRIMARY KEY,\n");
-    strcat (sql, "alias INTEGER NOT NULL,\n");
     strcat (sql, "lat DOUBLE NOT NULL,\n");
     strcat (sql, "lon DOUBLE NOT NULL,\n");
-    strcat (sql, "refcount INTEGER NOT NULL)\n");
+    strcat (sql, "ref_count INTEGER NOT NULL)\n");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CREATE TABLE 'osm_tmp_nodes' error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  sqlite3_close (handle);
+	  return NULL;
+      }
+/* creating the GRAPH temporary nodes */
+    strcpy (sql, "CREATE TABLE graph_nodes (\n");
+    strcat (sql, "lon DOUBLE NOT NULL,\n");
+    strcat (sql, "lat DOUBLE NOT NULL,\n");
+    strcat (sql, "osm_id INTEGER,\n");
+    strcat (sql, "CONSTRAINT pk_nodes PRIMARY KEY (lon, lat))\n");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "CREATE TABLE 'graph_nodes' error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  sqlite3_close (handle);
 	  return NULL;
@@ -2257,18 +1556,6 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
 	  return NULL;
       }
 
-    sprintf (sql,
-	     "CREATE UNIQUE INDEX from_to ON \"%s\" (node_from, node_to, length, cost)",
-	     table);
-    ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
-    if (ret != SQLITE_OK)
-      {
-	  fprintf (stderr, "CREATE INDEX 'from_to' error: %s\n", err_msg);
-	  sqlite3_free (err_msg);
-	  sqlite3_close (handle);
-	  return NULL;
-      }
-
     return handle;
 
   unknown:
@@ -2281,63 +1568,532 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     return NULL;
 }
 
-static int
-check_osm_xml (FILE * xml)
+static void
+db_cleanup (sqlite3 * handle)
 {
-/* check if the file contains OSM XML */
-    int xml_open = 0;
-    int xml_close = 0;
-    int osm_open = 0;
-    int osm_close = 0;
-    int ok_xml = 0;
-    int ok_osm = 0;
-    char tag[512];
-    char *p;
-    int c;
-    int count = 0;
-    while ((c = getc (xml)) != EOF)
+    int ret;
+    char *sql_err = NULL;
+/* dropping the OSM_TMP_NODES table */
+    printf ("\nDropping temporary table 'osm_tmp_nodes' ... wait please ...\n");
+    ret =
+	sqlite3_exec (handle, "DROP TABLE osm_tmp_nodes", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
       {
-	  count++;
-	  if (count > 512)
-	      break;
-	  if (!xml_open && c == '<')
-	    {
-		xml_open = 1;
-		p = tag;
-		*p = '\0';
-		continue;
-	    }
-	  if (!osm_open && c == '<')
-	    {
-		osm_open = 1;
-		p = tag;
-		*p = '\0';
-		continue;
-	    }
-	  if (!xml_close && c == '>')
-	    {
-		xml_close = 1;
-		*p = '\0';
-		if (strncmp (tag, "?xml", 4) == 0)
-		    ok_xml = 1;
-		continue;
-	    }
-	  if (!osm_close && c == '>')
-	    {
-		osm_close = 1;
-		*p = '\0';
-		if (strncmp (tag, "osm", 3) == 0)
-		    ok_osm = 1;
-		continue;
-	    }
-	  if (xml_open && !xml_close)
-	      *p++ = c;
-	  if (osm_open && !osm_close)
-	      *p++ = c;
+	  fprintf (stderr, "'DROP TABLE osm_tmp_nodes' error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
-    if (ok_xml && ok_osm)
-	return 1;
+    printf ("\tDropped table 'osm_tmp_nodes'\n");
+/* dropping the GRAPH_NODES table */
+    printf ("\nDropping temporary table 'graph_nodes' ... wait please ...\n");
+    ret = sqlite3_exec (handle, "DROP TABLE graph_nodes", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "'DROP TABLE graph_nodes' error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    printf ("\tDropped table 'graph_nodes'\n");
+}
+
+static void
+db_vacuum (sqlite3 * handle)
+{
+    int ret;
+    char *sql_err = NULL;
+/* VACUUMing the DB */
+    printf ("\nVACUUMing the DB ... wait please ...\n");
+    ret = sqlite3_exec (handle, "VACUUM", NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "VACUUM error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    printf ("\tAll done: OSM graph was succesfully loaded\n");
+}
+
+static int
+parse_kv (char *line, const char **k, const char **v)
+{
+/* splitting two tokens separated by a colon ':' */
+    int i;
+    int cnt = 0;
+    int pos = -1;
+    int len = strlen (line);
+    for (i = 0; i < len; i++)
+      {
+	  if (line[i] == ':')
+	    {
+		/* delimiter found */
+		cnt++;
+		pos = i;
+	    }
+      }
+    if (cnt != 1)
+      {
+	  /* illegal string */
+	  return 0;
+      }
+    line[pos] = '\0';
+    *k = line;
+    *v = line + pos + 1;
+    return 1;
+}
+
+static void
+free_params (struct aux_params *params)
+{
+/* memory cleanup - aux params linked lists */
+    struct aux_speed *ps;
+    struct aux_speed *ps_n;
+    struct aux_class *pc;
+    struct aux_class *pc_n;
+    ps = params->first_speed;
+    while (ps)
+      {
+	  ps_n = ps->next;
+	  free (ps->class_name);
+	  free (ps);
+	  ps = ps_n;
+      }
+    params->first_speed = NULL;
+    params->last_speed = NULL;
+    pc = params->first_include;
+    while (pc)
+      {
+	  pc_n = pc->next;
+	  free (pc->class_name);
+	  if (pc->sub_class != NULL)
+	      free (pc->sub_class);
+	  free (pc);
+	  pc = pc_n;
+      }
+    params->first_include = NULL;
+    params->last_include = NULL;
+    pc = params->first_ignore;
+    while (pc)
+      {
+	  pc_n = pc->next;
+	  free (pc->class_name);
+	  if (pc->sub_class != NULL)
+	      free (pc->sub_class);
+	  free (pc);
+	  pc = pc_n;
+      }
+    params->first_ignore = NULL;
+    params->last_ignore = NULL;
+}
+
+static void
+add_speed_class (struct aux_params *params, const char *class, double speed)
+{
+/* inserting a class speed into the linked list */
+    int len = strlen (class);
+    struct aux_speed *p = malloc (sizeof (struct aux_speed));
+    p->class_name = malloc (len + 1);
+    strcpy (p->class_name, class);
+    p->speed = speed;
+    p->next = NULL;
+    if (params->first_speed == NULL)
+	params->first_speed = p;
+    if (params->last_speed != NULL)
+	params->last_speed->next = p;
+    params->last_speed = p;
+}
+
+static void
+add_include_class (struct aux_params *params, const char *class,
+		   const char *sub_class)
+{
+/* inserting an Include class into the linked list */
+    int len1 = strlen (class);
+    int len2 = strlen (sub_class);
+    struct aux_class *p = malloc (sizeof (struct aux_class));
+    p->class_name = malloc (len1 + 1);
+    strcpy (p->class_name, class);
+    if (len2 == 0)
+	p->sub_class = NULL;
+    else
+      {
+	  p->sub_class = malloc (len2 + 1);
+	  strcpy (p->sub_class, sub_class);
+      }
+    p->next = NULL;
+    if (params->first_include == NULL)
+	params->first_include = p;
+    if (params->last_include != NULL)
+	params->last_include->next = p;
+    params->last_include = p;
+}
+
+static void
+add_ignore_class (struct aux_params *params, const char *class,
+		  const char *sub_class)
+{
+/* inserting an Ignore class into the linked list */
+    int len1 = strlen (class);
+    int len2 = strlen (sub_class);
+    struct aux_class *p = malloc (sizeof (struct aux_class));
+    p->class_name = malloc (len1 + 1);
+    strcpy (p->class_name, class);
+    p->sub_class = malloc (len2 + 1);
+    strcpy (p->sub_class, sub_class);
+    p->next = NULL;
+    if (params->first_ignore == NULL)
+	params->first_ignore = p;
+    if (params->last_ignore != NULL)
+	params->last_ignore->next = p;
+    params->last_ignore = p;
+}
+
+static int
+parse_template_line (struct aux_params *params, const char *line)
+{
+/* parsing a template line */
+    char clean[8192];
+    char *out = clean;
+    const char *in = line;
+    int i;
+
+    *out = '\0';
+    while (1)
+      {
+	  if (*in == '\0' || *in == '#')
+	    {
+		*out = '\0';
+		break;
+	    }
+	  *out++ = *in++;
+      }
+    for (i = (int) strlen (clean) - 1; i >= 0; i--)
+      {
+	  /* cleaning any tralining space/tab */
+	  if (clean[i] == ' ' || clean[i] == '\t')
+	      clean[i] = '\0';
+	  else
+	      break;
+      }
+    if (*clean == '\0')
+	return 1;		/* ignoring empty lines */
+    if (strncmp (clean, "NodingStrategy:", 15) == 0)
+      {
+	  if (strcmp (clean + 15, "way-ends") == 0)
+	    {
+		params->noding_strategy = NODE_STRAT_ENDS;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "none") == 0)
+	    {
+		params->noding_strategy = NODE_STRAT_NONE;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "all") == 0)
+	    {
+		params->noding_strategy = NODE_STRAT_ALL;
+		return 1;
+	    }
+	  else
+	      return 0;
+      }
+    else if (strncmp (clean, "OnewayStrategy:", 15) == 0)
+      {
+	  if (strcmp (clean + 15, "full") == 0)
+	    {
+		params->oneway_strategy = ONEWAY_STRAT_FULL;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "none") == 0)
+	    {
+		params->oneway_strategy = ONEWAY_STRAT_NONE;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "ignore-roundabout") == 0)
+	    {
+		params->oneway_strategy = ONEWAY_STRAT_NO_ROUND;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "ignore-motorway") == 0)
+	    {
+		params->oneway_strategy = ONEWAY_STRAT_NO_MOTOR;
+		return 1;
+	    }
+	  else if (strcmp (clean + 15, "ignore-both-roundabout-and-motorway") ==
+		   0)
+	    {
+		params->oneway_strategy = ONEWAY_STRAT_NO_BOTH;
+		return 1;
+	    }
+	  else
+	      return 0;
+      }
+    else if (strncmp (clean, "ClassInclude:", 13) == 0)
+      {
+	  const char *k;
+	  const char *v;
+	  if (parse_kv (clean + 13, &k, &v))
+	    {
+		if (strlen (k) > 0)
+		    add_include_class (params, k, v);
+		return 1;
+	    }
+	  else
+	      return 0;
+      }
+    else if (strncmp (clean, "ClassIgnore:", 12) == 0)
+      {
+	  const char *k;
+	  const char *v;
+	  if (parse_kv (clean + 12, &k, &v))
+	    {
+		if (strlen (k) > 0 && strlen (v) > 0)
+		    add_ignore_class (params, k, v);
+		return 1;
+	    }
+	  else
+	      return 0;
+      }
+    else if (strncmp (clean, "SpeedClass:", 11) == 0)
+      {
+	  const char *k;
+	  const char *v;
+	  if (parse_kv (clean + 11, &k, &v))
+	    {
+		if (*k == '\0')
+		    params->default_speed = atof (v);
+		else
+		    add_speed_class (params, k, atof (v));
+		return 1;
+	    }
+	  else
+	      return 0;
+      }
+/* some illegal expression found */
     return 0;
+}
+
+static int
+parse_template (struct aux_params *params, const char *template_path)
+{
+/* parsing a template-file */
+    char line[8192];
+    char *p = line;
+    int c;
+    int lineno = 0;
+    FILE *in = fopen (template_path, "rb");
+    if (in == NULL)
+      {
+	  fprintf (stderr, "Unable to open template-file \"%s\"\n",
+		   template_path);
+	  return 0;
+      }
+
+    while ((c = getc (in)) != EOF)
+      {
+
+	  if (c == '\r')
+	      continue;
+	  if (c == '\n')
+	    {
+		*p = '\0';
+		lineno++;
+		if (!parse_template_line (params, line))
+		  {
+		      fprintf (stderr,
+			       "Template-file \"%s\"\nParsing error on line %d\n\n",
+			       template_path, lineno);
+		      free_params (params);
+		      return 0;
+		  }
+		p = line;
+		continue;
+	    }
+	  *p++ = c;
+      }
+
+    fclose (in);
+    return 1;
+}
+
+static int
+print_template (const char *template_path, int railways)
+{
+/* printing a default template-file */
+    FILE *out = fopen (template_path, "w");
+    if (out == NULL)
+      {
+	  fprintf (stderr, "Unable to create template-file \"%s\"\n",
+		   template_path);
+	  return 0;
+      }
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# the '#' char represents a comment marker:\n");
+    fprintf (out, "# any text until the next new-line (NL) char will\n");
+    fprintf (out, "# be ignored at all.\n");
+    fprintf (out, "#\n\n");
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# NodingStrategy section\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# - NodingStrategy:way-ends\n");
+    fprintf (out,
+	     "#   any Way end-point (both extremities) is assumed to represent\n");
+    fprintf (out, "#   a Node into the Graph [network] to be built.\n");
+    fprintf (out, "# - NodingStrategy:none\n");
+    fprintf (out,
+	     "#   any Way is assumed to directly represent an Arc into the Graph\n");
+    fprintf (out,
+	     "#   [network] to be built. No attempt to split and renode the\n");
+    fprintf (out, "#   Graph's Arcs will be performed.\n");
+    fprintf (out, "# - NodingStrategy:all\n");
+    fprintf (out,
+	     "#   any Way point is assumed to represent a Node into the Graph\n");
+    fprintf (out,
+	     "#   [network] to be built, if it's shared by two or more Ways.\n");
+    fprintf (out, "#\n\n");
+    if (railways)
+      {
+	  fprintf (out, "NodingStrategy:all # default value for Railway\n");
+	  fprintf (out, "# NodingStrategy:none\n");
+	  fprintf (out, "# NodingStrategy:way-ends\n\n\n");
+      }
+    else
+      {
+	  fprintf (out, "NodingStrategy:way-ends # default value\n");
+	  fprintf (out, "# NodingStrategy:none\n");
+	  fprintf (out, "# NodingStrategy:all\n\n\n");
+      }
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# OnewayStrategy section\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# - OnewayStrategy:full\n");
+    fprintf (out,
+	     "#   the following OSM tags will be assumed to identify oneways:\n");
+    fprintf (out,
+	     "#   * oneway:1, oneway:true or oneway:yes [oneway, normal direction]\n");
+    fprintf (out,
+	     "#   * oneway:-1 or oneway:reverse [oneway, reverse direction]\n");
+    fprintf (out,
+	     "#   * junction:roundabout, highway:motorway or highway:motorway_link\n");
+    fprintf (out, "#   * [implicit oneway, normal direction]\n");
+    fprintf (out, "# - OnewayStrategy:none\n");
+    fprintf (out,
+	     "#   all Arcs will be assumed to be bidirectional (no oneway at all).\n");
+    fprintf (out, "# - OnewayStrategy:ignore-roundabout\n");
+    fprintf (out,
+	     "#   any junction:roundabout tag will not be assumed to mark an oneway.\n");
+    fprintf (out, "# - OnewayStrategy:ignore-motorway\n");
+    fprintf (out,
+	     "#   any highway:motorway or highway:motorway_link tag will not be \n");
+    fprintf (out, "#   assumed to mark an oneway.\n");
+    fprintf (out, "# - OnewayStrategy:ignore-both-roundabout-and-motorway\n");
+    fprintf (out,
+	     "#   any junction:roundabout, highway:motorway or highway:motorway_link\n");
+    fprintf (out, "#   tag will not be assumed to mark an oneway.\n");
+    fprintf (out, "#\n\n");
+    if (railways)
+      {
+	  fprintf (out, "OnewayStrategy:none # default value for Railways\n");
+	  fprintf (out, "# OnewayStrategy:full\n");
+	  fprintf (out, "# OnewayStrategy:ignore-roundabout\n");
+	  fprintf (out, "# OnewayStrategy:ignore-motorway\n");
+	  fprintf (out,
+		   "# OnewayStrategy:ignore-both-roundabout-and-motorway\n\n\n");
+      }
+    else
+      {
+	  fprintf (out, "OnewayStrategy:full # default value\n");
+	  fprintf (out, "# OnewayStrategy:none\n");
+	  fprintf (out, "# OnewayStrategy:ignore-roundabout\n");
+	  fprintf (out, "# OnewayStrategy:ignore-motorway\n");
+	  fprintf (out,
+		   "# OnewayStrategy:ignore-both-roundabout-and-motorway\n\n\n");
+      }
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# ClassInclude section\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# - tokens are delimited by colons ':'\n");
+    fprintf (out,
+	     "# - the second and third tokens represents a Class-name tag\n");
+    fprintf (out,
+	     "#   identifying the Arcs of the Graph: i.e. any Way exposing\n");
+    fprintf (out, "#   this tag will be processed.\n");
+    fprintf (out,
+	     "# - special case: suppressing the third token selects any\n");
+    fprintf (out, "#   generic main-class tag to be processed\n");
+    fprintf (out, "#\n\n");
+    if (railways)
+	fprintf (out,
+		 "ClassInclude:railway:rail # default value for Railways\n\n\n");
+    else
+	fprintf (out,
+		 "ClassInclude:highway: # default value (all kind of highway)\n\n\n");
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# ClassIgnore section\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# - tokens are delimited by colons ':'\n");
+    fprintf (out,
+	     "# - the second and third tokens represents a Class-name tag\n");
+    fprintf (out, "#   identifying Ways to be completely ignored.\n");
+    fprintf (out, "#\n\n");
+    if (railways)
+	fprintf (out, "# none for Railways\n\n\n");
+    else
+      {
+	  fprintf (out, "ClassIgnore:highway:pedestrian\n");
+	  fprintf (out, "ClassIgnore:highway:track\n");
+	  fprintf (out, "ClassIgnore:highway:services\n");
+	  fprintf (out, "ClassIgnore:highway:bus_guideway\n");
+	  fprintf (out, "ClassIgnore:highway:path\n");
+	  fprintf (out, "ClassIgnore:highway:cycleway\n");
+	  fprintf (out, "ClassIgnore:highway:footway\n");
+	  fprintf (out, "ClassIgnore:highway:byway\n");
+	  fprintf (out, "ClassIgnore:highway:steps\n\n\n");
+      }
+
+    fprintf (out,
+	     "###############################################################\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# SpeedClass section\n");
+    fprintf (out, "#\n");
+    fprintf (out, "# - tokens are delimited by colons ':'\n");
+    fprintf (out, "# - the second token represents the Road Class-name\n");
+    fprintf (out, "#   [no name, i.e. '::' identifies the defaul value\n");
+    fprintf (out, "#   to be applied when no specific class match is found]\n");
+    fprintf (out, "# - the third token represents the corresponding speed\n");
+    fprintf (out, "#   [expressed in Km/h]\n");
+    fprintf (out, "#\n\n");
+    if (railways)
+	fprintf (out, "SpeedClass:rail:60.0\n\n\n");
+    else
+      {
+	  fprintf (out, "SpeedClass::30.0 # default value\n");
+	  fprintf (out, "SpeedClass:motorway:110.0\n");
+	  fprintf (out, "SpeedClass:trunk:110.0\n");
+	  fprintf (out, "SpeedClass:primary:90.0\n");
+	  fprintf (out, "SpeedClass:secondary:70.0\n");
+	  fprintf (out, "SpeedClass:tertiary:50.0\n");
+	  fprintf (out, "# SpeedClass:yet_anotherclass_1:1.0\n");
+	  fprintf (out, "# SpeedClass:yet_anotherclass_2:2.0\n");
+	  fprintf (out, "# SpeedClass:yet_anotherclass_3:3.0\n\n\n");
+      }
+
+    fclose (out);
+    return 1;
 }
 
 static void
@@ -2350,6 +2106,10 @@ do_help ()
     fprintf (stderr,
 	     "-h or --help                    print this help message\n");
     fprintf (stderr, "-o or --osm-path pathname       the OSM-XML file path\n");
+    fprintf (stderr,
+	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
+    fprintf (stderr,
+	     "                 (*.osm.pbf) are indifferenctly supported.\n\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n");
     fprintf (stderr,
@@ -2365,6 +2125,11 @@ do_help ()
     fprintf (stderr, "--railways                      extract railways\n");
     fprintf (stderr,
 	     "                                [mutually exclusive]\n\n");
+    fprintf (stderr, "template-file specific options:\n");
+    fprintf (stderr,
+	     "-ot or --out-template  path     creates a default template-file\n");
+    fprintf (stderr,
+	     "-tf or --template-file path     using a template-file\n\n");
 }
 
 int
@@ -2380,12 +2145,30 @@ main (int argc, char *argv[])
     int cache_size = 0;
     int double_arcs = 0;
     int railways = 0;
+    int out_template = 0;
+    int use_template = 0;
+    const char *template_path = NULL;
     int error = 0;
     sqlite3 *handle;
-    FILE *xml;
-    int nodes;
-    int ways;
-    char *big_buffer;
+    struct aux_params params;
+    const void *osm_handle;
+
+/* initializing the aux-struct */
+    params.db_handle = NULL;
+    params.ins_tmp_nodes_stmt = NULL;
+    params.upd_tmp_nodes_stmt = NULL;
+    params.rd_tmp_nodes_stmt = NULL;
+    params.ins_arcs_stmt = NULL;
+    params.noding_strategy = NODE_STRAT_ENDS;
+    params.oneway_strategy = ONEWAY_STRAT_FULL;
+    params.default_speed = 30.0;
+    params.first_speed = NULL;
+    params.last_speed = NULL;
+    params.first_include = NULL;
+    params.last_include = NULL;
+    params.first_ignore = NULL;
+    params.last_ignore = NULL;
+
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -2401,6 +2184,9 @@ main (int argc, char *argv[])
 		      break;
 		  case ARG_TABLE:
 		      table = argv[i];
+		      break;
+		  case ARG_TEMPLATE_PATH:
+		      template_path = argv[i];
 		      break;
 		  case ARG_CACHE_SIZE:
 		      cache_size = atoi (argv[i]);
@@ -2451,6 +2237,34 @@ main (int argc, char *argv[])
 		next_arg = ARG_CACHE_SIZE;
 		continue;
 	    }
+	  if (strcmp (argv[i], "-ot") == 0)
+	    {
+		out_template = 1;
+		use_template = 0;
+		next_arg = ARG_TEMPLATE_PATH;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--out-template") == 0)
+	    {
+		out_template = 1;
+		use_template = 0;
+		next_arg = ARG_TEMPLATE_PATH;
+		continue;
+	    }
+	  if (strcmp (argv[i], "-tf") == 0)
+	    {
+		out_template = 0;
+		use_template = 1;
+		next_arg = ARG_TEMPLATE_PATH;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--template-file") == 0)
+	    {
+		out_template = 0;
+		use_template = 1;
+		next_arg = ARG_TEMPLATE_PATH;
+		continue;
+	    }
 	  if (strcasecmp (argv[i], "-m") == 0)
 	    {
 		in_memory = 1;
@@ -2496,6 +2310,20 @@ main (int argc, char *argv[])
 	  return -1;
       }
 /* checking the arguments */
+    if (out_template)
+      {
+	  /* if out-template is set this one the unique option to be honored */
+	  if (!template_path)
+	    {
+		fprintf (stderr,
+			 "did you forget setting the --out-template path argument ?\n");
+		error = 1;
+	    }
+	  if (print_template (template_path, railways))
+	      printf ("template-file \"%s\" succesfully created\n\n",
+		      template_path);
+	  return 0;
+      }
     if (!osm_path)
       {
 	  fprintf (stderr,
@@ -2512,33 +2340,44 @@ main (int argc, char *argv[])
 	  fprintf (stderr, "did you forget setting the --table argument ?\n");
 	  error = 1;
       }
+    if (railways)
+      {
+	  /* Railways default settings */
+	  params.noding_strategy = NODE_STRAT_ALL;
+	  params.oneway_strategy = ONEWAY_STRAT_NONE;
+	  params.default_speed = 60.0;
+      }
+    if (use_template)
+      {
+	  /* use-template is set */
+	  if (!template_path)
+	    {
+		fprintf (stderr,
+			 "did you forget setting the --template-file path argument ?\n");
+		error = 1;
+	    }
+	  if (parse_template (&params, template_path))
+	      printf ("template-file \"%s\" succesfully acquired\n\n",
+		      template_path);
+	  else
+	      return -1;
+      }
     if (error)
       {
 	  do_help ();
+	  free_params (&params);
 	  return -1;
       }
-/* opening the OSM-XML file */
-    xml = fopen (osm_path, "rb");
-    if (!xml)
-      {
-	  fprintf (stderr, "cannot open %s\n", osm_path);
-	  return -1;
-      }
-/* checking if really is OSM XML */
-    if (!check_osm_xml (xml))
-      {
-	  fprintf (stderr, "'%s' doesn't seems to contain OSM XML !!!\n",
-		   osm_path);
-	  return -1;
-      }
-/* repositioning XML from beginning */
-    rewind (xml);
+
 /* opening the DB */
     if (in_memory)
 	cache_size = 0;
     handle = open_db (db_path, table, double_arcs, cache_size);
     if (!handle)
-	return -1;
+      {
+	  free_params (&params);
+	  return -1;
+      }
     if (in_memory)
       {
 	  /* loading the DB in-memory */
@@ -2554,6 +2393,7 @@ main (int argc, char *argv[])
 		fprintf (stderr, "cannot open 'MEMORY-DB': %s\n",
 			 sqlite3_errmsg (mem_handle));
 		sqlite3_close (mem_handle);
+		free_params (&params);
 		return -1;
 	    }
 	  backup = sqlite3_backup_init (mem_handle, "main", handle, "main");
@@ -2562,6 +2402,7 @@ main (int argc, char *argv[])
 		fprintf (stderr, "cannot load 'MEMORY-DB'\n");
 		sqlite3_close (handle);
 		sqlite3_close (mem_handle);
+		free_params (&params);
 		return -1;
 	    }
 	  while (1)
@@ -2575,66 +2416,132 @@ main (int argc, char *argv[])
 	  handle = mem_handle;
 	  printf ("\nusing IN-MEMORY database\n");
       }
-/* extracting <node> tags form XML file */
-    printf ("\nLoading OSM nodes ... wait please ...\n");
-    nodes = parse_nodes (xml, handle);
-    if (nodes < 0)
+    params.db_handle = handle;
+    params.table = table;
+    if (use_template == 0)
       {
-	  fclose (xml);
-	  sqlite3_close (handle);
-	  fprintf (stderr, "Sorry, I'm quitting ... UNRECOVERABLE ERROR\n");
-	  return 1;
+	  /* not using template: setting default params */
+	  if (railways == 1)
+	      add_include_class (&params, "railway", "rail");
+	  else
+	      add_include_class (&params, "highway", "");
+	  if (railways == 0)
+	    {
+		/* setting default Road Ignore classes */
+		add_ignore_class (&params, "highway", "pedestrian");
+		add_ignore_class (&params, "highway", "track");
+		add_ignore_class (&params, "highway", "services");
+		add_ignore_class (&params, "highway", "bus_guideway");
+		add_ignore_class (&params, "highway", "path");
+		add_ignore_class (&params, "highway", "cycleway");
+		add_ignore_class (&params, "highway", "footway");
+		add_ignore_class (&params, "highway", "bridleway");
+		add_ignore_class (&params, "highway", "byway");
+		add_ignore_class (&params, "highway", "steps");
+	    }
+	  if (railways == 0)
+	    {
+		/* setting default Road Speeds */
+		add_speed_class (&params, "motorway", 110.0);
+		add_speed_class (&params, "trunk", 110.0);
+		add_speed_class (&params, "primary", 90.0);
+		add_speed_class (&params, "secondary", 70.0);
+		add_speed_class (&params, "tertiary", 50.0);
+	    }
       }
-    printf ("\tLoaded %d OSM nodes\n", nodes);
-/* repositioning XML from beginning */
-    rewind (xml);
-/* extracting <way> tags form XML file - Pass I */
-    printf ("\nVerifying OSM ways ... wait please ...\n");
-    big_buffer = malloc (4 * 1024 * 1024);
-    ways = parse_ways_pass_1 (xml, handle, big_buffer, railways);
-    free (big_buffer);
-    if (ways < 0)
-      {
-	  fclose (xml);
-	  sqlite3_close (handle);
-	  fprintf (stderr, "Sorry, I'm quitting ... UNRECOVERABLE ERROR\n");
-	  return 1;
-      }
-    printf ("\tVerified %d OSM ways\n", ways);
-/* disambiguating nodes - oh yes, there lots of stupid duplicates using different IDs !!! */
-    printf ("\nDisambiguating OSM nodes ... wait please ...\n");
-    nodes = disambiguate_nodes (handle);
-    if (nodes < 0)
-      {
-	  fclose (xml);
-	  sqlite3_close (handle);
-	  fprintf (stderr, "Sorry, I'm quitting ... UNRECOVERABLE ERROR\n");
-	  return 1;
-      }
-    if (nodes == 0)
-	printf ("\tNo duplicate OSM nodes found - fine ...\n");
-    else
-	printf ("\tFound %d duplicate OSM nodes - fixed !!!\n", nodes);
-/* repositioning XML from beginning */
-    rewind (xml);
-/* extracting <way> tags form XML file - Pass II */
-    printf ("\nLoading network ARCs ... wait please ...\n");
-    big_buffer = malloc (4 * 1024 * 1024);
-    ways =
-	parse_ways_pass_2 (xml, handle, table, double_arcs, big_buffer,
-			   railways);
 
-    if (ways < 0)
+/* creating SQL prepared statements */
+    create_sql_stmts (&params);
+
+    printf ("\nParsing input: Pass 1 [Nodes and Ways] ...\n");
+/* parsing the input OSM-file [Pass 1] */
+    if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
       {
-	  fclose (xml);
+	  fprintf (stderr, "cannot open %s\n", osm_path);
+	  finalize_sql_stmts (&params);
 	  sqlite3_close (handle);
-	  fprintf (stderr, "Sorry, I'm quitting ... UNRECOVERABLE ERROR\n");
-	  return 1;
+	  readosm_close (osm_handle);
+	  free_params (&params);
+	  return -1;
       }
-    printf ("\tLoaded %d network ARCs\n", ways);
-    fclose (xml);
-/* dropping the OSM_TMP_NODES table */
+    if (readosm_parse (osm_handle, &params, consume_node, consume_way_1, NULL)
+	!= READOSM_OK)
+      {
+	  fprintf (stderr, "unrecoverable error while parsing %s\n", osm_path);
+	  finalize_sql_stmts (&params);
+	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
+	  free_params (&params);
+	  return -1;
+      }
+    readosm_close (osm_handle);
+
+    printf ("Parsing input: Pass 2 [Arcs of the Graph] ...\n");
+/* parsing the input OSM-file [Pass 2] */
+    if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
+      {
+	  fprintf (stderr, "cannot open %s\n", osm_path);
+	  finalize_sql_stmts (&params);
+	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
+	  free_params (&params);
+	  return -1;
+      }
+    if (readosm_parse (osm_handle, &params, NULL, consume_way_2, NULL) !=
+	READOSM_OK)
+      {
+	  fprintf (stderr, "unrecoverable error while parsing %s\n", osm_path);
+	  finalize_sql_stmts (&params);
+	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
+	  free_params (&params);
+	  return -1;
+      }
+    readosm_close (osm_handle);
+
+/* finalizing SQL prepared statements */
+    finalize_sql_stmts (&params);
+
+/* populating the GRAPH_NODES table */
+    if (!populate_graph_nodes (handle, table))
+      {
+	  fprintf (stderr,
+		   "unrecoverable error while extracting GRAPH_NODES\n");
+	  sqlite3_close (handle);
+	  goto quit;
+      }
+
+/* assigning NodeIds to Arcs */
+    if (!set_node_ids (handle, table))
+      {
+	  fprintf (stderr,
+		   "unrecoverable error while assignign NODE-IDs to Arcs\n");
+	  sqlite3_close (handle);
+	  goto quit;
+      }
+
+/* computing Length and Cost for each Arc */
+    if (!set_lengths_costs (&params, table))
+      {
+	  fprintf (stderr,
+		   "unrecoverable error while assignign Length and Cost to Arcs\n");
+	  sqlite3_close (handle);
+	  goto quit;
+      }
+
+/* extracting qualified Nodes */
+    if (!create_qualified_nodes (&params, table))
+      {
+	  fprintf (stderr,
+		   "unrecoverable error while extracting qualified Nodes\n");
+	  sqlite3_close (handle);
+	  goto quit;
+      }
+
+  quit:
+/* dropping the temporary tables */
     db_cleanup (handle);
+
     if (in_memory)
       {
 	  /* exporting the in-memory DB to filesystem */
@@ -2651,6 +2558,7 @@ main (int argc, char *argv[])
 		fprintf (stderr, "cannot open '%s': %s\n", db_path,
 			 sqlite3_errmsg (disk_handle));
 		sqlite3_close (disk_handle);
+		free_params (&params);
 		return -1;
 	    }
 	  backup = sqlite3_backup_init (disk_handle, "main", handle, "main");
@@ -2659,6 +2567,7 @@ main (int argc, char *argv[])
 		fprintf (stderr, "Backup failure: 'MEMORY-DB' wasn't saved\n");
 		sqlite3_close (handle);
 		sqlite3_close (disk_handle);
+		free_params (&params);
 		return -1;
 	    }
 	  while (1)
@@ -2675,5 +2584,6 @@ main (int argc, char *argv[])
 /* VACUUMing */
     db_vacuum (handle);
     sqlite3_close (handle);
+    free_params (&params);
     return 0;
 }

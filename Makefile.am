@@ -26,11 +26,11 @@ spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
-	@LIBFREEXL_LIBS@ \
-	-lexpat
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@ 
 spatialite_osm_raw_LDADD = @LIBSPATIALITE_LIBS@ \
-	@LIBFREEXL_LIBS@ \
-	-lexpat
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@
+spatialite_osm_net_LDADD = @LIBSPATIALITE_LIBS@ \
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@
 spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
 	-lexpat 

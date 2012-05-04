@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 3.0.1, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 3.1.0, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -23,7 +23,6 @@ AC_CHECK_HEADERS(stddef.h,, [AC_MSG_ERROR([cannot find stddef.h, bailing out])])
 AC_CHECK_HEADERS(stdint.h,, [AC_MSG_ERROR([cannot find stdint.h, bailing out])])
 AC_CHECK_HEADERS(sys/time.h,, [AC_MSG_ERROR([cannot find sys/time.h, bailing out])])
 AC_CHECK_HEADERS(unistd.h,, [AC_MSG_ERROR([cannot find unistd.h, bailing out])])
-AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 
 # Checks for programs.
 AC_PROG_CXX
@@ -120,6 +119,8 @@ AC_SUBST(LIBSPATIALITE_CFLAGS)
 AC_SUBST(LIBSPATIALITE_LIBS)
 PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBFREEXL_CFLAGS)
-AC_SUBST(LIBFREEXL_LIBS)
+AC_SUBST(LIBREADOSM_LIBS)PKG_CHECK_MODULES([LIBREADOSM], [readosm], , AC_MSG_ERROR(['libreadosm' is required but it doesn't seem to be installed on this system.]))
+AC_SUBST(LIBREADOSM_CFLAGS)
+AC_SUBST(LIBREADOSM_LIBS)
 
 AC_OUTPUT

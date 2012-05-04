@@ -92,7 +92,9 @@ $(SPATIALITE_GML_EXE):	spatialite_gml.obj
 $(SPATIALITE_OSM_RAW_EXE):	spatialite_osm_raw.obj
 	cl spatialite_osm_raw.obj C:\OSGeo4W\lib\proj_i.lib \
 		C:\OSGeo4W\lib\iconv.lib \
+		C:\OSGeo4W\lib\libreadosm.lib \
 		C:\OSGeo4W\lib\libexpat.lib \
+		C:\OSGeo4W\lib\libz.lib \
 		C:\OSGeo4W\lib\spatialite_i.lib
 	if exist $(SPATIALITE_OSM_RAW_EXE).manifest mt -manifest \
 		$(SPATIALITE_OSM_RAW_EXE).manifest \

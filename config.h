@@ -4,9 +4,6 @@
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 
-/* Define to 1 if you have the <expat.h> header file. */
-#define HAVE_EXPAT_H 1
-
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
 
@@ -129,7 +126,7 @@
 #define PACKAGE_NAME "spatialite-tools"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "spatialite-tools 3.0.1"
+#define PACKAGE_STRING "spatialite-tools 3.1.0"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "spatialite-tools"
@@ -138,7 +135,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "3.0.1"
+#define PACKAGE_VERSION "3.1.0"
 
 /* Define to 1 if you have the ANSI C header files. */
 #define STDC_HEADERS 1
@@ -150,7 +147,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "3.0.1"
+#define VERSION "3.1.0"
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

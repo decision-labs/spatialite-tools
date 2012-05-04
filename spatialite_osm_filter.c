@@ -1565,7 +1565,7 @@ do_help ()
     fprintf (stderr,
 	     "-o or --osm-path pathname       the OSM-XML [output] file path\n");
     fprintf (stderr,
-	     "-w or --wkt-mask-path pathname       path of text file [WKT mask]\n");
+	     "-w or --wkt-mask-path pathname  path of text file [WKT mask]\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
@@ -1573,6 +1573,8 @@ do_help ()
 	     "-cs or --cache-size    num      DB cache size (how many pages)\n");
     fprintf (stderr,
 	     "-m or --in-memory               using IN-MEMORY database\n");
+    fprintf (stderr,
+	     "-jo or --journal-off            unsafe [but faster] mode\n");
 }
 
 int
@@ -1587,10 +1589,13 @@ main (int argc, char *argv[])
     const char *db_path = NULL;
     int in_memory = 0;
     int cache_size = 0;
+    int journal_off = 0;
     int error = 0;
     void *mask = NULL;
     int mask_len = 0;
     FILE *out = NULL;
+    char *sql_err = NULL;
+    int ret;
 
     for (i = 1; i < argc; i++)
       {
@@ -1663,9 +1668,21 @@ main (int argc, char *argv[])
 		next_arg = ARG_NONE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "-in-memory") == 0)
+	  if (strcasecmp (argv[i], "--in-memory") == 0)
 	    {
 		in_memory = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "-jo") == 0)
+	    {
+		journal_off = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--journal-off") == 0)
+	    {
+		journal_off = 1;
 		next_arg = ARG_NONE;
 		continue;
 	    }
@@ -1721,7 +1738,6 @@ main (int argc, char *argv[])
 	  /* loading the DB in-memory */
 	  sqlite3 *mem_db_handle;
 	  sqlite3_backup *backup;
-	  int ret;
 	  ret =
 	      sqlite3_open_v2 (":memory:", &mem_db_handle,
 			       SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
@@ -1757,32 +1773,41 @@ main (int argc, char *argv[])
     if (out == NULL)
 	goto stop;
 
-    fprintf (stderr, "Evvai reset\n");
+    if (journal_off)
+      {
+	  /* disabling the journal: unsafe but faster */
+	  ret =
+	      sqlite3_exec (handle, "PRAGMA journal_mode = OFF", NULL, NULL,
+			    &sql_err);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "PRAGMA journal_mode=OFF error: %s\n",
+			 sql_err);
+		sqlite3_free (sql_err);
+		goto stop;
+	    }
+      }
+
 /* resetting filtered nodes, ways and relations */
     if (!reset_filtered (handle))
 	goto stop;
 
-    fprintf (stderr, "Evvai nodes\n");
 /* identifying filtered nodes */
     if (!filter_nodes (handle, mask, mask_len))
 	goto stop;
 
-    fprintf (stderr, "Evvai rel-rels\n");
 /* identifying relations depending on other relations */
     if (!filter_rel_relations (handle))
 	goto stop;
 
-    fprintf (stderr, "Evvai way-rels\n");
 /* identifying ways depending on relations */
     if (!filter_way_relations (handle))
 	goto stop;
 
-    fprintf (stderr, "Evvai node-rels\n");
 /* identifying nodes depending on relations */
     if (!filter_node_relations (handle))
 	goto stop;
 
-    fprintf (stderr, "Evvai node-ways\n");
 /* identifying nodes depending on ways */
     if (!filter_node_ways (handle))
 	goto stop;

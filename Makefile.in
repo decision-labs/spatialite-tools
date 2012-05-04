@@ -45,10 +45,7 @@ DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
 	config.guess config.sub depcomp install-sh ltmain.sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/m4/libtool.m4 \
-	$(top_srcdir)/m4/ltoptions.m4 $(top_srcdir)/m4/ltsugar.m4 \
-	$(top_srcdir)/m4/ltversion.m4 $(top_srcdir)/m4/lt~obsolete.m4 \
-	$(top_srcdir)/configure.ac
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
@@ -86,7 +83,6 @@ spatialite_osm_map_OBJECTS = $(am_spatialite_osm_map_OBJECTS)
 spatialite_osm_map_DEPENDENCIES =
 am_spatialite_osm_net_OBJECTS = spatialite_osm_net.$(OBJEXT)
 spatialite_osm_net_OBJECTS = $(am_spatialite_osm_net_OBJECTS)
-spatialite_osm_net_LDADD = $(LDADD)
 spatialite_osm_net_DEPENDENCIES =
 am_spatialite_osm_raw_OBJECTS = spatialite_osm_raw.$(OBJEXT)
 spatialite_osm_raw_OBJECTS = $(am_spatialite_osm_raw_OBJECTS)
@@ -174,6 +170,8 @@ LDFLAGS = @LDFLAGS@
 LIBFREEXL_CFLAGS = @LIBFREEXL_CFLAGS@
 LIBFREEXL_LIBS = @LIBFREEXL_LIBS@
 LIBOBJS = @LIBOBJS@
+LIBREADOSM_CFLAGS = @LIBREADOSM_CFLAGS@
+LIBREADOSM_LIBS = @LIBREADOSM_LIBS@
 LIBS = @LIBS@
 LIBSPATIALITE_CFLAGS = @LIBSPATIALITE_CFLAGS@
 LIBSPATIALITE_LIBS = @LIBSPATIALITE_LIBS@
@@ -275,12 +273,13 @@ spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
-	@LIBFREEXL_LIBS@ \
-	-lexpat
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@ 
 
 spatialite_osm_raw_LDADD = @LIBSPATIALITE_LIBS@ \
-	@LIBFREEXL_LIBS@ \
-	-lexpat
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@
+
+spatialite_osm_net_LDADD = @LIBSPATIALITE_LIBS@ \
+	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@
 
 spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
@@ -310,15 +309,15 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
-	      echo ' cd $(srcdir) && $(AUTOMAKE) --gnu'; \
-	      $(am__cd) $(srcdir) && $(AUTOMAKE) --gnu \
+	      echo ' cd $(srcdir) && $(AUTOMAKE) --foreign'; \
+	      $(am__cd) $(srcdir) && $(AUTOMAKE) --foreign \
 		&& exit 0; \
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --gnu Makefile
+	  $(AUTOMAKE) --foreign Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \

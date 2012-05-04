@@ -68,6 +68,9 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
+	/usr/lib/libexpat.a \
+	/usr/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_net
 
@@ -78,7 +81,9 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/usr/lib/libexpat.a \
+	/usr/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_map
 
@@ -100,7 +105,9 @@ all: ./static_bin/spatialite ./static_bin/spatialite_tool \
 	/usr/lib/libgeos_c.a \
 	/usr/lib/libgeos.a \
 	/usr/local/lib/libfreexl.a \
+	/usr/local/lib/libreadosm.a \
 	/usr/lib/libexpat.a \
+	/usr/lib/libz.a \
 	-lstdc++ -lm -lpthread -ldl
 	strip --strip-all ./static_bin/spatialite_osm_raw
 

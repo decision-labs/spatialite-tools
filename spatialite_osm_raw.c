@@ -1,7 +1,7 @@
 /* 
 / spatialite_osm_raw
 /
-/ a tool loading "raw" OSM-XML maps into a SpatiaLite DB
+/ a tool loading "raw" OSM maps into a SpatiaLite DB
 /
 / version 1.0, 2010 September 13
 /
@@ -34,8 +34,6 @@
 #include <string.h>
 #include <float.h>
 
-#include <expat.h>
-
 #include "config.h"
 
 #ifdef SPATIALITE_AMALGAMATION
@@ -46,30 +44,12 @@
 
 #include <spatialite/gaiageo.h>
 #include <spatialite.h>
+#include <readosm.h>
 
 #define ARG_NONE		0
 #define ARG_OSM_PATH	1
 #define ARG_DB_PATH		2
 #define ARG_CACHE_SIZE	3
-
-#define MAX_TAG		16
-
-#if defined(_WIN32) && !defined(__MINGW32__)
-#define strcasecmp	_stricmp
-#endif /* not WIN32 */
-
-#if defined(_WIN32)
-#define atol_64		_atoi64
-#else
-#define atol_64		atoll
-#endif
-
-#define BUFFSIZE	8192
-
-#define CURRENT_TAG_UNKNOWN	0
-#define CURRENT_TAG_IS_NODE	1
-#define CURRENT_TAG_IS_WAY	2
-#define CURRENT_TAG_IS_RELATION	3
 
 struct aux_params
 {
@@ -91,131 +71,84 @@ struct aux_params
     int wr_relations;
     int wr_rel_tags;
     int wr_rel_refs;
-    int current_tag;
 };
 
-struct tag
-{
-    char *k;
-    char *v;
-    struct tag *next;
-};
-
-struct node
-{
-    sqlite3_int64 id;
-    sqlite3_int64 version;
-    char *timestamp;
-    sqlite3_int64 uid;
-    char *user;
-    sqlite3_int64 changeset;
-    double lat;
-    double lon;
-    struct tag *first;
-    struct tag *last;
-} glob_node;
-
-struct node_ref
-{
-    sqlite3_int64 node_id;
-    char *role;
-    struct node_ref *next;
-};
-
-struct way
-{
-    sqlite3_int64 id;
-    sqlite3_int64 version;
-    char *timestamp;
-    sqlite3_int64 uid;
-    char *user;
-    sqlite3_int64 changeset;
-    struct tag *first;
-    struct tag *last;
-    struct node_ref *first_node;
-    struct node_ref *last_node;
-} glob_way;
-
-struct multi_ref
-{
-    sqlite3_int64 id;
-    char type;
-    char *role;
-    struct multi_ref *next;
-};
-
-struct relation
-{
-    sqlite3_int64 id;
-    sqlite3_int64 version;
-    char *timestamp;
-    sqlite3_int64 uid;
-    char *user;
-    sqlite3_int64 changeset;
-    struct tag *first;
-    struct tag *last;
-    struct multi_ref *first_rel;
-    struct multi_ref *last_rel;
-} glob_relation;
-
-static void
-insert_node (struct aux_params *params)
+static int
+insert_node (struct aux_params *params, const readosm_node * node)
 {
     int ret;
     unsigned char *blob;
     int blob_size;
-    int sub = 0;
-    struct tag *p_tag;
-    gaiaGeomCollPtr geom = gaiaAllocGeomColl ();
-    geom->Srid = 4326;
-    gaiaAddPointToGeomColl (geom, glob_node.lon, glob_node.lat);
+    int i_tag;
+    const readosm_tag *p_tag;
+    gaiaGeomCollPtr geom = NULL;
+    if (node->longitude != READOSM_UNDEFINED
+	&& node->latitude != READOSM_UNDEFINED)
+      {
+	  geom = gaiaAllocGeomColl ();
+	  geom->Srid = 4326;
+	  gaiaAddPointToGeomColl (geom, node->longitude, node->latitude);
+      }
     sqlite3_reset (params->ins_nodes_stmt);
     sqlite3_clear_bindings (params->ins_nodes_stmt);
-    sqlite3_bind_int64 (params->ins_nodes_stmt, 1, glob_node.id);
-    sqlite3_bind_int64 (params->ins_nodes_stmt, 2, glob_node.version);
-    if (glob_node.timestamp == NULL)
+    sqlite3_bind_int64 (params->ins_nodes_stmt, 1, node->id);
+    if (node->version == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_nodes_stmt, 2);
+    else
+	sqlite3_bind_int64 (params->ins_nodes_stmt, 2, node->version);
+    if (node->timestamp == NULL)
 	sqlite3_bind_null (params->ins_nodes_stmt, 3);
     else
-	sqlite3_bind_text (params->ins_nodes_stmt, 3, glob_node.timestamp,
-			   strlen (glob_node.timestamp), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_nodes_stmt, 4, glob_node.uid);
-    if (glob_node.user == NULL)
+	sqlite3_bind_text (params->ins_nodes_stmt, 3, node->timestamp,
+			   strlen (node->timestamp), SQLITE_STATIC);
+    if (node->uid == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_nodes_stmt, 4);
+    else
+	sqlite3_bind_int64 (params->ins_nodes_stmt, 4, node->uid);
+    if (node->user == NULL)
 	sqlite3_bind_null (params->ins_nodes_stmt, 5);
     else
-	sqlite3_bind_text (params->ins_nodes_stmt, 5, glob_node.user,
-			   strlen (glob_node.user), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_nodes_stmt, 6, glob_node.changeset);
-    gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
-    gaiaFreeGeomColl (geom);
-    sqlite3_bind_blob (params->ins_nodes_stmt, 7, blob, blob_size, free);
+	sqlite3_bind_text (params->ins_nodes_stmt, 5, node->user,
+			   strlen (node->user), SQLITE_STATIC);
+    if (node->changeset == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_nodes_stmt, 6);
+    else
+	sqlite3_bind_int64 (params->ins_nodes_stmt, 6, node->changeset);
+    if (!geom)
+	sqlite3_bind_null (params->ins_nodes_stmt, 7);
+    else
+      {
+	  gaiaToSpatiaLiteBlobWkb (geom, &blob, &blob_size);
+	  gaiaFreeGeomColl (geom);
+	  sqlite3_bind_blob (params->ins_nodes_stmt, 7, blob, blob_size, free);
+      }
     ret = sqlite3_step (params->ins_nodes_stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	;
     else
       {
 	  fprintf (stderr, "sqlite3_step() error: INSERT INTO osm_nodes\n");
-	  return;
+	  return 0;
       }
     params->wr_nodes += 1;
 
-    p_tag = glob_node.first;
-    while (p_tag)
+    for (i_tag = 0; i_tag < node->tag_count; i_tag++)
       {
+	  p_tag = node->tags + i_tag;
 	  sqlite3_reset (params->ins_node_tags_stmt);
 	  sqlite3_clear_bindings (params->ins_node_tags_stmt);
-	  sqlite3_bind_int64 (params->ins_node_tags_stmt, 1, glob_node.id);
-	  sqlite3_bind_int (params->ins_node_tags_stmt, 2, sub);
-	  sub++;
-	  if (p_tag->k == NULL)
+	  sqlite3_bind_int64 (params->ins_node_tags_stmt, 1, node->id);
+	  sqlite3_bind_int (params->ins_node_tags_stmt, 2, i_tag);
+	  if (p_tag->key == NULL)
 	      sqlite3_bind_null (params->ins_node_tags_stmt, 3);
 	  else
-	      sqlite3_bind_text (params->ins_node_tags_stmt, 3, p_tag->k,
-				 strlen (p_tag->k), SQLITE_STATIC);
-	  if (p_tag->k == NULL)
+	      sqlite3_bind_text (params->ins_node_tags_stmt, 3, p_tag->key,
+				 strlen (p_tag->key), SQLITE_STATIC);
+	  if (p_tag->value == NULL)
 	      sqlite3_bind_null (params->ins_node_tags_stmt, 4);
 	  else
-	      sqlite3_bind_text (params->ins_node_tags_stmt, 4, p_tag->v,
-				 strlen (p_tag->v), SQLITE_STATIC);
+	      sqlite3_bind_text (params->ins_node_tags_stmt, 4, p_tag->value,
+				 strlen (p_tag->value), SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_node_tags_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -223,64 +156,72 @@ insert_node (struct aux_params *params)
 	    {
 		fprintf (stderr,
 			 "sqlite3_step() error: INSERT INTO osm_node_tags\n");
-		return;
+		return 0;
 	    }
 	  params->wr_node_tags += 1;
-	  p_tag = p_tag->next;
       }
+    return 1;
 }
 
-static void
-insert_way (struct aux_params *params)
+static int
+insert_way (struct aux_params *params, const readosm_way * way)
 {
     int ret;
-    int sub = 0;
-    struct tag *p_tag;
-    struct node_ref *nr;
+    int i_tag;
+    int i_ref;
+    const readosm_tag *p_tag;
     sqlite3_reset (params->ins_ways_stmt);
     sqlite3_clear_bindings (params->ins_ways_stmt);
-    sqlite3_bind_int64 (params->ins_ways_stmt, 1, glob_way.id);
-    sqlite3_bind_int64 (params->ins_ways_stmt, 2, glob_way.version);
-    if (glob_way.timestamp == NULL)
+    sqlite3_bind_int64 (params->ins_ways_stmt, 1, way->id);
+    if (way->version == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_ways_stmt, 2);
+    else
+	sqlite3_bind_int64 (params->ins_ways_stmt, 2, way->version);
+    if (way->timestamp == NULL)
 	sqlite3_bind_null (params->ins_ways_stmt, 3);
     else
-	sqlite3_bind_text (params->ins_ways_stmt, 3, glob_way.timestamp,
-			   strlen (glob_way.timestamp), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_ways_stmt, 4, glob_way.uid);
-    if (glob_way.user == NULL)
+	sqlite3_bind_text (params->ins_ways_stmt, 3, way->timestamp,
+			   strlen (way->timestamp), SQLITE_STATIC);
+    if (way->uid == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_ways_stmt, 4);
+    else
+	sqlite3_bind_int64 (params->ins_ways_stmt, 4, way->uid);
+    if (way->user == NULL)
 	sqlite3_bind_null (params->ins_ways_stmt, 5);
     else
-	sqlite3_bind_text (params->ins_ways_stmt, 5, glob_way.user,
-			   strlen (glob_way.user), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_ways_stmt, 6, glob_way.changeset);
+	sqlite3_bind_text (params->ins_ways_stmt, 5, way->user,
+			   strlen (way->user), SQLITE_STATIC);
+    if (way->changeset == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_ways_stmt, 6);
+    else
+	sqlite3_bind_int64 (params->ins_ways_stmt, 6, way->changeset);
     ret = sqlite3_step (params->ins_ways_stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	;
     else
       {
 	  fprintf (stderr, "sqlite3_step() error: INSERT INTO osm_ways\n");
-	  return;
+	  return 0;
       }
     params->wr_ways += 1;
 
-    p_tag = glob_way.first;
-    while (p_tag)
+    for (i_tag = 0; i_tag < way->tag_count; i_tag++)
       {
+	  p_tag = way->tags + i_tag;
 	  sqlite3_reset (params->ins_way_tags_stmt);
 	  sqlite3_clear_bindings (params->ins_way_tags_stmt);
-	  sqlite3_bind_int64 (params->ins_way_tags_stmt, 1, glob_way.id);
-	  sqlite3_bind_int (params->ins_way_tags_stmt, 2, sub);
-	  sub++;
-	  if (p_tag->k == NULL)
+	  sqlite3_bind_int64 (params->ins_way_tags_stmt, 1, way->id);
+	  sqlite3_bind_int (params->ins_way_tags_stmt, 2, i_tag);
+	  if (p_tag->key == NULL)
 	      sqlite3_bind_null (params->ins_way_tags_stmt, 3);
 	  else
-	      sqlite3_bind_text (params->ins_way_tags_stmt, 3, p_tag->k,
-				 strlen (p_tag->k), SQLITE_STATIC);
-	  if (p_tag->v == NULL)
+	      sqlite3_bind_text (params->ins_way_tags_stmt, 3, p_tag->key,
+				 strlen (p_tag->key), SQLITE_STATIC);
+	  if (p_tag->value == NULL)
 	      sqlite3_bind_null (params->ins_way_tags_stmt, 4);
 	  else
-	      sqlite3_bind_text (params->ins_way_tags_stmt, 4, p_tag->v,
-				 strlen (p_tag->v), SQLITE_STATIC);
+	      sqlite3_bind_text (params->ins_way_tags_stmt, 4, p_tag->value,
+				 strlen (p_tag->value), SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_way_tags_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -288,22 +229,19 @@ insert_way (struct aux_params *params)
 	    {
 		fprintf (stderr,
 			 "sqlite3_step() error: INSERT INTO osm_way_tags\n");
-		return;
+		return 0;
 	    }
 	  params->wr_way_tags += 1;
-	  p_tag = p_tag->next;
       }
 
-    sub = 0;
-    nr = glob_way.first_node;
-    while (nr)
+    for (i_ref = 0; i_ref < way->node_ref_count; i_ref++)
       {
+	  sqlite3_int64 node_id = *(way->node_refs + i_ref);
 	  sqlite3_reset (params->ins_way_refs_stmt);
 	  sqlite3_clear_bindings (params->ins_way_refs_stmt);
-	  sqlite3_bind_int64 (params->ins_way_refs_stmt, 1, glob_way.id);
-	  sqlite3_bind_int (params->ins_way_refs_stmt, 2, sub);
-	  sub++;
-	  sqlite3_bind_int64 (params->ins_way_refs_stmt, 3, nr->node_id);
+	  sqlite3_bind_int64 (params->ins_way_refs_stmt, 1, way->id);
+	  sqlite3_bind_int (params->ins_way_refs_stmt, 2, i_ref);
+	  sqlite3_bind_int64 (params->ins_way_refs_stmt, 3, node_id);
 	  ret = sqlite3_step (params->ins_way_refs_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -311,66 +249,74 @@ insert_way (struct aux_params *params)
 	    {
 		fprintf (stderr,
 			 "sqlite3_step() error: INSERT INTO osm_way_refs\n");
-		return;
+		return 0;
 	    }
 	  params->wr_way_refs += 1;
-	  nr = nr->next;
       }
+    return 1;
 }
 
-static void
-insert_relation (struct aux_params *params)
+static int
+insert_relation (struct aux_params *params, const readosm_relation * relation)
 {
     int ret;
-    int sub = 0;
-    struct tag *p_tag;
-    struct multi_ref *mr;
+    int i_tag;
+    int i_member;
+    const readosm_tag *p_tag;
+    const readosm_member *p_member;
     sqlite3_reset (params->ins_relations_stmt);
     sqlite3_clear_bindings (params->ins_relations_stmt);
-    sqlite3_bind_int64 (params->ins_relations_stmt, 1, glob_relation.id);
-    sqlite3_bind_int64 (params->ins_relations_stmt, 2, glob_relation.version);
-    if (glob_relation.timestamp == NULL)
+    sqlite3_bind_int64 (params->ins_relations_stmt, 1, relation->id);
+    if (relation->version == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_relations_stmt, 2);
+    else
+	sqlite3_bind_int64 (params->ins_relations_stmt, 2, relation->version);
+    if (relation->timestamp == NULL)
 	sqlite3_bind_null (params->ins_relations_stmt, 3);
     else
-	sqlite3_bind_text (params->ins_relations_stmt, 3,
-			   glob_relation.timestamp,
-			   strlen (glob_relation.timestamp), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_relations_stmt, 4, glob_relation.uid);
-    if (glob_relation.user == NULL)
+	sqlite3_bind_text (params->ins_relations_stmt, 3, relation->timestamp,
+			   strlen (relation->timestamp), SQLITE_STATIC);
+    if (relation->uid == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_relations_stmt, 4);
+    else
+	sqlite3_bind_int64 (params->ins_relations_stmt, 4, relation->uid);
+    if (relation->user == NULL)
 	sqlite3_bind_null (params->ins_relations_stmt, 5);
     else
-	sqlite3_bind_text (params->ins_relations_stmt, 5, glob_relation.user,
-			   strlen (glob_relation.user), SQLITE_STATIC);
-    sqlite3_bind_int64 (params->ins_relations_stmt, 6, glob_relation.changeset);
+	sqlite3_bind_text (params->ins_relations_stmt, 5, relation->user,
+			   strlen (relation->user), SQLITE_STATIC);
+    if (relation->changeset == READOSM_UNDEFINED)
+	sqlite3_bind_null (params->ins_relations_stmt, 6);
+    else
+	sqlite3_bind_int64 (params->ins_relations_stmt, 6, relation->changeset);
     ret = sqlite3_step (params->ins_relations_stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	;
     else
       {
 	  fprintf (stderr, "sqlite3_step() error: INSERT INTO osm_relations\n");
-	  return;
+	  return 0;
       }
     params->wr_relations += 1;
 
-    p_tag = glob_relation.first;
-    while (p_tag)
+    for (i_tag = 0; i_tag < relation->tag_count; i_tag++)
       {
+	  p_tag = relation->tags + i_tag;
 	  sqlite3_reset (params->ins_relation_tags_stmt);
 	  sqlite3_clear_bindings (params->ins_relation_tags_stmt);
-	  sqlite3_bind_int64 (params->ins_relation_tags_stmt, 1,
-			      glob_relation.id);
-	  sqlite3_bind_int (params->ins_relation_tags_stmt, 2, sub);
-	  sub++;
-	  if (p_tag->k == NULL)
+	  sqlite3_bind_int64 (params->ins_relation_tags_stmt, 1, relation->id);
+	  sqlite3_bind_int (params->ins_relation_tags_stmt, 2, i_tag);
+	  if (p_tag->key == NULL)
 	      sqlite3_bind_null (params->ins_relation_tags_stmt, 3);
 	  else
-	      sqlite3_bind_text (params->ins_relation_tags_stmt, 3, p_tag->k,
-				 strlen (p_tag->k), SQLITE_STATIC);
-	  if (p_tag->v == NULL)
+	      sqlite3_bind_text (params->ins_relation_tags_stmt, 3, p_tag->key,
+				 strlen (p_tag->key), SQLITE_STATIC);
+	  if (p_tag->value == NULL)
 	      sqlite3_bind_null (params->ins_relation_tags_stmt, 4);
 	  else
-	      sqlite3_bind_text (params->ins_relation_tags_stmt, 4, p_tag->v,
-				 strlen (p_tag->v), SQLITE_STATIC);
+	      sqlite3_bind_text (params->ins_relation_tags_stmt, 4,
+				 p_tag->value, strlen (p_tag->value),
+				 SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_relation_tags_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -378,40 +324,37 @@ insert_relation (struct aux_params *params)
 	    {
 		fprintf (stderr,
 			 "sqlite3_step() error: INSERT INTO osm_relation_tags\n");
-		return;
+		return 0;
 	    }
 	  params->wr_rel_tags += 1;
-	  p_tag = p_tag->next;
       }
 
-    sub = 0;
-    mr = glob_relation.first_rel;
-    while (mr)
+    for (i_member = 0; i_member < relation->member_count; i_member++)
       {
+	  p_member = relation->members + i_member;
 	  sqlite3_reset (params->ins_relation_refs_stmt);
 	  sqlite3_clear_bindings (params->ins_relation_refs_stmt);
-	  sqlite3_bind_int64 (params->ins_relation_refs_stmt, 1,
-			      glob_relation.id);
-	  sqlite3_bind_int (params->ins_relation_refs_stmt, 2, sub);
-	  sub++;
-	  if (mr->type == 'N')
+	  sqlite3_bind_int64 (params->ins_relation_refs_stmt, 1, relation->id);
+	  sqlite3_bind_int (params->ins_relation_refs_stmt, 2, i_member);
+	  if (p_member->member_type == READOSM_MEMBER_NODE)
 	      sqlite3_bind_text (params->ins_relation_refs_stmt, 3, "N", 1,
 				 SQLITE_STATIC);
-	  else if (mr->type == 'W')
+	  else if (p_member->member_type == READOSM_MEMBER_WAY)
 	      sqlite3_bind_text (params->ins_relation_refs_stmt, 3, "W", 1,
 				 SQLITE_STATIC);
-	  else if (mr->type == 'R')
+	  else if (p_member->member_type == READOSM_MEMBER_RELATION)
 	      sqlite3_bind_text (params->ins_relation_refs_stmt, 3, "R", 1,
 				 SQLITE_STATIC);
 	  else
 	      sqlite3_bind_text (params->ins_relation_refs_stmt, 3, "?", 1,
 				 SQLITE_STATIC);
-	  sqlite3_bind_int64 (params->ins_relation_refs_stmt, 4, mr->id);
-	  if (mr->role == NULL)
+	  sqlite3_bind_int64 (params->ins_relation_refs_stmt, 4, p_member->id);
+	  if (p_member->role == NULL)
 	      sqlite3_bind_null (params->ins_relation_refs_stmt, 5);
 	  else
 	      sqlite3_bind_text (params->ins_relation_refs_stmt, 5,
-				 mr->role, strlen (mr->role), SQLITE_STATIC);
+				 p_member->role, strlen (p_member->role),
+				 SQLITE_STATIC);
 	  ret = sqlite3_step (params->ins_relation_refs_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      ;
@@ -419,427 +362,41 @@ insert_relation (struct aux_params *params)
 	    {
 		fprintf (stderr,
 			 "sqlite3_step() error: INSERT INTO osm_relation_refs\n");
-		return;
+		return 0;
 	    }
 	  params->wr_rel_refs += 1;
-	  mr = mr->next;
       }
+    return 1;
 }
 
-static void
-clean_node ()
+static int
+consume_node (const void *user_data, const readosm_node * node)
 {
-/* cleaning the current node */
-    struct tag *pt;
-    struct tag *ptn;
-    if (glob_node.timestamp)
-	free (glob_node.timestamp);
-    if (glob_node.user)
-	free (glob_node.user);
-    pt = glob_node.first;
-    while (pt)
-      {
-	  ptn = pt->next;
-	  if (pt->k)
-	      free (pt->k);
-	  if (pt->v)
-	      free (pt->v);
-	  free (pt);
-	  pt = ptn;
-      }
-    glob_node.timestamp = NULL;
-    glob_node.user = NULL;
-    glob_node.first = NULL;
-    glob_node.last = NULL;
+/* processing an OSM Node (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    if (!insert_node (params, node))
+	return READOSM_ABORT;
+    return READOSM_OK;
 }
 
-static void
-clean_way ()
+static int
+consume_way (const void *user_data, const readosm_way * way)
 {
-/* cleaning the current way */
-    struct tag *pt;
-    struct tag *ptn;
-    struct node_ref *nr;
-    struct node_ref *nrn;
-    if (glob_way.timestamp)
-	free (glob_way.timestamp);
-    if (glob_way.user)
-	free (glob_way.user);
-    pt = glob_way.first;
-    while (pt)
-      {
-	  ptn = pt->next;
-	  if (pt->k)
-	      free (pt->k);
-	  if (pt->v)
-	      free (pt->v);
-	  free (pt);
-	  pt = ptn;
-      }
-    nr = glob_way.first_node;
-    while (nr)
-      {
-	  nrn = nr->next;
-	  free (nr);
-	  nr = nrn;
-      }
-    glob_way.timestamp = NULL;
-    glob_way.user = NULL;
-    glob_way.first = NULL;
-    glob_way.last = NULL;
-    glob_way.first_node = NULL;
-    glob_way.last_node = NULL;
+/* processing an OSM Way (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    if (!insert_way (params, way))
+	return READOSM_ABORT;
+    return READOSM_OK;
 }
 
-static void
-clean_relation ()
+static int
+consume_relation (const void *user_data, const readosm_relation * relation)
 {
-/* cleaning the current relation */
-    struct tag *pt;
-    struct tag *ptn;
-    struct multi_ref *mr;
-    struct multi_ref *mrn;
-    if (glob_relation.timestamp)
-	free (glob_relation.timestamp);
-    if (glob_relation.user)
-	free (glob_relation.user);
-    pt = glob_relation.first;
-    while (pt)
-      {
-	  ptn = pt->next;
-	  if (pt->k)
-	      free (pt->k);
-	  if (pt->v)
-	      free (pt->v);
-	  free (pt);
-	  pt = ptn;
-      }
-    mr = glob_relation.first_rel;
-    while (mr)
-      {
-	  mrn = mr->next;
-	  if (mr->role)
-	      free (mr->role);
-	  free (mr);
-	  mr = mrn;
-      }
-    glob_relation.timestamp = NULL;
-    glob_relation.user = NULL;
-    glob_relation.first = NULL;
-    glob_relation.last = NULL;
-    glob_relation.first_rel = NULL;
-    glob_relation.last_rel = NULL;
-}
-
-static void
-start_node (struct aux_params *params, const char **attr)
-{
-    int i;
-    int len;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_node.id = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "version") == 0)
-	      glob_node.version = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "timestamp") == 0)
-	    {
-		if (glob_node.timestamp)
-		    free (glob_node.timestamp);
-		len = strlen (attr[i + 1]);
-		glob_node.timestamp = malloc (len + 1);
-		strcpy (glob_node.timestamp, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "uid") == 0)
-	      glob_node.uid = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "user") == 0)
-	    {
-		if (glob_node.user)
-		    free (glob_node.user);
-		len = strlen (attr[i + 1]);
-		glob_node.user = malloc (len + 1);
-		strcpy (glob_node.user, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "changeset") == 0)
-	      glob_node.changeset = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "lat") == 0)
-	      glob_node.lat = atof (attr[i + 1]);
-	  if (strcmp (attr[i], "lon") == 0)
-	      glob_node.lon = atof (attr[i + 1]);
-      }
-    params->current_tag = CURRENT_TAG_IS_NODE;
-}
-
-static void
-end_node (struct aux_params *params)
-{
-    insert_node (params);
-    clean_node ();
-    params->current_tag = CURRENT_TAG_UNKNOWN;
-}
-
-static void
-start_way (struct aux_params *params, const char **attr)
-{
-    int i;
-    int len;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_way.id = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "version") == 0)
-	      glob_way.version = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "timestamp") == 0)
-	    {
-		if (glob_way.timestamp)
-		    free (glob_way.timestamp);
-		len = strlen (attr[i + 1]);
-		glob_way.timestamp = malloc (len + 1);
-		strcpy (glob_way.timestamp, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "uid") == 0)
-	      glob_way.uid = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "user") == 0)
-	    {
-		if (glob_way.user)
-		    free (glob_way.user);
-		len = strlen (attr[i + 1]);
-		glob_way.user = malloc (len + 1);
-		strcpy (glob_way.user, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "changeset") == 0)
-	      glob_way.changeset = atol_64 (attr[i + 1]);
-      }
-    params->current_tag = CURRENT_TAG_IS_WAY;
-}
-
-static void
-end_way (struct aux_params *params)
-{
-    insert_way (params);
-    clean_way ();
-    params->current_tag = CURRENT_TAG_UNKNOWN;
-}
-
-static void
-start_relation (struct aux_params *params, const char **attr)
-{
-    int i;
-    int len;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "id") == 0)
-	      glob_relation.id = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "version") == 0)
-	      glob_relation.version = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "timestamp") == 0)
-	    {
-		if (glob_relation.timestamp)
-		    free (glob_relation.timestamp);
-		len = strlen (attr[i + 1]);
-		glob_relation.timestamp = malloc (len + 1);
-		strcpy (glob_relation.timestamp, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "uid") == 0)
-	      glob_relation.uid = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "user") == 0)
-	    {
-		if (glob_relation.user)
-		    free (glob_relation.user);
-		len = strlen (attr[i + 1]);
-		glob_relation.user = malloc (len + 1);
-		strcpy (glob_relation.user, attr[i + 1]);
-	    }
-	  if (strcmp (attr[i], "changeset") == 0)
-	      glob_relation.changeset = atol_64 (attr[i + 1]);
-      }
-    params->current_tag = CURRENT_TAG_IS_RELATION;
-}
-
-static void
-end_relation (struct aux_params *params)
-{
-    insert_relation (params);
-    clean_relation ();
-    params->current_tag = CURRENT_TAG_UNKNOWN;
-}
-
-static void
-start_xtag (struct aux_params *params, const char **attr)
-{
-    int i;
-    int len;
-    const char *k = NULL;
-    const char *v = NULL;
-    struct tag *p_tag;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "k") == 0)
-	      k = attr[i + 1];
-	  if (strcmp (attr[i], "v") == 0)
-	      v = attr[i + 1];
-      }
-
-/* appending a new tag to the current item */
-    if (params->current_tag == CURRENT_TAG_IS_NODE)
-      {
-	  p_tag = malloc (sizeof (struct tag));
-	  if (glob_node.first == NULL)
-	      glob_node.first = p_tag;
-	  if (glob_node.last != NULL)
-	      glob_node.last->next = p_tag;
-	  glob_node.last = p_tag;
-	  p_tag->next = NULL;
-	  len = strlen (k);
-	  p_tag->k = malloc (len + 1);
-	  strcpy (p_tag->k, k);
-	  len = strlen (v);
-	  p_tag->v = malloc (len + 1);
-	  strcpy (p_tag->v, v);
-      }
-    if (params->current_tag == CURRENT_TAG_IS_WAY)
-      {
-	  p_tag = malloc (sizeof (struct tag));
-	  if (glob_way.first == NULL)
-	      glob_way.first = p_tag;
-	  if (glob_way.last != NULL)
-	      glob_way.last->next = p_tag;
-	  glob_way.last = p_tag;
-	  p_tag->next = NULL;
-	  len = strlen (k);
-	  p_tag->k = malloc (len + 1);
-	  strcpy (p_tag->k, k);
-	  len = strlen (v);
-	  p_tag->v = malloc (len + 1);
-	  strcpy (p_tag->v, v);
-      }
-    if (params->current_tag == CURRENT_TAG_IS_RELATION)
-      {
-	  p_tag = malloc (sizeof (struct tag));
-	  if (glob_relation.first == NULL)
-	      glob_relation.first = p_tag;
-	  if (glob_relation.last != NULL)
-	      glob_relation.last->next = p_tag;
-	  glob_relation.last = p_tag;
-	  p_tag->next = NULL;
-	  len = strlen (k);
-	  p_tag->k = malloc (len + 1);
-	  strcpy (p_tag->k, k);
-	  len = strlen (v);
-	  p_tag->v = malloc (len + 1);
-	  strcpy (p_tag->v, v);
-      }
-}
-
-static void
-start_nd (struct aux_params *params, const char **attr)
-{
-    int i;
-    sqlite3_int64 node_id;
-    struct node_ref *nr;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "ref") == 0)
-	      node_id = atol_64 (attr[i + 1]);
-      }
-/* appending a new node-ref-id to the current item */
-    if (params->current_tag == CURRENT_TAG_IS_WAY)
-      {
-	  nr = malloc (sizeof (struct node_ref));
-	  if (glob_way.first_node == NULL)
-	      glob_way.first_node = nr;
-	  if (glob_way.last_node != NULL)
-	      glob_way.last_node->next = nr;
-	  glob_way.last_node = nr;
-	  nr->next = NULL;
-	  nr->node_id = node_id;
-      }
-}
-
-static void
-start_member (struct aux_params *params, const char **attr)
-{
-    int i;
-    sqlite3_int64 id;
-    const char *role = NULL;
-    int len;
-    int is_way = 0;
-    int is_node = 0;
-    int is_rel = 0;
-    struct multi_ref *mr;
-    for (i = 0; attr[i]; i += 2)
-      {
-	  if (strcmp (attr[i], "type") == 0)
-	    {
-		if (strcmp (attr[i + 1], "way") == 0)
-		    is_way = 1;
-		if (strcmp (attr[i + 1], "node") == 0)
-		    is_node = 1;
-		if (strcmp (attr[i + 1], "relation") == 0)
-		    is_rel = 1;
-	    }
-	  if (strcmp (attr[i], "ref") == 0)
-	      id = atol_64 (attr[i + 1]);
-	  if (strcmp (attr[i], "role") == 0)
-	      role = attr[i + 1];
-      }
-
-    if (params->current_tag == CURRENT_TAG_IS_RELATION)
-      {
-	  /* appending a new relation-ref-id to the current item */
-	  mr = malloc (sizeof (struct multi_ref));
-	  if (glob_relation.first_rel == NULL)
-	      glob_relation.first_rel = mr;
-	  if (glob_relation.last_rel != NULL)
-	      glob_relation.last_rel->next = mr;
-	  glob_relation.last_rel = mr;
-	  mr->next = NULL;
-	  mr->type = '?';
-	  if (is_node)
-	      mr->type = 'N';
-	  if (is_way)
-	      mr->type = 'W';
-	  if (is_rel)
-	      mr->type = 'R';
-	  mr->id = id;
-	  mr->role = NULL;
-	  if (role)
-	    {
-		len = strlen (role);
-		mr->role = malloc (len + 1);
-		strcpy (mr->role, role);
-	    }
-      }
-}
-
-static void
-start_tag (void *data, const char *el, const char **attr)
-{
-    struct aux_params *params = (struct aux_params *) data;
-    if (strcmp (el, "node") == 0)
-	start_node (params, attr);
-    if (strcmp (el, "way") == 0)
-	start_way (params, attr);
-    if (strcmp (el, "relation") == 0)
-	start_relation (params, attr);
-    if (strcmp (el, "tag") == 0)
-	start_xtag (params, attr);
-    if (strcmp (el, "nd") == 0)
-	start_nd (params, attr);
-    if (strcmp (el, "member") == 0)
-	start_member (params, attr);
-}
-
-static void
-end_tag (void *data, const char *el)
-{
-    struct aux_params *params = (struct aux_params *) data;
-    if (strcmp (el, "node") == 0)
-	end_node (params);
-    if (strcmp (el, "way") == 0)
-	end_way (params);
-    if (strcmp (el, "relation") == 0)
-	end_relation (params);
+/* processing an OSM Relation (ReadOSM callback function) */
+    struct aux_params *params = (struct aux_params *) user_data;
+    if (!insert_relation (params, relation))
+	return READOSM_ABORT;
+    return READOSM_OK;
 }
 
 static void
@@ -876,7 +433,7 @@ finalize_sql_stmts (struct aux_params *params)
 }
 
 static void
-create_sql_stmts (struct aux_params *params)
+create_sql_stmts (struct aux_params *params, int journal_off)
 {
     sqlite3_stmt *ins_nodes_stmt;
     sqlite3_stmt *ins_node_tags_stmt;
@@ -889,6 +446,21 @@ create_sql_stmts (struct aux_params *params)
     char sql[1024];
     int ret;
     char *sql_err = NULL;
+
+    if (journal_off)
+      {
+	  /* disabling the journal: unsafe but faster */
+	  ret =
+	      sqlite3_exec (params->db_handle, "PRAGMA journal_mode = OFF",
+			    NULL, NULL, &sql_err);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "PRAGMA journal_mode=OFF error: %s\n",
+			 sql_err);
+		sqlite3_free (sql_err);
+		return;
+	    }
+      }
 
 /* the complete operation is handled as an unique SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
@@ -1167,11 +739,11 @@ open_db (const char *path, sqlite3 ** handle, int cache_size)
 /* creating the OSM "raw" nodes */
     strcpy (sql, "CREATE TABLE osm_nodes (\n");
     strcat (sql, "node_id INTEGER NOT NULL PRIMARY KEY,\n");
-    strcat (sql, "version INTEGER NOT NULL,\n");
+    strcat (sql, "version INTEGER,\n");
     strcat (sql, "timestamp TEXT,\n");
-    strcat (sql, "uid INTEGER NOT NULL,\n");
+    strcat (sql, "uid INTEGER,\n");
     strcat (sql, "user TEXT,\n");
-    strcat (sql, "changeset INTEGER NOT NULL,\n");
+    strcat (sql, "changeset INTEGER,\n");
     strcat (sql, "filtered INTEGER NOT NULL)\n");
     ret = sqlite3_exec (db_handle, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
@@ -1211,11 +783,11 @@ open_db (const char *path, sqlite3 ** handle, int cache_size)
 /* creating the OSM "raw" ways */
     strcpy (sql, "CREATE TABLE osm_ways (\n");
     strcat (sql, "way_id INTEGER NOT NULL PRIMARY KEY,\n");
-    strcat (sql, "version INTEGER NOT NULL,\n");
+    strcat (sql, "version INTEGER,\n");
     strcat (sql, "timestamp TEXT,\n");
-    strcat (sql, "uid INTEGER NOT NULL,\n");
+    strcat (sql, "uid INTEGER,\n");
     strcat (sql, "user TEXT,\n");
-    strcat (sql, "changeset INTEGER NOT NULL,\n");
+    strcat (sql, "changeset INTEGER,\n");
     strcat (sql, "filtered INTEGER NOT NULL)\n");
     ret = sqlite3_exec (db_handle, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
@@ -1272,11 +844,11 @@ open_db (const char *path, sqlite3 ** handle, int cache_size)
 /* creating the OSM "raw" relations */
     strcpy (sql, "CREATE TABLE osm_relations (\n");
     strcat (sql, "rel_id INTEGER NOT NULL PRIMARY KEY,\n");
-    strcat (sql, "version INTEGER NOT NULL,\n");
+    strcat (sql, "version INTEGER,\n");
     strcat (sql, "timestamp TEXT,\n");
-    strcat (sql, "uid INTEGER NOT NULL,\n");
+    strcat (sql, "uid INTEGER,\n");
     strcat (sql, "user TEXT,\n");
-    strcat (sql, "changeset INTEGER NOT NULL,\n");
+    strcat (sql, "changeset INTEGER,\n");
     strcat (sql, "filtered INTEGER NOT NULL)\n");
     ret = sqlite3_exec (db_handle, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
@@ -1357,7 +929,11 @@ do_help ()
 	     "==============================================================\n");
     fprintf (stderr,
 	     "-h or --help                    print this help message\n");
-    fprintf (stderr, "-o or --osm-path pathname       the OSM-XML file path\n");
+    fprintf (stderr, "-o or --osm-path pathname       the OSM-file path\n");
+    fprintf (stderr,
+	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
+    fprintf (stderr,
+	     "                 (*.osm.pbf) are indifferenctly supported.\n\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
@@ -1365,6 +941,8 @@ do_help ()
 	     "-cs or --cache-size    num      DB cache size (how many pages)\n");
     fprintf (stderr,
 	     "-m or --in-memory               using IN-MEMORY database\n");
+    fprintf (stderr,
+	     "-jo or --journal-off            unsafe [but faster] mode\n");
 }
 
 int
@@ -1378,13 +956,10 @@ main (int argc, char *argv[])
     const char *db_path = NULL;
     int in_memory = 0;
     int cache_size = 0;
+    int journal_off = 0;
     int error = 0;
-    char Buff[BUFFSIZE];
-    int done = 0;
-    int len;
-    XML_Parser parser;
     struct aux_params params;
-    FILE *xml_file;
+    const void *osm_handle;
 
 /* initializing the aux-structs */
     params.db_handle = NULL;
@@ -1404,26 +979,6 @@ main (int argc, char *argv[])
     params.wr_relations = 0;
     params.wr_rel_tags = 0;
     params.wr_rel_refs = 0;
-    params.current_tag = CURRENT_TAG_UNKNOWN;
-
-    glob_node.timestamp = NULL;
-    glob_node.user = NULL;
-    glob_node.first = NULL;
-    glob_node.last = NULL;
-
-    glob_way.timestamp = NULL;
-    glob_way.user = NULL;
-    glob_way.first = NULL;
-    glob_way.last = NULL;
-    glob_way.first_node = NULL;
-    glob_way.last_node = NULL;
-
-    glob_relation.timestamp = NULL;
-    glob_relation.user = NULL;
-    glob_relation.first = NULL;
-    glob_relation.last = NULL;
-    glob_relation.first_rel = NULL;
-    glob_relation.last_rel = NULL;
 
     for (i = 1; i < argc; i++)
       {
@@ -1483,9 +1038,21 @@ main (int argc, char *argv[])
 		next_arg = ARG_NONE;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "-in-memory") == 0)
+	  if (strcasecmp (argv[i], "--in-memory") == 0)
 	    {
 		in_memory = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "-jo") == 0)
+	    {
+		journal_off = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--journal-off") == 0)
+	    {
+		journal_off = 1;
 		next_arg = ARG_NONE;
 		continue;
 	    }
@@ -1523,7 +1090,6 @@ main (int argc, char *argv[])
     open_db (db_path, &handle, cache_size);
     if (!handle)
 	return -1;
-    params.db_handle = handle;
     if (in_memory)
       {
 	  /* loading the DB in-memory */
@@ -1560,48 +1126,31 @@ main (int argc, char *argv[])
 	  handle = mem_db_handle;
 	  printf ("\nusing IN-MEMORY database\n");
       }
+    params.db_handle = handle;
 
 /* creating SQL prepared statements */
-    create_sql_stmts (&params);
+    create_sql_stmts (&params, journal_off);
 
-/* XML parsing */
-    xml_file = fopen (osm_path, "rb");
-    if (!xml_file)
+/* parsing the input OSM-file */
+    if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
       {
 	  fprintf (stderr, "cannot open %s\n", osm_path);
+	  finalize_sql_stmts (&params);
 	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
 	  return -1;
       }
-    parser = XML_ParserCreate (NULL);
-    if (!parser)
+    if (readosm_parse
+	(osm_handle, &params, consume_node, consume_way,
+	 consume_relation) != READOSM_OK)
       {
-	  fprintf (stderr, "Couldn't allocate memory for parser\n");
+	  fprintf (stderr, "unrecoverable error while parsing %s\n", osm_path);
+	  finalize_sql_stmts (&params);
 	  sqlite3_close (handle);
+	  readosm_close (osm_handle);
 	  return -1;
       }
-    XML_SetUserData (parser, &params);
-    XML_SetElementHandler (parser, start_tag, end_tag);
-    while (!done)
-      {
-	  len = fread (Buff, 1, BUFFSIZE, xml_file);
-	  if (ferror (xml_file))
-	    {
-		fprintf (stderr, "XML Read error\n");
-		sqlite3_close (handle);
-		return -1;
-	    }
-	  done = feof (xml_file);
-	  if (!XML_Parse (parser, Buff, len, done))
-	    {
-		fprintf (stderr, "Parse error at line %d:\n%s\n",
-			 (int) XML_GetCurrentLineNumber (parser),
-			 XML_ErrorString (XML_GetErrorCode (parser)));
-		sqlite3_close (handle);
-		return -1;
-	    }
-      }
-    XML_ParserFree (parser);
-    fclose (xml_file);
+    readosm_close (osm_handle);
 
 /* finalizing SQL prepared statements */
     finalize_sql_stmts (&params);
