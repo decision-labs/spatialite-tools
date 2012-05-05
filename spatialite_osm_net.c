@@ -45,6 +45,10 @@
 #include <spatialite.h>
 #include <readosm.h>
 
+#ifdef _WIN32
+#define strcasecmp	_stricmp
+#endif /* not WIN32 */
+
 #define ARG_NONE		0
 #define ARG_OSM_PATH	1
 #define ARG_DB_PATH		2
