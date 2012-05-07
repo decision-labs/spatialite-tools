@@ -2,13 +2,17 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 3.1.0, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 3.1.0a, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE
 AM_CONFIG_HEADER(config.h)
+
+# supporting SPATIALITE_AMALGAMATION
+AH_TEMPLATE([SPATIALITE_AMALGAMATION],
+	    [must be defined when using libspatialite-amalgamation])
 
 # Checks for header files.
 AC_CHECK_HEADERS(stdlib.h,, [AC_MSG_ERROR([cannot find stdlib.h, bailing out])])
@@ -116,6 +120,10 @@ LIBS="$LIBS_SAVE"
 
 PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
+# testing for libspatialite-amalgamation
+if test "x$(pkg-config --cflags spatialite|grep "DSPATIALITE_AMALGAMATION=1")" != "x"; then
+  AC_DEFINE(SPATIALITE_AMALGAMATION, 1)
+fi
 AC_SUBST(LIBSPATIALITE_LIBS)
 PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBFREEXL_CFLAGS)
