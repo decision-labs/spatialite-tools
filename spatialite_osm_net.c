@@ -237,10 +237,11 @@ build_linestrings (struct aux_params *params, const readosm_way * way)
 }
 
 static int
-arcs_insert (struct aux_params *params, sqlite3_int64 id, const char *class,
-	     const char *name, int oneway, unsigned char *blob, int blob_size)
+arcs_insert_straight (struct aux_params *params, sqlite3_int64 id,
+		      const char *class, const char *name, unsigned char *blob,
+		      int blob_size)
 {
-/* Inserts an Arc into the Graph */
+/* Inserts a uniderectional Arc into the Graph - straight direction */
     int ret;
     if (params->ins_arcs_stmt == NULL)
 	return 1;
@@ -251,33 +252,178 @@ arcs_insert (struct aux_params *params, sqlite3_int64 id, const char *class,
 		       SQLITE_STATIC);
     sqlite3_bind_text (params->ins_arcs_stmt, 3, name, strlen (name),
 		       SQLITE_STATIC);
-    if (params->double_arcs == 0)
+    sqlite3_bind_blob (params->ins_arcs_stmt, 4, blob, blob_size,
+		       SQLITE_STATIC);
+    ret = sqlite3_step (params->ins_arcs_stmt);
+
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	return 1;
+    fprintf (stderr, "sqlite3_step() error: INS_ARCS\n");
+    sqlite3_finalize (params->ins_arcs_stmt);
+    params->ins_arcs_stmt = NULL;
+    return 0;
+}
+
+static int
+arcs_insert_reverse (struct aux_params *params, sqlite3_int64 id,
+		     const char *class, const char *name, unsigned char *blob,
+		     int blob_size)
+{
+/* Inserts a unidirectional Arc into the Graph - reverse direction */
+    int ret;
+    gaiaGeomCollPtr g1;
+    gaiaGeomCollPtr g2;
+    gaiaLinestringPtr ln1;
+    gaiaLinestringPtr ln2;
+    unsigned char *blob2;
+    int blob_size2;
+    int iv1;
+    int iv2;
+    double x;
+    double y;
+    double z;
+    double m;
+    if (params->ins_arcs_stmt == NULL)
+	return 1;
+
+/* creating a geometry in reverse order */
+    g1 = gaiaFromSpatiaLiteBlobWkb (blob, blob_size);
+    if (!g1)
+	return 0;
+    ln1 = g1->FirstLinestring;
+    if (!ln1)
+	return 0;
+    if (g1->DimensionModel == GAIA_XY_Z)
+	g2 = gaiaAllocGeomCollXYZ ();
+    else if (g1->DimensionModel == GAIA_XY_M)
+	g2 = gaiaAllocGeomCollXYM ();
+    else if (g1->DimensionModel == GAIA_XY_Z_M)
+	g2 = gaiaAllocGeomCollXYZM ();
+    else
+	g2 = gaiaAllocGeomColl ();
+    g2->Srid = g1->Srid;
+    ln2 = gaiaAddLinestringToGeomColl (g2, ln1->Points);
+    iv2 = ln1->Points - 1;
+    for (iv1 = 0; iv1 < ln1->Points; iv1++)
       {
-	  /* inserting a bi-directional arc */
-	  if (oneway > 0)
+	  /* copying points in reverse order */
+	  if (g1->DimensionModel == GAIA_XY_Z)
 	    {
-		sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
-		sqlite3_bind_int (params->ins_arcs_stmt, 5, 0);
+		gaiaGetPointXYZ (ln1->Coords, iv1, &x, &y, &z);
 	    }
-	  else if (oneway < 0)
+	  else if (g1->DimensionModel == GAIA_XY_M)
 	    {
-		sqlite3_bind_int (params->ins_arcs_stmt, 4, 0);
-		sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+		gaiaGetPointXYM (ln1->Coords, iv1, &x, &y, &m);
+	    }
+	  else if (g1->DimensionModel == GAIA_XY_Z_M)
+	    {
+		gaiaGetPointXYZM (ln1->Coords, iv1, &x, &y, &z, &m);
 	    }
 	  else
 	    {
-		sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
-		sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+		gaiaGetPoint (ln1->Coords, iv1, &x, &y);
 	    }
-	  sqlite3_bind_blob (params->ins_arcs_stmt, 6, blob, blob_size, free);
+	  if (g2->DimensionModel == GAIA_XY_Z)
+	    {
+		gaiaSetPointXYZ (ln2->Coords, iv2, x, y, z);
+	    }
+	  else if (g2->DimensionModel == GAIA_XY_M)
+	    {
+		gaiaSetPointXYM (ln2->Coords, iv2, x, y, m);
+	    }
+	  else if (g2->DimensionModel == GAIA_XY_Z_M)
+	    {
+		gaiaSetPointXYZM (ln2->Coords, iv2, x, y, z, m);
+	    }
+	  else
+	    {
+		gaiaSetPoint (ln2->Coords, iv2, x, y);
+	    }
+	  iv2--;
+      }
+    gaiaToSpatiaLiteBlobWkb (g2, &blob2, &blob_size2);
+    gaiaFreeGeomColl (g1);
+    gaiaFreeGeomColl (g2);
+
+    sqlite3_reset (params->ins_arcs_stmt);
+    sqlite3_clear_bindings (params->ins_arcs_stmt);
+    sqlite3_bind_int64 (params->ins_arcs_stmt, 1, id);
+    sqlite3_bind_text (params->ins_arcs_stmt, 2, class, strlen (class),
+		       SQLITE_STATIC);
+    sqlite3_bind_text (params->ins_arcs_stmt, 3, name, strlen (name),
+		       SQLITE_STATIC);
+    sqlite3_bind_blob (params->ins_arcs_stmt, 4, blob2, blob_size2, free);
+    ret = sqlite3_step (params->ins_arcs_stmt);
+
+    if (ret == SQLITE_DONE || ret == SQLITE_ROW)
+	return 1;
+    fprintf (stderr, "sqlite3_step() error: INS_ARCS\n");
+    sqlite3_finalize (params->ins_arcs_stmt);
+    params->ins_arcs_stmt = NULL;
+    return 0;
+}
+
+static int
+arcs_insert_double (struct aux_params *params, sqlite3_int64 id,
+		    const char *class, const char *name, int oneway,
+		    unsigned char *blob, int blob_size)
+{
+/* Inserts a unidirectional Arc into the Graph */
+    if (oneway >= 0)
+      {
+	  /* inserting the straight direction */
+	  if (!arcs_insert_straight (params, id, class, name, blob, blob_size))
+	      goto stop;
+      }
+    if (oneway <= 0)
+      {
+	  /* inserting the reverse direction */
+	  if (!arcs_insert_reverse (params, id, class, name, blob, blob_size))
+	      goto stop;
+      }
+    if (blob)
+	free (blob);
+    return 1;
+
+  stop:
+    if (blob)
+	free (blob);
+    return 0;
+}
+
+static int
+arcs_insert (struct aux_params *params, sqlite3_int64 id,
+	     const char *class, const char *name, int oneway,
+	     unsigned char *blob, int blob_size)
+{
+/* Inserts a bi-directional Arc into the Graph */
+    int ret;
+    if (params->ins_arcs_stmt == NULL)
+	return 1;
+    sqlite3_reset (params->ins_arcs_stmt);
+    sqlite3_clear_bindings (params->ins_arcs_stmt);
+    sqlite3_bind_int64 (params->ins_arcs_stmt, 1, id);
+    sqlite3_bind_text (params->ins_arcs_stmt, 2, class, strlen (class),
+		       SQLITE_STATIC);
+    sqlite3_bind_text (params->ins_arcs_stmt, 3, name, strlen (name),
+		       SQLITE_STATIC);
+    if (oneway > 0)
+      {
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 0);
+      }
+    else if (oneway < 0)
+      {
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 0);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
       }
     else
       {
-	  /* inserting a unidirectional arc */
-	  sqlite3_bind_blob (params->ins_arcs_stmt, 4, blob, blob_size, free);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
       }
+    sqlite3_bind_blob (params->ins_arcs_stmt, 6, blob, blob_size, free);
     ret = sqlite3_step (params->ins_arcs_stmt);
-
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	return 1;
     fprintf (stderr, "sqlite3_step() error: INS_ARCS\n");
@@ -336,7 +482,6 @@ consume_way_1 (const void *user_data, const readosm_way * way)
     sqlite3_int64 id;
     int include = 0;
     int ignore = 0;
-
     if (params->noding_strategy == NODE_STRAT_NONE)
       {
 	  /* renoding the graph isn't required, we can skip all this */
@@ -353,14 +498,12 @@ consume_way_1 (const void *user_data, const readosm_way * way)
       }
     if (!include || ignore)
 	return READOSM_OK;
-
     for (i_ref = 0; i_ref < way->node_ref_count; i_ref++)
       {
 	  if (params->noding_strategy == NODE_STRAT_ENDS)
 	    {
 		/* checking only the Way extreme points */
-		if (i_ref == 0 || i_ref == (way->node_ref_count - 1))
-		    ;
+		if (i_ref == 0 || i_ref == (way->node_ref_count - 1));
 		else
 		    continue;
 	    }
@@ -369,8 +512,7 @@ consume_way_1 (const void *user_data, const readosm_way * way)
 	  sqlite3_clear_bindings (params->upd_tmp_nodes_stmt);
 	  sqlite3_bind_int64 (params->upd_tmp_nodes_stmt, 1, id);
 	  ret = sqlite3_step (params->upd_tmp_nodes_stmt);
-	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-	      ;
+	  if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 	  else
 	    {
 		fprintf (stderr, "sqlite3_step() error: %s\n",
@@ -399,7 +541,6 @@ consume_way_2 (const void *user_data, const readosm_way * way)
     int include = 0;
     int ignore = 0;
     gaiaGeomCollPtr geom;
-
     for (i_tag = 0; i_tag < way->tag_count; i_tag++)
       {
 	  p_tag = way->tags + i_tag;
@@ -413,7 +554,6 @@ consume_way_2 (const void *user_data, const readosm_way * way)
       }
     if (!include || ignore)
 	return READOSM_OK;
-
     for (i_tag = 0; i_tag < way->tag_count; i_tag++)
       {
 	  /* retrieving the road name */
@@ -494,9 +634,14 @@ consume_way_2 (const void *user_data, const readosm_way * way)
 		      gaiaSetPoint (ln2->Coords, iv, x, y);
 		  }
 		gaiaToSpatiaLiteBlobWkb (g, &blob, &blob_size);
-		ret =
-		    arcs_insert (params, way->id, class, name, oneway, blob,
-				 blob_size);
+		if (params->double_arcs)
+		    ret =
+			arcs_insert_double (params, way->id, class, name,
+					    oneway, blob, blob_size);
+		else
+		    ret =
+			arcs_insert (params, way->id, class, name, oneway, blob,
+				     blob_size);
 		gaiaFreeGeomColl (g);
 		if (!ret)
 		    return READOSM_ABORT;
@@ -533,7 +678,6 @@ consume_node (const void *user_data, const readosm_node * node)
 {
 /* processing an OSM Node (ReadOSM callback function) */
     struct aux_params *params = (struct aux_params *) user_data;
-
     if (!tmp_nodes_insert (params, node))
 	return READOSM_ABORT;
     return READOSM_OK;
@@ -548,7 +692,6 @@ populate_graph_nodes (sqlite3 * handle, const char *table)
     char sql2[1024];
     sqlite3_stmt *query_stmt = NULL;
     sqlite3_stmt *update_stmt = NULL;
-
 /* populating GRAPH_NODES */
     strcpy (sql, "INSERT OR IGNORE INTO graph_nodes (lon, lat) ");
     strcat (sql, "SELECT ST_X(ST_StartPoint(Geometry)), ");
@@ -560,7 +703,6 @@ populate_graph_nodes (sqlite3 * handle, const char *table)
     strcat (sql, "ST_Y(ST_EndPoint(Geometry)) ");
     sprintf (sql2, "FROM \"%s\"", table);
     strcat (sql, sql2);
-
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -606,15 +748,13 @@ populate_graph_nodes (sqlite3 * handle, const char *table)
 	    {
 		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
 		sqlite3_int64 osm_id = sqlite3_column_int64 (query_stmt, 1);
-
 		/* udating the GraphNote */
 		sqlite3_reset (update_stmt);
 		sqlite3_clear_bindings (update_stmt);
 		sqlite3_bind_int64 (update_stmt, 1, osm_id);
 		sqlite3_bind_int64 (update_stmt, 2, id);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -633,7 +773,6 @@ populate_graph_nodes (sqlite3 * handle, const char *table)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -642,13 +781,11 @@ populate_graph_nodes (sqlite3 * handle, const char *table)
 	  sqlite3_free (sql_err);
       }
     return 1;
-
   error:
     if (query_stmt != NULL)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
     ret = sqlite3_exec (handle, "ROLLBACK", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -668,7 +805,6 @@ set_node_ids (sqlite3 * handle, const char *table)
     char sql2[1024];
     sqlite3_stmt *query_stmt = NULL;
     sqlite3_stmt *update_stmt = NULL;
-
 /* the complete operation is handled as a unique SQL Transaction */
     ret = sqlite3_exec (handle, "BEGIN", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -714,7 +850,6 @@ set_node_ids (sqlite3 * handle, const char *table)
 		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
 		sqlite3_int64 node_from = sqlite3_column_int64 (query_stmt, 1);
 		sqlite3_int64 node_to = sqlite3_column_int64 (query_stmt, 2);
-
 		/* udating the Arc */
 		sqlite3_reset (update_stmt);
 		sqlite3_clear_bindings (update_stmt);
@@ -722,8 +857,7 @@ set_node_ids (sqlite3 * handle, const char *table)
 		sqlite3_bind_int64 (update_stmt, 2, node_to);
 		sqlite3_bind_int64 (update_stmt, 3, id);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -742,7 +876,6 @@ set_node_ids (sqlite3 * handle, const char *table)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -751,13 +884,11 @@ set_node_ids (sqlite3 * handle, const char *table)
 	  sqlite3_free (sql_err);
       }
     return 1;
-
   error:
     if (query_stmt != NULL)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
     ret = sqlite3_exec (handle, "ROLLBACK", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -773,7 +904,6 @@ compute_cost (struct aux_params *params, const char *class, double length)
 /* computing the travel time [cost] */
     double speed = params->default_speed;	/* speed, in Km/h */
     double msec;
-
     if (class != NULL)
       {
 	  struct aux_speed *ps = params->first_speed;
@@ -802,7 +932,6 @@ set_lengths_costs (struct aux_params *params, const char *table)
     char sql2[1024];
     sqlite3_stmt *query_stmt = NULL;
     sqlite3_stmt *update_stmt = NULL;
-
 /* the complete operation is handled as a unique SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -849,7 +978,6 @@ set_lengths_costs (struct aux_params *params, const char *table)
 		    (const char *) sqlite3_column_text (query_stmt, 1);
 		double length = sqlite3_column_double (query_stmt, 2);
 		double cost = compute_cost (params, class, length);
-
 		/* udating the Arc */
 		sqlite3_reset (update_stmt);
 		sqlite3_clear_bindings (update_stmt);
@@ -857,8 +985,7 @@ set_lengths_costs (struct aux_params *params, const char *table)
 		sqlite3_bind_double (update_stmt, 2, cost);
 		sqlite3_bind_int64 (update_stmt, 3, id);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -878,7 +1005,6 @@ set_lengths_costs (struct aux_params *params, const char *table)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -887,13 +1013,11 @@ set_lengths_costs (struct aux_params *params, const char *table)
 	  sqlite3_free (sql_err);
       }
     return 1;
-
   error:
     if (query_stmt != NULL)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
     ret = sqlite3_exec (params->db_handle, "ROLLBACK", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -915,7 +1039,6 @@ create_qualified_nodes (struct aux_params *params, const char *table)
     sqlite3_stmt *insert_stmt = NULL;
     sqlite3_stmt *update_stmt = NULL;
     char *err_msg = NULL;
-
     printf ("\nCreating helper table '%s_nodes' ... wait please ...\n", table);
     sprintf (sql, "CREATE TABLE \"%s_nodes\" (\n", table);
     strcat (sql, "node_id INTEGER NOT NULL PRIMARY KEY,\n");
@@ -992,15 +1115,13 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 		sqlite3_int64 id2 = sqlite3_column_int64 (query_stmt, 2);
 		const void *blob2 = sqlite3_column_blob (query_stmt, 3);
 		int len2 = sqlite3_column_bytes (query_stmt, 3);
-
 		/* inserting the Node (from) */
 		sqlite3_reset (insert_stmt);
 		sqlite3_clear_bindings (insert_stmt);
 		sqlite3_bind_int64 (insert_stmt, 1, id1);
 		sqlite3_bind_blob (insert_stmt, 2, blob1, len1, SQLITE_STATIC);
 		ret = sqlite3_step (insert_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -1014,8 +1135,7 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 		sqlite3_bind_int64 (insert_stmt, 1, id2);
 		sqlite3_bind_blob (insert_stmt, 2, blob2, len2, SQLITE_STATIC);
 		ret = sqlite3_step (insert_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -1035,7 +1155,6 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	sqlite3_finalize (query_stmt);
     if (insert_stmt != NULL)
 	sqlite3_finalize (insert_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -1066,11 +1185,12 @@ create_qualified_nodes (struct aux_params *params, const char *table)
       }
 
 /* Updating Nodes */
-    sprintf (sql, "UPDATE \"%s_nodes\" SET cardinality = (cardinality + 1) ",
-	     table);
+    sprintf (sql,
+	     "UPDATE \"%s_nodes\" SET cardinality = (cardinality + 1) ", table);
     strcat (sql, "WHERE node_id = ?");
-    ret = sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
-			      &update_stmt, NULL);
+    ret =
+	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
+			    &update_stmt, NULL);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "SQL error: %s\n%s\n", sql,
@@ -1087,14 +1207,12 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	    {
 		sqlite3_int64 id1 = sqlite3_column_int64 (query_stmt, 0);
 		sqlite3_int64 id2 = sqlite3_column_int64 (query_stmt, 1);
-
 		/* udating the Node (from) */
 		sqlite3_reset (update_stmt);
 		sqlite3_clear_bindings (update_stmt);
 		sqlite3_bind_double (update_stmt, 1, id1);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -1107,8 +1225,7 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 		sqlite3_clear_bindings (update_stmt);
 		sqlite3_bind_double (update_stmt, 1, id2);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -1128,7 +1245,6 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	sqlite3_finalize (query_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -1182,15 +1298,13 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	    {
 		sqlite3_int64 id = sqlite3_column_int64 (query_stmt, 0);
 		sqlite3_int64 osm_id = sqlite3_column_int64 (query_stmt, 1);
-
 		/* udating the Node OSM-ID */
 		sqlite3_reset (update_stmt);
 		sqlite3_clear_bindings (update_stmt);
 		sqlite3_bind_int64 (update_stmt, 1, osm_id);
 		sqlite3_bind_int64 (update_stmt, 2, id);
 		ret = sqlite3_step (update_stmt);
-		if (ret == SQLITE_DONE || ret == SQLITE_ROW)
-		    ;
+		if (ret == SQLITE_DONE || ret == SQLITE_ROW);
 		else
 		  {
 		      printf ("sqlite3_step() error: %s\n",
@@ -1214,7 +1328,6 @@ create_qualified_nodes (struct aux_params *params, const char *table)
       }
     printf ("\tHelper table '%s_nodes' succesfully created\n", table);
     return 1;
-
   error:
     if (query_stmt != NULL)
 	sqlite3_finalize (query_stmt);
@@ -1222,7 +1335,6 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	sqlite3_finalize (insert_stmt);
     if (update_stmt != NULL)
 	sqlite3_finalize (update_stmt);
-
     ret = sqlite3_exec (params->db_handle, "ROLLBACK", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -1238,7 +1350,6 @@ finalize_sql_stmts (struct aux_params *params)
 /* memory cleanup - prepared statements */
     int ret;
     char *sql_err = NULL;
-
     if (params->ins_tmp_nodes_stmt != NULL)
 	sqlite3_finalize (params->ins_tmp_nodes_stmt);
     if (params->upd_tmp_nodes_stmt != NULL)
@@ -1247,7 +1358,6 @@ finalize_sql_stmts (struct aux_params *params)
 	sqlite3_finalize (params->rd_tmp_nodes_stmt);
     if (params->ins_arcs_stmt != NULL)
 	sqlite3_finalize (params->ins_arcs_stmt);
-
 /* committing the still pending SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "COMMIT", NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
@@ -1259,7 +1369,7 @@ finalize_sql_stmts (struct aux_params *params)
 }
 
 static void
-create_sql_stmts (struct aux_params *params)
+create_sql_stmts (struct aux_params *params, int journal_off)
 {
 /* creating prepared SQL statements */
     sqlite3_stmt *ins_tmp_nodes_stmt;
@@ -1269,6 +1379,21 @@ create_sql_stmts (struct aux_params *params)
     char sql[1024];
     int ret;
     char *sql_err = NULL;
+
+    if (journal_off)
+      {
+	  /* disabling the journal: unsafe but faster */
+	  ret =
+	      sqlite3_exec (params->db_handle, "PRAGMA journal_mode = OFF",
+			    NULL, NULL, &sql_err);
+	  if (ret != SQLITE_OK)
+	    {
+		fprintf (stderr, "PRAGMA journal_mode=OFF error: %s\n",
+			 sql_err);
+		sqlite3_free (sql_err);
+		return;
+	    }
+      }
 
 /* the complete operation is handled as a unique SQL Transaction */
     ret = sqlite3_exec (params->db_handle, "BEGIN", NULL, NULL, &sql_err);
@@ -1360,24 +1485,20 @@ spatialite_autocreate (sqlite3 * db)
     char **results;
     int rows;
     int columns;
-
 /* checking if this DB is really empty */
     strcpy (sql, "SELECT Count(*) from sqlite_master");
     ret = sqlite3_get_table (db, sql, &results, &rows, &columns, NULL);
     if (ret != SQLITE_OK)
 	return;
-    if (rows < 1)
-	;
+    if (rows < 1);
     else
       {
 	  for (i = 1; i <= rows; i++)
 	      count = atoi (results[(i * columns) + 0]);
       }
     sqlite3_free_table (results);
-
     if (count > 0)
 	return;
-
 /* all right, it's empty: proceding to initialize */
     strcpy (sql, "SELECT InitSpatialMetadata()");
     ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
@@ -1415,11 +1536,9 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     char **results;
     int rows;
     int columns;
-
     spatialite_init (0);
     printf ("SQLite version: %s\n", sqlite3_libversion ());
     printf ("SpatiaLite version: %s\n\n", spatialite_version ());
-
     ret =
 	sqlite3_open_v2 (path, &handle,
 			 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
@@ -1443,8 +1562,7 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     ret = sqlite3_get_table (handle, sql, &results, &rows, &columns, NULL);
     if (ret != SQLITE_OK)
 	goto unknown;
-    if (rows < 1)
-	;
+    if (rows < 1);
     else
       {
 	  for (i = 1; i <= rows; i++)
@@ -1465,17 +1583,15 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
 	    }
       }
     sqlite3_free_table (results);
-    if (f_table_name && f_geometry_column && type && coord_dimension && gc_srid
-	&& spatial_index_enabled)
+    if (f_table_name && f_geometry_column && type && coord_dimension
+	&& gc_srid && spatial_index_enabled)
 	spatialite_gc = 1;
-
 /* checking the SPATIAL_REF_SYS table */
     strcpy (sql, "PRAGMA table_info(spatial_ref_sys)");
     ret = sqlite3_get_table (handle, sql, &results, &rows, &columns, NULL);
     if (ret != SQLITE_OK)
 	goto unknown;
-    if (rows < 1)
-	;
+    if (rows < 1);
     else
       {
 	  for (i = 1; i <= rows; i++)
@@ -1497,11 +1613,9 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     if (rs_srid && auth_name && auth_srid && ref_sys_name && proj4text)
 	spatialite_rs = 1;
 /* verifying the MetaData format */
-    if (spatialite_gc && spatialite_rs)
-	;
+    if (spatialite_gc && spatialite_rs);
     else
 	goto unknown;
-
 /* creating the OSM related tables */
     strcpy (sql, "CREATE TABLE osm_tmp_nodes (\n");
     strcat (sql, "id INTEGER NOT NULL PRIMARY KEY,\n");
@@ -1580,7 +1694,6 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
       }
 
     return handle;
-
   unknown:
     if (handle)
 	sqlite3_close (handle);
@@ -1778,7 +1891,6 @@ parse_template_line (struct aux_params *params, const char *line)
     char *out = clean;
     const char *in = line;
     int i;
-
     *out = '\0';
     while (1)
       {
@@ -1957,7 +2069,6 @@ print_template (const char *template_path, int railways)
     fprintf (out, "# any text until the next new-line (NL) char will\n");
     fprintf (out, "# be ignored at all.\n");
     fprintf (out, "#\n\n");
-
     fprintf (out,
 	     "###############################################################\n");
     fprintf (out, "#\n");
@@ -2062,7 +2173,6 @@ print_template (const char *template_path, int railways)
     else
 	fprintf (out,
 		 "ClassInclude:highway: # default value (all kind of highway)\n\n\n");
-
     fprintf (out,
 	     "###############################################################\n");
     fprintf (out, "#\n");
@@ -2142,6 +2252,8 @@ do_help ()
 	     "-cs or --cache-size    num      DB cache size (how many pages)\n");
     fprintf (stderr,
 	     "-m or --in-memory               using IN-MEMORY database\n");
+    fprintf (stderr,
+	     "-jo or --journal-off            unsafe [but faster] mode\n");
     fprintf (stderr, "-2 or --undirectional           double arcs\n\n");
     fprintf (stderr,
 	     "--roads                         extract roads [default]\n");
@@ -2166,6 +2278,7 @@ main (int argc, char *argv[])
     const char *table = NULL;
     int in_memory = 0;
     int cache_size = 0;
+    int journal_off = 0;
     int double_arcs = 0;
     int railways = 0;
     int out_template = 0;
@@ -2175,7 +2288,6 @@ main (int argc, char *argv[])
     sqlite3 *handle;
     struct aux_params params;
     const void *osm_handle;
-
 /* initializing the aux-struct */
     params.db_handle = NULL;
     params.ins_tmp_nodes_stmt = NULL;
@@ -2191,7 +2303,6 @@ main (int argc, char *argv[])
     params.last_include = NULL;
     params.first_ignore = NULL;
     params.last_ignore = NULL;
-
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -2297,6 +2408,18 @@ main (int argc, char *argv[])
 	  if (strcasecmp (argv[i], "--in-memory") == 0)
 	    {
 		in_memory = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "-jo") == 0)
+	    {
+		journal_off = 1;
+		next_arg = ARG_NONE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--journal-off") == 0)
+	    {
+		journal_off = 1;
 		next_arg = ARG_NONE;
 		continue;
 	    }
@@ -2475,8 +2598,7 @@ main (int argc, char *argv[])
       }
 
 /* creating SQL prepared statements */
-    create_sql_stmts (&params);
-
+    create_sql_stmts (&params, journal_off);
     printf ("\nParsing input: Pass 1 [Nodes and Ways] ...\n");
 /* parsing the input OSM-file [Pass 1] */
     if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
@@ -2488,8 +2610,8 @@ main (int argc, char *argv[])
 	  free_params (&params);
 	  return -1;
       }
-    if (readosm_parse (osm_handle, &params, consume_node, consume_way_1, NULL)
-	!= READOSM_OK)
+    if (readosm_parse
+	(osm_handle, &params, consume_node, consume_way_1, NULL) != READOSM_OK)
       {
 	  fprintf (stderr, "unrecoverable error while parsing %s\n", osm_path);
 	  finalize_sql_stmts (&params);
@@ -2499,7 +2621,6 @@ main (int argc, char *argv[])
 	  return -1;
       }
     readosm_close (osm_handle);
-
     printf ("Parsing input: Pass 2 [Arcs of the Graph] ...\n");
 /* parsing the input OSM-file [Pass 2] */
     if (readosm_open (osm_path, &osm_handle) != READOSM_OK)
@@ -2522,10 +2643,8 @@ main (int argc, char *argv[])
 	  return -1;
       }
     readosm_close (osm_handle);
-
 /* finalizing SQL prepared statements */
     finalize_sql_stmts (&params);
-
 /* populating the GRAPH_NODES table */
     if (!populate_graph_nodes (handle, table))
       {
@@ -2565,7 +2684,6 @@ main (int argc, char *argv[])
   quit:
 /* dropping the temporary tables */
     db_cleanup (handle);
-
     if (in_memory)
       {
 	  /* exporting the in-memory DB to filesystem */
