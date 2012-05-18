@@ -86,6 +86,7 @@ struct aux_params
 /* an auxiliary struct used for OSM parsing */
     sqlite3 *db_handle;
     const char *table;
+    int double_arcs;
     int noding_strategy;
     int oneway_strategy;
     struct aux_speed *first_speed;
@@ -250,22 +251,31 @@ arcs_insert (struct aux_params *params, sqlite3_int64 id, const char *class,
 		       SQLITE_STATIC);
     sqlite3_bind_text (params->ins_arcs_stmt, 3, name, strlen (name),
 		       SQLITE_STATIC);
-    if (oneway > 0)
+    if (params->double_arcs == 0)
       {
-	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
-	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 0);
-      }
-    else if (oneway < 0)
-      {
-	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 0);
-	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+	  /* inserting a bi-directional arc */
+	  if (oneway > 0)
+	    {
+		sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+		sqlite3_bind_int (params->ins_arcs_stmt, 5, 0);
+	    }
+	  else if (oneway < 0)
+	    {
+		sqlite3_bind_int (params->ins_arcs_stmt, 4, 0);
+		sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+	    }
+	  else
+	    {
+		sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
+		sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+	    }
+	  sqlite3_bind_blob (params->ins_arcs_stmt, 6, blob, blob_size, free);
       }
     else
       {
-	  sqlite3_bind_int (params->ins_arcs_stmt, 4, 1);
-	  sqlite3_bind_int (params->ins_arcs_stmt, 5, 1);
+	  /* inserting a unidirectional arc */
+	  sqlite3_bind_blob (params->ins_arcs_stmt, 4, blob, blob_size, free);
       }
-    sqlite3_bind_blob (params->ins_arcs_stmt, 6, blob, blob_size, free);
     ret = sqlite3_step (params->ins_arcs_stmt);
 
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
@@ -1304,11 +1314,23 @@ create_sql_stmts (struct aux_params *params)
 	  finalize_sql_stmts (params);
 	  return;
       }
-    sprintf (sql, "INSERT INTO \"%s\" ", params->table);
-    strcat (sql, "(id, osm_id, node_from, node_to, class, ");
-    strcat (sql,
-	    "name, oneway_fromto, oneway_tofrom, length, cost, geometry) ");
-    strcat (sql, "VALUES (NULL, ?, -1, -1, ?, ?, ?, ?, -1, -1, ?)");
+    if (params->double_arcs == 0)
+      {
+	  /* bi-directional arcs */
+	  sprintf (sql, "INSERT INTO \"%s\" ", params->table);
+	  strcat (sql, "(id, osm_id, node_from, node_to, class, ");
+	  strcat (sql,
+		  "name, oneway_fromto, oneway_tofrom, length, cost, geometry) ");
+	  strcat (sql, "VALUES (NULL, ?, -1, -1, ?, ?, ?, ?, -1, -1, ?)");
+      }
+    else
+      {
+	  /* unidirectional arcs */
+	  sprintf (sql, "INSERT INTO \"%s\" ", params->table);
+	  strcat (sql, "(id, osm_id, node_from, node_to, class, ");
+	  strcat (sql, "name, length, cost, geometry) ");
+	  strcat (sql, "VALUES (NULL, ?, -1, -1, ?, ?, -1, -1, ?)");
+      }
     ret =
 	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
 			    &ins_arcs_stmt, NULL);
@@ -2419,6 +2441,7 @@ main (int argc, char *argv[])
       }
     params.db_handle = handle;
     params.table = table;
+    params.double_arcs = double_arcs;
     if (use_template == 0)
       {
 	  /* not using template: setting default params */
