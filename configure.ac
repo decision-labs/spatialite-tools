@@ -13,6 +13,10 @@ AM_CONFIG_HEADER(config.h)
 # supporting SPATIALITE_AMALGAMATION
 AH_TEMPLATE([SPATIALITE_AMALGAMATION],
 	    [must be defined when using libspatialite-amalgamation])
+AH_TEMPLATE([OMIT_FREEXL],
+            [Should be defined in order to disable FREEXL support.])
+AH_TEMPLATE([OMIT_READOSM],
+            [Should be defined in order to disable ReadOSM support.])
 
 # Checks for header files.
 AC_CHECK_HEADERS(stdlib.h,, [AC_MSG_ERROR([cannot find stdlib.h, bailing out])])
@@ -125,10 +129,36 @@ if test "x$(pkg-config --cflags spatialite|grep "DSPATIALITE_AMALGAMATION=1")" !
   AC_DEFINE(SPATIALITE_AMALGAMATION, 1)
 fi
 AC_SUBST(LIBSPATIALITE_LIBS)
-PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seem to be installed on this system.]))
-AC_SUBST(LIBFREEXL_CFLAGS)
-AC_SUBST(LIBREADOSM_LIBS)PKG_CHECK_MODULES([LIBREADOSM], [readosm], , AC_MSG_ERROR(['libreadosm' is required but it doesn't seem to be installed on this system.]))
-AC_SUBST(LIBREADOSM_CFLAGS)
-AC_SUBST(LIBREADOSM_LIBS)
+
+#-----------------------------------------------------------------------
+#   --enable-freexl
+#
+AC_ARG_ENABLE(freexl, [AS_HELP_STRING(
+  [--enable-freexl], [enables FreeXL inclusion [default=yes]])],
+  [], [enable_freexl=yes])
+if test x"$enable_freexl" != "xno"; then
+  PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seem to be installed on this system.]))
+  AC_SUBST(LIBFREEXL_CFLAGS)
+  AC_SUBST(LIBFREEXL_LIBS)
+else
+  AC_DEFINE(OMIT_FREEXL)
+fi
+
+#-----------------------------------------------------------------------
+#   --enable-readosm
+#
+AC_ARG_ENABLE(readosm, [AS_HELP_STRING(
+  [--enable-readosml], [enables ReadOSM inclusion [default=yes]])],
+  [], [enable_readosm=yes])
+if test x"$enable_readosm" != "xno"; then
+  AC_SUBST(LIBREADOSM_LIBS)PKG_CHECK_MODULES([LIBREADOSM], [readosm], , AC_MSG_ERROR(['libreadosm' is required but it doesn't seem to be installed on this system.]))
+  AC_SUBST(LIBREADOSM_CFLAGS)
+  AC_SUBST(LIBREADOSM_LIBS)
+else
+  AC_DEFINE(OMIT_READOSM)
+  NOREADOSM="true"
+fi
+
+AM_CONDITIONAL([NO_READOSM], [test "$NOREADOSM" = "true"])
 
 AC_OUTPUT

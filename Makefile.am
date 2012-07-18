@@ -1,5 +1,14 @@
 ACLOCAL_AMFLAGS = -I m4
 
+if NO_READOSM
+bin_PROGRAMS = spatialite \
+	spatialite_tool \
+	spatialite_network \
+	shp_doctor \
+	exif_loader \
+	spatialite_osm_filter \
+	spatialite_gml
+else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
 	spatialite_network \
@@ -10,6 +19,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_raw \
 	spatialite_osm_filter \
 	spatialite_gml
+endif
 
 INCLUDES = @CFLAGS@
 INCLUDES += -I$(top_srcdir)
@@ -19,9 +29,12 @@ spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
+if NO_READOSM
+else
 spatialite_osm_net_SOURCES = spatialite_osm_net.c
 spatialite_osm_map_SOURCES = spatialite_osm_map.c
 spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
+endif
 spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 

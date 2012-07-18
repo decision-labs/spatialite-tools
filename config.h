@@ -116,6 +116,12 @@
    */
 #define LT_OBJDIR ".libs/"
 
+/* Should be defined in order to disable FREEXL support. */
+/* #undef OMIT_FREEXL */
+
+/* Should be defined in order to disable ReadOSM support. */
+/* #undef OMIT_READOSM */
+
 /* Name of package */
 #define PACKAGE "spatialite-tools"
 

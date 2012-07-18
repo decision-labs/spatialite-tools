@@ -1841,9 +1841,11 @@ static char zHelp[] =
     "                  arg_list: dbf_path table_name charset\n\n"
     ".dumpdbf <args>   Dumps a SpatiaLite table into a DBF\n"
     "                  arg_list: table_name dbf_path charset\n\n"
+#ifndef OMIT_FREEXL	/* FreeXL is enabled */
     ".loadxl <args>    Loads a XL spreadsheet (.xls) into a SpatiaLite table\n"
     "                  arg_list: xl_path table_name \n"
     "                      [worksheet_index [first_line_titles{0/1}]]\n\n"
+#endif	/* end FreeXL support */
     ".dumpkml <args>   Dumps a SpatiaLite table as a KML file\n"
     "                  arg_list: table_name geom_column kml_path\n"
     "                      [precision] [name_column] [desc_column]\n\n"
@@ -2164,6 +2166,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  open_db (p);
 	  load_dbf (p->db, dbf_path, table, inCS, 1, &rows, NULL);
       }
+#ifndef OMIT_FREEXL	/* FREEXL is enabled */
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0
 	     && (nArg == 3 || nArg == 4 || nArg == 5))
       {
@@ -2182,6 +2185,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  open_db (p);
 	  load_XL (p->db, xl_path, table, worksheet, firstLine, &rows, NULL);
       }
+#endif	/* end FREEXL support */
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
 	  FILE *alt;
