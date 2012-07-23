@@ -1833,7 +1833,11 @@ static char zHelp[] =
     "                  arg_list: in_tbl geom out_tbl out_pk out_old_id\n\n"
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
     "                  arg_list: shp_path table_name charset [SRID] [column_name]\n"
-    "                      [2d | 3d] [compressed]\n\n"
+    "                      [geom_type] [2d | 3d] [compressed] [with_spatial_index]\n"
+    "                      geom_type={ AUTO | LINESTRING[ Z | M | ZM ]\n"
+    "                                 | MULTILINESTRING[ Z | M | ZM ]\n"
+    "                                 | POLYGON[ Z | M | ZM ]\n"
+    "                                 | MULTIPOLYGON[ Z | M | ZM ] }\n\n"
     ".dumpshp <args>   Dumps a SpatiaLite table into a SHAPEFILE\n"
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
@@ -2131,7 +2135,8 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  dump_geojson (p->db, table, geom, gml_path, precision, format);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadshp", n) == 0
-	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
+	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 ||
+                 nArg == 8 || nArg == 9 || nArg == 10))
       {
 	  char *shp_path = azArg[1];
 	  char *table = azArg[2];
@@ -2139,22 +2144,28 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  int srid = -1;
 	  int coerce2d = 0;
 	  int compressed = 0;
+          int with_spatial_index = 0;
 	  char *column = NULL;
+          char *gtype = NULL;
 	  int rows;
 	  if (nArg >= 5)
 	      srid = atoi (azArg[4]);
 	  if (nArg >= 6)
 	      column = azArg[5];
-	  if (nArg >= 7)
+          if (nArg >= 7)
+              gtype = azArg[6];
+	  if (nArg >= 8)
 	    {
-		if (strcasecmp (azArg[6], "2d") == 0)
+		if (strcasecmp (azArg[7], "2d") == 0)
 		    coerce2d = 1;
 	    }
-	  if (nArg == 8)
+	  if (nArg == 9)
 	      compressed = 1;
+	  if (nArg == 10)
+	      with_spatial_index = 1;
 	  open_db (p);
-	  load_shapefile (p->db, shp_path, table, inCS, srid, column, coerce2d,
-			  compressed, 1, 0, &rows, NULL);
+	  load_shapefile_ex (p->db, shp_path, table, inCS, srid, column, gtype,
+                             coerce2d, compressed, 1, with_spatial_index, &rows, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
 	     && nArg == 4)
