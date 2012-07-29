@@ -148,7 +148,7 @@ fi
 #   --enable-readosm
 #
 AC_ARG_ENABLE(readosm, [AS_HELP_STRING(
-  [--enable-readosml], [enables ReadOSM inclusion [default=yes]])],
+  [--enable-readosm], [enables ReadOSM inclusion [default=yes]])],
   [], [enable_readosm=yes])
 if test x"$enable_readosm" != "xno"; then
   AC_SUBST(LIBREADOSM_LIBS)PKG_CHECK_MODULES([LIBREADOSM], [readosm], , AC_MSG_ERROR(['libreadosm' is required but it doesn't seem to be installed on this system.]))

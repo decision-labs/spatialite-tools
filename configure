@@ -1420,7 +1420,7 @@ Optional Features:
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-readline       use readline in shell tool (yes, no) [default=yes]
   --enable-freexl         enables FreeXL inclusion [default=yes]
-  --enable-readosml       enables ReadOSM inclusion [default=yes]
+  --enable-readosm        enables ReadOSM inclusion [default=yes]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
