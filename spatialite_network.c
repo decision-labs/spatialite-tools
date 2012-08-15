@@ -1212,7 +1212,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	("==================================================================\n\n");
 /* checking for table existence */
     sprintf (sql,
-	     "SELECT \"tbl_name\" FROM \"sqlite_master\" WHERE \"tbl_name\" LIKE '%s' and \"type\" = 'table'",
+	     "SELECT \"tbl_name\" FROM \"sqlite_master\" WHERE Upper(\"tbl_name\") = Upper('%s') and \"type\" = 'table'",
 	     table);
     ret =
 	sqlite3_get_table (handle, sql, &results, &n_rows, &n_columns,

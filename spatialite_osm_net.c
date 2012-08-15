@@ -1530,6 +1530,7 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     int coord_dimension = 0;
     int gc_srid = 0;
     int type = 0;
+    int geometry_type = 0;
     int spatial_index_enabled = 0;
     const char *name;
     int i;
@@ -1578,6 +1579,8 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
 		    gc_srid = 1;
 		if (strcasecmp (name, "type") == 0)
 		    type = 1;
+		if (strcasecmp (name, "geometry_type") == 0)
+		    geometry_type = 1;
 		if (strcasecmp (name, "spatial_index_enabled") == 0)
 		    spatial_index_enabled = 1;
 	    }
@@ -1586,6 +1589,10 @@ open_db (const char *path, const char *table, int double_arcs, int cache_size)
     if (f_table_name && f_geometry_column && type && coord_dimension
 	&& gc_srid && spatial_index_enabled)
 	spatialite_gc = 1;
+    if (f_table_name && f_geometry_column && geometry_type && coord_dimension
+	&& gc_srid && spatial_index_enabled)
+	spatialite_gc = 3;
+
 /* checking the SPATIAL_REF_SYS table */
     strcpy (sql, "PRAGMA table_info(spatial_ref_sys)");
     ret = sqlite3_get_table (handle, sql, &results, &rows, &columns, NULL);

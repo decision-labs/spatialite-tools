@@ -18,7 +18,8 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_map \
 	spatialite_osm_raw \
 	spatialite_osm_filter \
-	spatialite_gml
+	spatialite_gml \
+	spatialite_convert
 endif
 
 INCLUDES = @CFLAGS@
