@@ -1601,11 +1601,11 @@ feed_times (sqlite3 * handle)
     strcat (sql, "f_table_name TEXT NOT NULL,\n");
     strcat (sql, "f_geometry_column TEXT NOT NULL,\n");
     strcat (sql,
-	    "last_insert TIMESTAMP NOT NULL DEFAULT '0000-01-01 00:00:00',\n");
+	    "last_insert TIMESTAMP NOT NULL DEFAULT '0000-01-01T00:00:00.000Z',\n");
     strcat (sql,
-	    "last_update TIMESTAMP NOT NULL DEFAULT '0000-01-01 00:00:00',\n");
+	    "last_update TIMESTAMP NOT NULL DEFAULT '0000-01-01T00:00:00.000Z',\n");
     strcat (sql,
-	    "last_delete TIMESTAMP NOT NULL DEFAULT '0000-01-01 00:00:00',\n");
+	    "last_delete TIMESTAMP NOT NULL DEFAULT '0000-01-01T00:00:00.000Z',\n");
     strcat (sql, "CONSTRAINT pk_gc_time PRIMARY KEY ");
     strcat (sql, "(f_table_name, f_geometry_column),\n");
     strcat (sql, "CONSTRAINT fk_gc_time FOREIGN KEY ");
@@ -1805,6 +1805,10 @@ feed_statistics (sqlite3 * handle)
     strcat (sql, "text_values INTEGER NOT NULL,\n");
     strcat (sql, "blob_values INTEGER NOT NULL,\n");
     strcat (sql, "max_size INTEGER,\n");
+    strcat (sql, "integer_min INTEGER,\n");
+    strcat (sql, "integer_max INTEGER,\n");
+    strcat (sql, "double_min DOUBLE,\n");
+    strcat (sql, "double_max DOUBLE,\n");
     strcat (sql, "CONSTRAINT pk_gcfld_infos PRIMARY KEY ");
     strcat (sql, "(f_table_name, f_geometry_column, ordinal, column_name),\n");
     strcat (sql, "CONSTRAINT fk_gcfld_infos FOREIGN KEY ");
@@ -1874,6 +1878,10 @@ feed_views_statistics (sqlite3 * handle)
     strcat (sql, "text_values INTEGER NOT NULL,\n");
     strcat (sql, "blob_values INTEGER NOT NULL,\n");
     strcat (sql, "max_size INTEGER,\n");
+    strcat (sql, "integer_min INTEGER,\n");
+    strcat (sql, "integer_max INTEGER,\n");
+    strcat (sql, "double_min DOUBLE,\n");
+    strcat (sql, "double_max DOUBLE,\n");
     strcat (sql, "CONSTRAINT pk_vwgcfld_infos PRIMARY KEY ");
     strcat (sql, "(view_name, view_geometry, ordinal, column_name),\n");
     strcat (sql, "CONSTRAINT fk_vwgcfld_infos FOREIGN KEY ");
@@ -1944,6 +1952,10 @@ feed_virts_statistics (sqlite3 * handle)
     strcat (sql, "text_values INTEGER NOT NULL,\n");
     strcat (sql, "blob_values INTEGER NOT NULL,\n");
     strcat (sql, "max_size INTEGER,\n");
+    strcat (sql, "integer_min INTEGER,\n");
+    strcat (sql, "integer_max INTEGER,\n");
+    strcat (sql, "double_min DOUBLE,\n");
+    strcat (sql, "double_max DOUBLE,\n");
     strcat (sql, "CONSTRAINT pk_vrtgcfld_infos PRIMARY KEY ");
     strcat (sql, "(virt_name, virt_geometry, ordinal, column_name),\n");
     strcat (sql, "CONSTRAINT fk_vrtgcfld_infos FOREIGN KEY ");
@@ -2222,7 +2234,11 @@ create_views_4 (sqlite3 * handle)
     strcat (sql, "double_values AS double_values, ");
     strcat (sql, "text_values AS text_values, ");
     strcat (sql, "blob_values AS blob_values, ");
-    strcat (sql, "max_size AS max_size\n");
+    strcat (sql, "max_size AS max_size, ");
+    strcat (sql, "integer_min AS integer_min, ");
+    strcat (sql, "integer_max AS integer_max, ");
+    strcat (sql, "double_min AS double_min, ");
+    strcat (sql, "double_max double_max\n");
     strcat (sql, "FROM geometry_columns_field_infos\n");
     strcat (sql, "UNION\n");
     strcat (sql, "SELECT 'SpatialView' AS layer_type, ");
@@ -2235,7 +2251,11 @@ create_views_4 (sqlite3 * handle)
     strcat (sql, "double_values AS double_values, ");
     strcat (sql, "text_values AS text_values, ");
     strcat (sql, "blob_values AS blob_values, ");
-    strcat (sql, "max_size AS max_size\n");
+    strcat (sql, "max_size AS max_size, ");
+    strcat (sql, "integer_min AS integer_min, ");
+    strcat (sql, "integer_max AS integer_max, ");
+    strcat (sql, "double_min AS double_min, ");
+    strcat (sql, "double_max double_max\n");
     strcat (sql, "FROM views_geometry_columns_field_infos\n");
     strcat (sql, "UNION\n");
     strcat (sql, "SELECT 'VirtualShape' AS layer_type, ");
@@ -2248,7 +2268,11 @@ create_views_4 (sqlite3 * handle)
     strcat (sql, "double_values AS double_values, ");
     strcat (sql, "text_values AS text_values, ");
     strcat (sql, "blob_values AS blob_values, ");
-    strcat (sql, "max_size AS max_size\n");
+    strcat (sql, "max_size AS max_size, ");
+    strcat (sql, "integer_min AS integer_min, ");
+    strcat (sql, "integer_max AS integer_max, ");
+    strcat (sql, "double_min AS double_min, ");
+    strcat (sql, "double_max double_max\n");
     strcat (sql, "FROM virts_geometry_columns_field_infos");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)

@@ -16,6 +16,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) shell.o -o ./static_bin/spatialite.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -29,6 +30,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_tool.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -42,6 +44,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_convert.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -54,6 +57,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_network.o -o ./static_bin/spatialite_network.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -66,6 +70,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) shp_doctor.o -o ./static_bin/shp_doctor.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -78,6 +83,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) exif_loader.o -o ./static_bin/exif_loader.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -90,6 +96,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_osm_net.o -o ./static_bin/spatialite_osm_net.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -105,6 +112,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -120,6 +128,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_gml.o -o ./static_bin/spatialite_gml.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -133,6 +142,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_osm_raw.o -o ./static_bin/spatialite_osm_raw.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
@@ -148,6 +158,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	$(GG) spatialite_osm_filter.o -o ./static_bin/spatialite_osm_filter.exe \
 	/usr/local/lib/libspatialite.a \
 	/usr/local/lib/libsqlite3.a \
+	/usr/local/lib/lwgeom.a \
 	/usr/local/lib/libproj.a \
 	/usr/local/lib/libgeos_c.a \
 	/usr/local/lib/libgeos.a \
