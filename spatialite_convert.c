@@ -152,7 +152,7 @@ update_history (sqlite3 * handle, int in_version, int version)
     strcat (sql, "(event_id, table_name, geometry_column, event, timestamp, ");
     strcat (sql, "ver_sqlite, ver_splite) ");
     strcat (sql,
-	    "VALUES (NULL, ?, ?, ?, DateTime('now'), sqlite_version(), spatialite_version())");
+	    "VALUES (NULL, ?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), sqlite_version(), spatialite_version())");
     ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
     if (ret != SQLITE_OK)
       {
@@ -325,7 +325,27 @@ update_triggers (sqlite3 * sqlite, const char *table,
 	  else
 	      cached = 0;
 
-	  if (version == 4)
+	  /* deleting anyway timestamp Triggers */
+	  sprintf (xname, "tmi_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  sprintf (xname, "tmu_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  sprintf (xname, "tmd_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+
+	  if (version == 4 && index == 0 && cached == 0)
 	    {
 		/* current: creating anyway timestamp Triggers */
 		strcpy (sqltable, (char *) tblname);
@@ -341,7 +361,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
 		strcat (trigger,
-			"UPDATE geometry_columns_time SET last_insert = datetime('now')\n");
+			"UPDATE geometry_columns_time SET last_insert = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
 		sprintf (dummy, "WHERE Upper(f_table_name) = Upper('%s') AND ",
 			 sqltable);
 		strcat (trigger, dummy);
@@ -358,7 +378,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
 		strcat (trigger,
-			"UPDATE geometry_columns_time SET last_update = datetime('now')\n");
+			"UPDATE geometry_columns_time SET last_update = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
 		sprintf (dummy, "WHERE Upper(f_table_name) = Upper('%s') AND ",
 			 sqltable);
 		strcat (trigger, dummy);
@@ -375,35 +395,13 @@ update_triggers (sqlite3 * sqlite, const char *table,
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
 		strcat (trigger,
-			"UPDATE geometry_columns_time SET last_delete = datetime('now')\n");
+			"UPDATE geometry_columns_time SET last_delete = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
 		sprintf (dummy, "WHERE Upper(f_table_name) = Upper('%s') AND ",
 			 sqltable);
 		strcat (trigger, dummy);
 		sprintf (dummy, "Upper(f_geometry_column) = Upper('%s');\nEND",
 			 sqlcolumn);
 		strcat (trigger, dummy);
-		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-		if (ret != SQLITE_OK)
-		    goto error;
-	    }
-	  else
-	    {
-		/* legacy: deleting anyway timestamp Triggers */
-		sprintf (xname, "tmi_%s_%s", tblname, colname);
-		double_quoted_sql (xname);
-		sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-		if (ret != SQLITE_OK)
-		    goto error;
-		sprintf (xname, "tmu_%s_%s", tblname, colname);
-		double_quoted_sql (xname);
-		sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-		if (ret != SQLITE_OK)
-		    goto error;
-		sprintf (xname, "tmd_%s_%s", tblname, colname);
-		double_quoted_sql (xname);
-		sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
 		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 		if (ret != SQLITE_OK)
 		    goto error;
@@ -568,6 +566,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
 	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 	  if (ret != SQLITE_OK)
 	      goto error;
+
 	  /* inserting SpatialIndex information into the linked list */
 	  curr_idx = malloc (sizeof (struct spatial_index_str));
 	  len = strlen (tblname);
@@ -584,6 +583,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
 	  if (last_idx)
 	      last_idx->Next = curr_idx;
 	  last_idx = curr_idx;
+
 	  /* deleting the old INSERT trigger SPATIAL_INDEX [if any] */
 	  sprintf (xname, "gii_%s_%s", tblname, colname);
 	  double_quoted_sql (xname);
@@ -591,14 +591,66 @@ update_triggers (sqlite3 * sqlite, const char *table,
 	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 	  if (ret != SQLITE_OK)
 	      goto error;
+	  /* deleting the old UPDATE trigger SPATIAL_INDEX [if any] */
+	  sprintf (xname, "giu_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  /* deleting the old DELETE trigger SPATIAL_INDEX [if any] */
+	  sprintf (xname, "gid_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  /* deleting the old INSERT trigger MBR_CACHE [if any] */
+	  sprintf (xname, "gci_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  /* deleting the old UPDATE trigger MBR_CACHE [if any] */
+	  sprintf (xname, "gcu_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+	  /* deleting the old DELETE trigger MBR_CACHE [if any] */
+	  sprintf (xname, "gcd_%s_%s", tblname, colname);
+	  double_quoted_sql (xname);
+	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
+	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
+	  if (ret != SQLITE_OK)
+	      goto error;
+
 	  if (index)
 	    {
 		/* inserting the new INSERT trigger SRID */
+		sprintf (xname, "gii_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "idx_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER INSERT ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_insert = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		if (version == 2)
 		  {
 		      /* version 2 */
@@ -628,22 +680,29 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 		if (ret != SQLITE_OK)
 		    goto error;
-	    }
-	  /* deleting the old UPDATE trigger SPATIAL_INDEX [if any] */
-	  sprintf (xname, "giu_%s_%s", tblname, colname);
-	  double_quoted_sql (xname);
-	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-	  if (ret != SQLITE_OK)
-	      goto error;
-	  if (index)
-	    {
+
 		/* inserting the new UPDATE trigger SRID */
+		sprintf (xname, "giu_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "idx_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER UPDATE ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_update = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		if (version == 2)
 		  {
 		      /* version 2 */
@@ -676,22 +735,29 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 		if (ret != SQLITE_OK)
 		    goto error;
-	    }
-	  /* deleting the old UPDATE trigger SPATIAL_INDEX [if any] */
-	  sprintf (xname, "gid_%s_%s", tblname, colname);
-	  double_quoted_sql (xname);
-	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-	  if (ret != SQLITE_OK)
-	      goto error;
-	  if (index)
-	    {
+
 		/* inserting the new DELETE trigger SRID */
+		sprintf (xname, "gid_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "idx_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER DELETE ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_delete = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		sprintf (dummy, "DELETE FROM %s WHERE pkid = OLD.ROWID;\n",
 			 xindex);
 		strcat (trigger, dummy);
@@ -700,21 +766,31 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		if (ret != SQLITE_OK)
 		    goto error;
 	    }
-	  /* deleting the old INSERT trigger MBR_CACHE [if any] */
-	  sprintf (xname, "gci_%s_%s", tblname, colname);
-	  double_quoted_sql (xname);
-	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-	  if (ret != SQLITE_OK)
-	      goto error;
+
 	  if (cached)
 	    {
 		/* inserting the new INSERT trigger SRID */
+		sprintf (xname, "gci_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "cache_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER INSERT ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_insert = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		sprintf (dummy,
 			 "INSERT INTO %s (rowid, mbr) VALUES (NEW.ROWID,\nBuildMbrFilter(",
 			 xindex);
@@ -731,22 +807,29 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 		if (ret != SQLITE_OK)
 		    goto error;
-	    }
-	  /* deleting the old UPDATE trigger MBR_CACHE [if any] */
-	  sprintf (xname, "gcu_%s_%s", tblname, colname);
-	  double_quoted_sql (xname);
-	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-	  if (ret != SQLITE_OK)
-	      goto error;
-	  if (cached)
-	    {
+
 		/* inserting the new UPDATE trigger SRID */
+		sprintf (xname, "gci_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "cache_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER UPDATE ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_update = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		sprintf (dummy, "UPDATE %s SET ", xindex);
 		strcat (trigger, dummy);
 		sprintf (dummy, "mbr = BuildMbrFilter(MbrMinX(NEW.%s), ",
@@ -763,22 +846,29 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
 		if (ret != SQLITE_OK)
 		    goto error;
-	    }
-	  /* deleting the old UPDATE trigger MBR_CACHE [if any] */
-	  sprintf (xname, "gcd_%s_%s", tblname, colname);
-	  double_quoted_sql (xname);
-	  sprintf (trigger, "DROP TRIGGER IF EXISTS %s", xname);
-	  ret = sqlite3_exec (sqlite, trigger, NULL, NULL, &errMsg);
-	  if (ret != SQLITE_OK)
-	      goto error;
-	  if (cached)
-	    {
+
 		/* inserting the new DELETE trigger SRID */
+		sprintf (xname, "gcd_%s_%s", tblname, colname);
+		double_quoted_sql (xname);
 		sprintf (xindex, "cache_%s_%s", tblname, colname);
 		double_quoted_sql (xindex);
 		sprintf (trigger, "CREATE TRIGGER %s AFTER DELETE ON %s\n",
 			 xname, xtable);
 		strcat (trigger, "FOR EACH ROW BEGIN\n");
+		if (version == 4)
+		  {
+		      /* current metadata style */
+		      strcat (trigger,
+			      "UPDATE geometry_columns_time SET last_delete = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')\n");
+		      sprintf (dummy,
+			       "WHERE Upper(f_table_name) = Upper('%s') AND ",
+			       sqltable);
+		      strcat (trigger, dummy);
+		      sprintf (dummy,
+			       "Upper(f_geometry_column) = Upper('%s');\n",
+			       sqlcolumn);
+		      strcat (trigger, dummy);
+		  }
 		sprintf (dummy, "DELETE FROM %s WHERE rowid = OLD.ROWID;\n",
 			 xindex);
 		strcat (trigger, dummy);
