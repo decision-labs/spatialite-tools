@@ -155,6 +155,11 @@ endTimer (void)
 #define HAS_TIMER 0
 #endif
 
+/* sandro: 3 September 2012 
+** If the following flag is set, then SQL Log is enabled
+*/
+static int sql_log_enabled = 1;
+/* end sandro: 3 September 2012 */
 
 /*
 ** If the following flag is set, then command execution stops
@@ -1861,6 +1866,7 @@ static char zHelp[] =
     "                           | withLongCRS | MBRwithLongCRS }\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
+    ".sqllog ON|OFF    Turn SQL Log on or off\n"
 /* end Sandro Furieri 2008-06-20 */
     ;
 
@@ -2247,6 +2253,10 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *multiId = azArg[5];
 	  open_db (p);
 	  elementary_geometries (p->db, inTable, geom, outTable, pKey, multiId);
+      }
+    else if (c == 's' && strncmp (azArg[0], "sqllog", n) == 0 && nArg > 1)
+      {
+	  sql_log_enabled = booleanValue (azArg[1]);
       }
     else if (c == 'b' && n > 1 && strncmp (azArg[0], "bail", n) == 0
 	     && nArg > 1)
@@ -2985,6 +2995,9 @@ process_input (struct callback_data *p, FILE * in, char *in_charset)
     int utf8len;
     char *utf8Sql = 0;
 /* End Sandro Furieri - 11 July 2008 */
+/* Sandro Furieri - 3 September 2012 - supporting SqlLog */
+    sqlite3_int64 sqllog_pk;
+/* End Sandro Furieri - 3 September 2012 - supporting SqlLog */
     int nSql = 0;
     int nSqlPrior = 0;
     char *zErrMsg;
@@ -3097,9 +3110,13 @@ process_input (struct callback_data *p, FILE * in, char *in_charset)
 		      /* input has an explicit charset */
 		      convert_input_to_utf8 (utf8Sql, utf8len);
 		  }
+                if (sql_log_enabled)
+                    gaiaInsertIntoSqlLog(p->db, "spatialite CLI", utf8Sql, &sqllog_pk);
 		BEGIN_TIMER;
 		rc = sqlite3_exec (p->db, utf8Sql, callback, p, &zErrMsg);
 		END_TIMER;
+                if (sql_log_enabled)
+                    gaiaUpdateSqlLog(p->db, sqllog_pk, (rc == SQLITE_OK) ? 1 : 0, zErrMsg);
 		free (utf8Sql);
 /* End Sandro Furieri - 11 July 2008 */
 		if (rc || zErrMsg)

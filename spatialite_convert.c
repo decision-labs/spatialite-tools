@@ -1145,7 +1145,7 @@ create_views_geometry_columns_4 (sqlite3 * handle)
 	  return 0;
       }
 /* creating an INDEX supporting the GEOMETRY_COLUMNS FK */
-    strcpy (sql, "CREATE INDEX IF NOT EXISTS ");
+    strcpy (sql, "CREATE INDEX ");
     strcat (sql, "idx_viewsjoin ON views_geometry_columns\n");
     strcat (sql, "(f_table_name, f_geometry_column)");
 
@@ -1153,6 +1153,242 @@ create_views_geometry_columns_4 (sqlite3 * handle)
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CREATE INDEX IDX_VIEWSJOIN error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+/* creating the VIEWS_GEOMETRY_COLUMNS triggers */
+    strcpy (sql, "CREATE TRIGGER vwgc_view_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: \n");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_view_name_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'view_name' ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_view_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_view_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_geometry' ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_view_rowid_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'view_rowid' ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_rowid value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_rowid value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_rowid LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_rowid value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_rowid <> lower(NEW.view_rowid);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_view_rowid_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_rowid value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_rowid LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: \n");
+    strcat (sql, "view_rowid value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_rowid LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "view_rowid value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_rowid <> lower(NEW.view_rowid);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_f_table_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_table_name' ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER vwgc_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'views_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
 	  sqlite3_free (sql_err);
 	  return 0;
       }
@@ -1708,6 +1944,106 @@ feed_times (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the GEOMETRY_COLUMNS_TIME triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gctm_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_time'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gctm_f_table_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_table_name' ON 'geometry_columns_time'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gctm_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_time'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gctm_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'geometry_columns_time'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_time violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO geometry_columns_time ");
@@ -1720,6 +2056,7 @@ feed_times (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -1753,6 +2090,106 @@ feed_auths (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the GEOMETRY_COLUMNS_AUTH triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcau_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcau_f_table_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_table_name' ON 'geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gcau_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gcau_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_auth violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO geometry_columns_auth ");
@@ -1765,6 +2202,7 @@ feed_auths (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -1795,6 +2233,102 @@ feed_views_auths (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the VIEWS_GEOMETRY_COLUMNS_AUTH triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcau_view_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcau_view_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_name' ON 'views_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcau_view_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcau_view_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_geometry'  ON 'views_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_auth violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO views_geometry_columns_auth ");
@@ -1807,6 +2341,7 @@ feed_views_auths (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -1838,6 +2373,101 @@ feed_virts_auths (sqlite3 * handle)
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
       }
+/* creating the VIRTS_GEOMETRY_COLUMNS_AUTH triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcau_virt_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcau_virt_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_name' ON 'virts_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcau_virt_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcau_virt_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_geometry' ON 'virts_geometry_columns_auth'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_auth violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
 
     strcpy (sql, "INSERT OR IGNORE INTO virts_geometry_columns_auth ");
     strcat (sql, "(virt_name, virt_geometry, hidden) ");
@@ -1849,6 +2479,7 @@ feed_virts_auths (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -1881,6 +2512,104 @@ feed_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the GEOMETRY_COLUMNS_STATISTICS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcs_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcs_f_table_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_table_name' ON 'geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcs_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcs_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_statistics violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "CREATE TABLE IF NOT EXISTS ");
@@ -1910,6 +2639,106 @@ feed_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the GEOMETRY_COLUMNS_FIELD_INFOS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcfi_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS gcfi_f_table_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_table_name' ON 'geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gcfi_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql,
+	    "CREATE TRIGGER IF NOT EXISTS gcfi_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO geometry_columns_statistics ");
@@ -1922,6 +2751,7 @@ feed_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -1954,6 +2784,102 @@ feed_views_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the VIEWS_GEOMETRY_COLUMNS_STATISTICS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcs_view_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcs_view_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_name' ON 'views_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcs_view_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcs_view_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_geometry' ON 'views_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "CREATE TABLE IF NOT EXISTS ");
@@ -1983,6 +2909,102 @@ feed_views_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the VIEWS_COLUMNS_FIELD_INFOS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcfi_view_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcfi_view_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_name' ON 'views_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_name <> lower(NEW.view_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcfi_view_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'views_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vwgcfi_view_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'view_geometry' ON 'views_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "view_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.view_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on views_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "view_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.view_geometry <> lower(NEW.view_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO views_geometry_columns_statistics ");
@@ -1995,6 +3017,7 @@ feed_views_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -2028,6 +3051,102 @@ feed_virts_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the VIRTS_GEOMETRY_COLUMNS_STATISTICS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcs_virt_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcs_virt_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_name' ON 'virts_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcs_virt_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcs_virt_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_geometry' ON 'virts_geometry_columns_statistics'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_statistics violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "CREATE TABLE IF NOT EXISTS ");
@@ -2058,6 +3177,102 @@ feed_virts_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "CREATE TABLE SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+/* creating the VIRTS_GEOMETRY_COLUMNS_FIELD_INFOS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcfi_virt_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcfi_virt_name_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_name' ON 'virts_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcfi_virt_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgcfi_virt_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_geometry' ON 'virts_geometry_columns_field_infos'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns_field_infos violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 
     strcpy (sql, "INSERT OR IGNORE INTO virts_geometry_columns_statistics ");
@@ -2070,6 +3285,36 @@ feed_virts_statistics (sqlite3 * handle)
       {
 	  fprintf (stderr, "INSERT INTO SELECT error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
+	  return;
+      }
+}
+
+static int
+create_sql_statements_log (sqlite3 * handle)
+{
+    char sql[4186];
+    char *sql_err = NULL;
+    int ret;
+/* creating the SQL_STATEMENTS_LOG table */
+    strcpy (sql, "CREATE TABLE  IF NOT EXISTS ");
+    strcat (sql, "sql_statements_log (\n");
+    strcat (sql, "id INTEGER PRIMARY KEY AUTOINCREMENT,\n");
+    strcat (sql,
+	    "time_start TIMESTAMP NOT NULL DEFAULT '0000-01-01T00:00:00.000Z',\n");
+    strcat (sql,
+	    "time_end TIMESTAMP NOT NULL DEFAULT '0000-01-01T00:00:00.000Z',\n");
+    strcat (sql, "user_agent TEXT NOT NULL,\n");
+    strcat (sql, "sql_statement TEXT NOT NULL,\n");
+    strcat (sql, "success INTEGER NOT NULL DEFAULT 0,\n");
+    strcat (sql, "error_cause TEXT NOT NULL DEFAULT 'ABORTED',\n");
+    strcat (sql, "CONSTRAINT sqllog_success CHECK ");
+    strcat (sql, "(success IN (0,1)))");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return;
       }
 }
 
@@ -2092,6 +3337,8 @@ cvt_extra_stuff (sqlite3 * handle, int version)
 	  feed_statistics (handle);
 	  feed_views_statistics (handle);
 	  feed_virts_statistics (handle);
+	  create_sql_statements_log (handle);
+
       }
     else
       {
@@ -2731,7 +3978,7 @@ create_virts_geometry_columns_4 (sqlite3 * handle)
     int ret;
     char *sql_err = NULL;
     char sql[8192];
-    strcpy (sql, "CREATE TABLE IF NOT EXISTS ");
+    strcpy (sql, "CREATE TABLE ");
     strcat (sql, "virts_geometry_columns (\n");
     strcat (sql, "virt_name TEXT NOT NULL,\n");
     strcat (sql, "virt_geometry TEXT NOT NULL,\n");
@@ -2741,13 +3988,7 @@ create_virts_geometry_columns_4 (sqlite3 * handle)
     strcat (sql, "CONSTRAINT pk_geom_cols_virts PRIMARY KEY ");
     strcat (sql, "(virt_name, virt_geometry),\n");
     strcat (sql, "CONSTRAINT fk_vgc_srid FOREIGN KEY ");
-    strcat (sql, "(srid) REFERENCES spatial_ref_sys (srid),\n");
-    strcat (sql, "CONSTRAINT ck_vgc_type CHECK (geometry_type IN ");
-    strcat (sql, "(1,2,3,4,5,6,1001,1002,1003,1004,1005,1006,");
-    strcat (sql, "2001,2002,2003,2004,2005,2006,3001,3002,");
-    strcat (sql, "3003,3004,3005,3006)),\n");
-    strcat (sql, "CONSTRAINT ck_vgc_dims CHECK (coord_dimension IN ");
-    strcat (sql, "(2,3,4)))");
+    strcat (sql, "(srid) REFERENCES spatial_ref_sys (srid))");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
@@ -2756,13 +3997,177 @@ create_virts_geometry_columns_4 (sqlite3 * handle)
 	  sqlite3_free (sql_err);
 	  return 0;
       }
-    strcpy (sql, "CREATE INDEX IF NOT EXISTS ");
+    strcpy (sql, "CREATE INDEX ");
     strcat (sql, "idx_virtssrid ON virts_geometry_columns\n");
     strcat (sql, "(srid)");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CREATE INDEX IDX_VIRTSSRID error: %s\n", sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+/* creating the VIRTS_GEOMETRY_COLUMNS triggers */
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_virt_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: \n");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_virt_name_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'virt_name' ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_name <> lower(NEW.virt_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_virt_geometry_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_virt_geometry_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'virt_geometry' ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_geometry value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: \n");
+    strcat (sql, "virt_geometry value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.virt_geometry LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on virts_geometry_columns violates constraint: ");
+    strcat (sql, "virt_geometry value must be lower case')\n");
+    strcat (sql, "WHERE NEW.virt_geometry <> lower(NEW.virt_geometry);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_geometry_type_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql, "SELECT RAISE(ABORT,'geometry_type must be one of ");
+    strcat (sql, "0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007')\n");
+    strcat (sql, "WHERE NOT(NEW.geometry_type IN (0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_geometry_type_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'geometry_type' ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql, "SELECT RAISE(ABORT,'geometry_type must be one of ");
+    strcat (sql, "0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007')\n");
+    strcat (sql, "WHERE NOT(NEW.geometry_type IN (0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_coord_dimension_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'coord_dimension must be one of 2,3,4')\n");
+    strcat (sql, "WHERE NOT(NEW.coord_dimension IN (2,3,4));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER IF NOT EXISTS vtgc_coord_dimension_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'coord_dimension' ON 'virts_geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'coord_dimension must be one of 2,3,4')\n");
+    strcat (sql, "WHERE NOT(NEW.coord_dimension IN (2,3,4));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
 	  sqlite3_free (sql_err);
 	  return 0;
       }
@@ -3635,12 +5040,6 @@ create_geometry_columns_4 (sqlite3 * handle)
     strcat (sql, "(f_table_name, f_geometry_column),\n");
     strcat (sql, "CONSTRAINT fk_gc_srs FOREIGN KEY ");
     strcat (sql, "(srid) REFERENCES spatial_ref_sys (srid),\n");
-    strcat (sql, "CONSTRAINT ck_gc_type CHECK (geometry_type IN ");
-    strcat (sql, "(0,1,2,3,4,5,6,7,1000,1001,1002,1003,1004,1005,1006,");
-    strcat (sql, "1007,2000,2001,2002,2003,2004,2005,2006,2007,3000,3001,");
-    strcat (sql, "3002,3003,3004,3005,3006,3007)),\n");
-    strcat (sql, "CONSTRAINT ck_gc_dims CHECK (coord_dimension IN ");
-    strcat (sql, "(2,3,4)),\n");
     strcat (sql, "CONSTRAINT ck_gc_rtree CHECK ");
     strcat (sql, "(spatial_index_enabled IN (0,1,2)))");
     ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
@@ -3657,6 +5056,187 @@ create_geometry_columns_4 (sqlite3 * handle)
     if (ret != SQLITE_OK)
       {
 	  fprintf (stderr, "CREATE INDEX IDX_SRID_GEOCOLS error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+
+/* creating the GEOMETRY_COLUMNS triggers */
+    strcpy (sql, "CREATE TRIGGER geometry_columns_f_table_name_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: \n");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_f_table_name_insert error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_f_table_name_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'f_table_name' ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_table_name LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_table_name value must be lower case')\n");
+    strcat (sql, "WHERE NEW.f_table_name <> lower(NEW.f_table_name);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_f_table_name_update error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_f_geometry_column_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: \n");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'insert on geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_f_geometry_column_insert error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_f_geometry_column_update\n");
+    strcat (sql,
+	    "BEFORE UPDATE OF 'f_geometry_column' ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a single quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%''%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must not contain a double quote')\n");
+    strcat (sql, "WHERE NEW.f_geometry_column LIKE ('%\"%');\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'update on geometry_columns violates constraint: ");
+    strcat (sql, "f_geometry_column value must be lower case')\n");
+    strcat (sql,
+	    "WHERE NEW.f_geometry_column <> lower(NEW.f_geometry_column);\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_f_geometry_column_update error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_geometry_type_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql, "SELECT RAISE(ABORT,'geometry_type must be one of ");
+    strcat (sql, "0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007')\n");
+    strcat (sql, "WHERE NOT(NEW.geometry_type IN (0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_geometry_type error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_geometry_type_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'geometry_type' ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql, "SELECT RAISE(ABORT,'geometry_type must be one of ");
+    strcat (sql, "0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007')\n");
+    strcat (sql, "WHERE NOT(NEW.geometry_type IN (0,1,2,3,4,5,6,7,");
+    strcat (sql, "1000,1001,1002,1003,1004,1005,1006,1007,");
+    strcat (sql, "2000,2001,2002,2003,2004,2005,2006,2007,");
+    strcat (sql, "3000,3001,3002,3003,3004,3005,3006,3007));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_geometry_type_update error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_coord_dimension_insert\n");
+    strcat (sql, "BEFORE INSERT ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'coord_dimension must be one of 2,3,4')\n");
+    strcat (sql, "WHERE NOT(NEW.coord_dimension IN (2,3,4));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_coord_dimension_inser error: %s\n",
+		   sql_err);
+	  sqlite3_free (sql_err);
+	  return 0;
+      }
+    strcpy (sql, "CREATE TRIGGER geometry_columns_coord_dimension_update\n");
+    strcat (sql, "BEFORE UPDATE OF 'coord_dimension' ON 'geometry_columns'\n");
+    strcat (sql, "FOR EACH ROW BEGIN\n");
+    strcat (sql,
+	    "SELECT RAISE(ABORT,'coord_dimension must be one of 2,3,4')\n");
+    strcat (sql, "WHERE NOT(NEW.coord_dimension IN (2,3,4));\n");
+    strcat (sql, "END");
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &sql_err);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr,
+		   "CREATE TRIGGER geometry_columns_coord_dimension_update error: %s\n",
 		   sql_err);
 	  sqlite3_free (sql_err);
 	  return 0;
