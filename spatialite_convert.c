@@ -454,7 +454,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
       {
 	  fprintf (stderr,
 		   "updateTableTriggers() error: not existing Table or Column\n");
-	  return;
+	  return 0;
       }
     if (version == 4)
       {
@@ -480,7 +480,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
       {
 	  fprintf (stderr, "updateTableTriggers: error %d \"%s\"\n",
 		   sqlite3_errcode (sqlite), sqlite3_errmsg (sqlite));
-	  return;
+	  return 0;
       }
     sqlite3_reset (stmt);
     sqlite3_clear_bindings (stmt);
@@ -1436,6 +1436,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
   error:
     fprintf (stderr, "updateTableTriggers: \"%s\"\n", errMsg);
     sqlite3_free (errMsg);
+    return 0;
   index_cleanup:
     curr_idx = first_idx;
     while (curr_idx)
@@ -1452,6 +1453,7 @@ update_triggers (sqlite3 * sqlite, const char *table,
 	free (p_table);
     if (p_column)
 	free (p_column);
+    return 1;
 }
 
 static int
@@ -7023,9 +7025,12 @@ main (int argc, char *argv[])
 	  goto stop;
       }
     printf ("\tDB-file succesfully converted !!!\n\n");
+    goto end;
 
 /* closing the DB */
   stop:
+    fprintf (stderr, "*** ERROR: conversion failed\n");
+  end:
     sqlite3_close (handle);
     return 0;
 }
