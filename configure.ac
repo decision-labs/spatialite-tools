@@ -17,6 +17,40 @@ AH_TEMPLATE([OMIT_FREEXL],
             [Should be defined in order to disable FREEXL support.])
 AH_TEMPLATE([OMIT_READOSM],
             [Should be defined in order to disable ReadOSM support.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_CONFIG_URI],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_CACHE_HIT],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_CACHE_MISS],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_SCHEMA_USED],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_STMT_USED],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_STMTSTATUS_SORT],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_STMTSTATUS_AUTOINDEX],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_STMT_USED],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_TESTCTRL_EXPLAIN_STMT],
+            [depending on SQLite library version.])
+AH_TEMPLATE([HAVE_DECL_SQLITE_FCNTL_VFSNAME],
+            [depending on SQLite library version.])
 
 # Checks for header files.
 AC_CHECK_HEADERS(stdlib.h,, [AC_MSG_ERROR([cannot find stdlib.h, bailing out])])
@@ -160,5 +194,39 @@ else
 fi
 
 AM_CONDITIONAL([NO_READOSM], [test "$NOREADOSM" = "true"])
+
+# checks for SQLite version-depending constants
+AC_CHECK_DECL([SQLITE_CONFIG_URI],
+  [AC_DEFINE(HAVE_DECL_SQLITE_CONFIG_URI)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_LOOKASIDE_USED],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_LOOKASIDE_HIT],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_CACHE_USED],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_CACHE_HIT],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_CACHE_HIT)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_CACHE_MISS],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_CACHE_MISS)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_CACHE_WRITE],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_SCHEMA_USED],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_SCHEMA_USED)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_DBSTATUS_STMT_USED],
+  [AC_DEFINE(HAVE_DECL_SQLITE_DBSTATUS_STMT_USED)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_STMTSTATUS_FULLSCAN_STEP],
+  [AC_DEFINE(HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_STMTSTATUS_SORT],
+  [AC_DEFINE(HAVE_DECL_SQLITE_STMTSTATUS_SORT)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_STMTSTATUS_AUTOINDEX],
+  [AC_DEFINE(HAVE_DECL_SQLITE_STMTSTATUS_AUTOINDEX)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_TESTCTRL_EXPLAIN_STMT],
+  [AC_DEFINE(HAVE_DECL_SQLITE_TESTCTRL_EXPLAIN_STMT)],[],[[#include <sqlite3.h>]])
+AC_CHECK_DECL([SQLITE_FCNTL_VFSNAME],
+  [AC_DEFINE(HAVE_DECL_SQLITE_FCNTL_VFSNAME)],[],[[#include <sqlite3.h>]])
 
 AC_OUTPUT

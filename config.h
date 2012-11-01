@@ -1,6 +1,54 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_CONFIG_URI 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_CACHE_HIT 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_CACHE_MISS 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED 1
+
+/* depending on SQLite library version. */
+/* #undef HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE */
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_SCHEMA_USED 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_DBSTATUS_STMT_USED 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_FCNTL_VFSNAME 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_STMTSTATUS_AUTOINDEX 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_STMTSTATUS_SORT 1
+
+/* depending on SQLite library version. */
+#define HAVE_DECL_SQLITE_TESTCTRL_EXPLAIN_STMT 1
+
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
 

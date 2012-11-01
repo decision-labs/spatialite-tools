@@ -1631,45 +1631,98 @@ static int display_stats(
 #endif
   }
 
+/* Sandro Furieri 1 November 2012 - depending on SQLite version */
   if( pArg && pArg->out && db ){
     iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED
     sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_USED, &iCur, &iHiwtr, bReset);
     fprintf(pArg->out, "Lookaside Slots Used:                %d (max %d)\n", iCur, iHiwtr);
+#else
+    fprintf(pArg->out, "Lookaside Slots Used:                n.a.\n");
+#endif
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT
     sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_HIT, &iCur, &iHiwtr, bReset);
     fprintf(pArg->out, "Successful lookaside attempts:       %d\n", iHiwtr);
+#else
+    fprintf(pArg->out, "Successful lookaside attempts:       n.a.\n");
+#endif
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE
     sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE, &iCur, &iHiwtr, bReset);
     fprintf(pArg->out, "Lookaside failures due to size:      %d\n", iHiwtr);
+#else
+    fprintf(pArg->out, "Lookaside failures due to size:      n.a.\n");
+#endif
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL
     sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL, &iCur, &iHiwtr, bReset);
     fprintf(pArg->out, "Lookaside failures due to OOM:       %d\n", iHiwtr);
+#else
+    fprintf(pArg->out, "Lookaside failures due to OOM:       n.a.\n");
+#endif
     iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED
     sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Pager Heap Usage:                    %d bytes\n", iCur);    iHiwtr = iCur = -1;
+    fprintf(pArg->out, "Pager Heap Usage:                    %d bytes\n", iCur);  
+#else
+    fprintf(pArg->out, "Pager Heap Usage:                    n.a.\n");  
+#endif  
+    iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_HIT
     sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_HIT, &iCur, &iHiwtr, 1);
     fprintf(pArg->out, "Page cache hits:                     %d\n", iCur);
+#else
+    fprintf(pArg->out, "Page cache hits:                     n.a.\n");
+#endif
     iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_MISS
     sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_MISS, &iCur, &iHiwtr, 1);
     fprintf(pArg->out, "Page cache misses:                   %d\n", iCur); 
+#else
+    fprintf(pArg->out, "Page cache misses:                   n.a.\n"); 
+#endif
     iHiwtr = iCur = -1;
-/* Sandro Furieri 1 November 2012
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE
     sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_WRITE, &iCur, &iHiwtr, 1);
     fprintf(pArg->out, "Page cache writes:                   %d\n", iCur); 
-*/
+#else
+    fprintf(pArg->out, "Page cache writes:                   n.a.\n"); 
+#endif
     iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_SCHEMA_USED
     sqlite3_db_status(db, SQLITE_DBSTATUS_SCHEMA_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Schema Heap Usage:                   %d bytes\n", iCur); 
+    fprintf(pArg->out, "Schema Heap Usage:                   %d bytes\n", iCur);
+#else
+    fprintf(pArg->out, "Schema Heap Usage:                   n.a.\n");
+#endif 
     iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_STMT_USED
     sqlite3_db_status(db, SQLITE_DBSTATUS_STMT_USED, &iCur, &iHiwtr, bReset);
     fprintf(pArg->out, "Statement Heap/Lookaside Usage:      %d bytes\n", iCur); 
+#else
+    fprintf(pArg->out, "Statement Heap/Lookaside Usage:      n.a.\n");
+#endif
   }
 
   if( pArg && pArg->out && db && pArg->pStmt ){
+#ifdef HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP
     iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_FULLSCAN_STEP, bReset);
     fprintf(pArg->out, "Fullscan Steps:                      %d\n", iCur);
+#else
+    fprintf(pArg->out, "Fullscan Steps:                      n.a.\n");
+#endif
+#ifdef HAVE_DECL_SQLITE_STMTSTATUS_SORT
     iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_SORT, bReset);
     fprintf(pArg->out, "Sort Operations:                     %d\n", iCur);
+#else
+    fprintf(pArg->out, "Sort Operations:                     n.a.\n");
+#endif
+#ifdef HAVE_DECL_SQLITE_STMTSTATUS_AUTOINDEX
     iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_AUTOINDEX, bReset);
     fprintf(pArg->out, "Autoindex Inserts:                   %d\n", iCur);
+#else
+    fprintf(pArg->out, "Autoindex Inserts:                   n.a.\n");
+#endif
   }
+/* end sandro 1 November 2012 */
 
   return 0;
 }
@@ -1728,11 +1781,17 @@ static int shell_exec(
 
       /* Output TESTCTRL_EXPLAIN text of requested */
       if( pArg && pArg->mode==MODE_Explain ){
+/* Sandro Furieri 1 November 2012 - depending on SQLite version */
+#ifdef HAVE_DECL_SQLITE_TESTCTRL_EXPLAIN_STMT
         const char *zExplain = 0;
         sqlite3_test_control(SQLITE_TESTCTRL_EXPLAIN_STMT, pStmt, &zExplain);
         if( zExplain && zExplain[0] ){
           fprintf(pArg->out, "%s", zExplain);
         }
+#else
+          fprintf(pArg->out, "TESTCTRL_EXPLAIN: unsupported");
+#endif
+/* end sandro 1 November 2012 */
       }
 
       /* perform the first step.  this will tell us if we
@@ -3375,11 +3434,17 @@ static int do_meta_command(char *zLine, struct callback_data *p){
     const char *zDbName = nArg==2 ? azArg[1] : "main";
     char *zVfsName = 0;
     if( p->db ){
+/* Sandro Furieri 1 November 2012 - depending on SQLite version */
+#ifdef HAVE_DECL_SQLITE_FCNTL_VFSNAME
       sqlite3_file_control(p->db, zDbName, SQLITE_FCNTL_VFSNAME, &zVfsName);
       if( zVfsName ){
         printf("%s\n", zVfsName);
         sqlite3_free(zVfsName);
       }
+#else
+        printf("FCNTL_VFSNAME: unsupported\n");
+#endif
+/* end sandro 1 November 2012 */
     }
   }else
 
@@ -3730,7 +3795,11 @@ static void main_init(struct callback_data *data) {
   data->mode = MODE_List;
   memcpy(data->separator,"|", 2);
   data->showHeader = 0;
+/* Sandro Furieri 1 November 2012 - depending on SQLite version */
+#ifdef HAVE_DECL_SQLITE_CONFIG_URI
   sqlite3_config(SQLITE_CONFIG_URI, 1);
+#endif
+/* end sandro 1 November 2012 */
   sqlite3_config(SQLITE_CONFIG_LOG, shellLog, data);
   sqlite3_snprintf(sizeof(mainPrompt), mainPrompt,"sqlite> ");
   sqlite3_snprintf(sizeof(continuePrompt), continuePrompt,"   ...> ");
