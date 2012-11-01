@@ -4025,8 +4025,25 @@ registering the SpatiaLite extension
     }
   }
   set_table_name(&data, 0);
-  if( data.db ){
-    sqlite3_close(data.db);
-  }
+    if (data.db)
+      {
+/* Sandro Furieri 2008-11-20 */
+	  auto_fdo_stop (data.db);
+/* end Sandro Furieri 2008-11-20 */
+	  if (sqlite3_close (data.db) != SQLITE_OK)
+	    {
+		fprintf (stderr, "error closing database: %s\n",
+			 sqlite3_errmsg (data.db));
+	    }
+      }
+
+
+/*
+Sandro Furieri 30 May 2008
+===========================
+memory cleanup for SpatiaLite extension
+*/
+    sqlite3_reset_auto_extension ();
+
   return rc;
 }
