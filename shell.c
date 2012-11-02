@@ -2468,8 +2468,11 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 		if (strcasecmp (azArg[8], "2d") == 0)
 		    coerce2d = 1;
 	    }
-	  if (nArg == 10)
-	      compressed = 1;
+	  if (nArg >= 10)
+	  {
+		if (strcasecmp (azArg[9], "compressed") == 0)
+		    compressed = 1;
+	  }
 	  if (nArg == 11)
 	      with_spatial_index = 1;
 	  open_db (p);
@@ -2556,7 +2559,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
     else if (c == 's' && strncmp (azArg[0], "sqllog", n) == 0 && nArg > 1)
       {
 	  sql_log_enabled = booleanValue (azArg[1]);
-      }
+      } else
 /* end sandro 2008-06-20 */
   if( c=='b' && n>=3 && strncmp(azArg[0], "backup", n)==0 && nArg>1 && nArg<4){
     const char *zDestFile;
@@ -2592,9 +2595,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
       rc = 1;
     }
     sqlite3_close(pDest);
-  }else
-
-  if( c=='b' && n>=3 && strncmp(azArg[0], "bail", n)==0 && nArg>1 && nArg<3 ){
+  }else if( c=='b' && n>=3 && strncmp(azArg[0], "bail", n)==0 && nArg>1 && nArg<3 ){
     bail_on_error = booleanValue(azArg[1]);
   }else
 
