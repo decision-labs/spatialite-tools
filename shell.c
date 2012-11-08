@@ -275,7 +275,7 @@ static char *Argv0;
 ** Prompt strings. Initialized in main. Settable with
 **   .prompt main continue
 */
-static char mainPrompt[20];     /* First line prompt. default: "sqlite> "*/
+static char mainPrompt[20];     /* First line prompt. default: "spatialite> "*/
 static char continuePrompt[20]; /* Continuation prompt. default: "   ...> " */
 
 /*
@@ -2162,6 +2162,9 @@ static char zTimerHelp[] =
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
     ".sqllog ON|OFF    Turn SQL Log on or off\n"
+    ".dropgeo <table>  Drops a Spatial Table (or Spatial View) completely\n"
+    "                  removing any related stuff (metadata definitions,\n"
+    "                  Spatial Index and alike)\n"
 /* end Sandro Furieri 2008-06-20 */
 ;
 
@@ -2559,6 +2562,20 @@ static int do_meta_command(char *zLine, struct callback_data *p){
     else if (c == 's' && strncmp (azArg[0], "sqllog", n) == 0 && nArg > 1)
       {
 	  sql_log_enabled = booleanValue (azArg[1]);
+      }
+    else if (c == 'd' && strncmp (azArg[0], "dropgeo", n) == 0 && nArg > 1)
+      {
+          int cnt0 = sqlite3_total_changes(p->db);
+	  if (gaiaDropTable (p->db, azArg[1]))
+          {
+              int cnt1 = sqlite3_total_changes(p->db);
+              if (cnt1 > cnt0)
+                  fprintf(stderr, "SpatialTable \"%s\" succesfully removed\n", azArg[1]);
+              else
+                  fprintf(stderr, "SpatialTable \"%s\" seems not to exist\n", azArg[1]);
+          }
+          else
+              fprintf(stderr, "ERROR: unable to remove SpatialTable \"%s\"\n", azArg[1]);
       } else
 /* end sandro 2008-06-20 */
   if( c=='b' && n>=3 && strncmp(azArg[0], "backup", n)==0 && nArg>1 && nArg<4){
@@ -3802,7 +3819,7 @@ static void main_init(struct callback_data *data) {
 #endif
 /* end sandro 1 November 2012 */
   sqlite3_config(SQLITE_CONFIG_LOG, shellLog, data);
-  sqlite3_snprintf(sizeof(mainPrompt), mainPrompt,"sqlite> ");
+  sqlite3_snprintf(sizeof(mainPrompt), mainPrompt,"spatialite> ");
   sqlite3_snprintf(sizeof(continuePrompt), continuePrompt,"   ...> ");
   sqlite3_config(SQLITE_CONFIG_SINGLETHREAD);
 }
