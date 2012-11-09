@@ -35,7 +35,11 @@
 
 */
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
 #include "config.h"
+#endif
 
 /* Sandro Furieri 30 May 2008
 / #include "sqlite3.h"
@@ -47,6 +51,7 @@
 #endif
 
 #include <spatialite.h>
+#include <spatialite/gaiaaux.h>
 #ifdef __MINGW32__
 #define LIBICONV_STATIC
 #endif
@@ -58,6 +63,10 @@
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
+
+#ifdef _WIN32
+#define strcasecmp	_stricmp
+#endif /* not WIN32 */
 
 #if !defined(_WIN32) && !defined(WIN32)
 # include <signal.h>
@@ -3560,6 +3569,13 @@ static int _is_complete(char *zSql, int nSql){
 static int process_input(struct callback_data *p, FILE *in, char *in_charset){
   char *zLine = 0;
   char *zSql = 0;
+/* Sandro Furieri - 11 July 2008 - supporting UNICODE */
+  int utf8len;
+  char *utf8Sql = 0;
+/* End Sandro Furieri - 11 July 2008 */
+/* Sandro Furieri - 3 September 2012 - supporting SqlLog */
+  sqlite3_int64 sqllog_pk;
+/* End Sandro Furieri - 3 September 2012 - supporting SqlLog */
   int nSql = 0;
   int nSqlPrior = 0;
   char *zErrMsg;
@@ -3567,6 +3583,11 @@ static int process_input(struct callback_data *p, FILE *in, char *in_charset){
   int errCnt = 0;
   int lineno = 0;
   int startline = 0;
+
+/* Sandro Furieri - 11 July 2008 - supporting UNICODE */
+  if (in_charset)
+    create_input_utf8_converter (in_charset);
+/* End Sandro Furieri - 11 July 2008 */
 
   while( errCnt==0 || !bail_on_error || (in==0 && stdin_is_interactive) ){
     fflush(p->out);
@@ -3625,9 +3646,39 @@ static int process_input(struct callback_data *p, FILE *in, char *in_charset){
                 && sqlite3_complete(zSql) ){
       p->cnt = 0;
       open_db(p);
+/* Sandro Furieri - 11 July 2008
       BEGIN_TIMER;
       rc = shell_exec(p->db, zSql, shell_callback, p, &zErrMsg);
       END_TIMER;
+*/
+      utf8len = strlen (zSql) * 4;
+      utf8Sql = malloc (utf8len);
+      if (utf8Sql == 0)
+      {
+          fprintf (stderr, "%s: out of memory!\n", Argv0);
+          exit (1);
+      }
+      strncpy (utf8Sql, zSql, utf8len - 1);
+      utf8Sql[utf8len - 1] = '\0';
+      if (!in_charset)
+      {	
+      /* assuming input is locale_charset encoded */
+          convert_to_utf8 (utf8Sql, utf8len);
+      }
+      else
+      {
+      /* input has an explicit charset */
+          convert_input_to_utf8 (utf8Sql, utf8len);
+      }
+      if (sql_log_enabled)
+          gaiaInsertIntoSqlLog(p->db, "spatialite CLI", utf8Sql, &sqllog_pk);
+      BEGIN_TIMER;
+      rc = sqlite3_exec (p->db, utf8Sql, callback, p, &zErrMsg);
+      END_TIMER;
+      if (sql_log_enabled)
+          gaiaUpdateSqlLog(p->db, sqllog_pk, (rc == SQLITE_OK) ? 1 : 0, zErrMsg); 
+      free (utf8Sql);
+/* End Sandro Furieri - 11 July 2008 */
       if( rc || zErrMsg ){
         char zPrefix[100];
         if( in!=0 || !stdin_is_interactive ){
@@ -3657,6 +3708,16 @@ static int process_input(struct callback_data *p, FILE *in, char *in_charset){
     free(zSql);
   }
   free(zLine);
+
+/* Sandro Furieri - 11 July 2008 */
+  if (in_charset_to_utf8)
+  {
+  /* destroying input converter, if exists */
+      iconv_close (in_charset_to_utf8);
+      in_charset_to_utf8 = NULL;	
+   }	
+/* End Sandro Furieri - 11 July 2008 */
+
   return errCnt;
 }
 
@@ -4085,6 +4146,21 @@ registering the SpatiaLite extension
       char *zHome;
       char *zHistory = 0;
       int nHistory;
+/* Sandro Furieri 2008-11-20
+      printf(
+        "SQLite version %s %.19s\n" 
+        "Enter \".help\" for instructions\n"
+        "Enter SQL statements terminated with a \";\"\n",
+        sqlite3_libversion(), sqlite3_sourceid()
+      );
+*/
+     if (isatty (1))
+          printf ("SQLite version ......: %s\n",
+     sqlite3_libversion ());
+     auto_fdo_start (data.db);
+     if (isatty (1))
+         printf ("Enter \".help\" for instructions\n");
+/* end Sandro Furieri 2008-11-20 */
       printf(
         "SQLite version %s %.19s\n" /*extra-version-info*/
         "Enter \".help\" for instructions\n"

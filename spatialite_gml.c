@@ -37,7 +37,11 @@
 
 #include <expat.h>
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
 #include "config.h"
+#endif
 
 #ifdef SPATIALITE_AMALGAMATION
 #include <spatialite/sqlite3.h>

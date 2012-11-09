@@ -347,6 +347,7 @@ LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@
 
 EXTRA_DIST = makefile.vc nmake.opt \
+	config-msvc.h \
 	Makefile-static-MinGW \
 	Makefile-static-Linux \
 	Makefile-static-MacOsX

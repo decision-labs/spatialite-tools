@@ -33,7 +33,11 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
 #include "config.h"
+#endif
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include <io.h>

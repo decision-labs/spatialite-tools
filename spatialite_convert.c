@@ -2117,14 +2117,14 @@ copy_views_geometry_columns_4_3 (sqlite3 * handle)
 		  {
 		      fprintf (stderr,
 			       "copy_views_gc error: not existing Table or Column\n");
-		      return;
+		      goto error;
 		  }
 		if (!real_sql_names
 		    (handle, table2, column2, &p_table2, &p_column2))
 		  {
 		      fprintf (stderr,
 			       "copy_views_gc error: not existing Table or Column\n");
-		      return;
+		      goto error;
 		  }
 		sqlite3_bind_text (stmt_out, 1, p_table1, strlen (p_table1),
 				   free);
@@ -3893,8 +3893,9 @@ create_sql_statements_log (sqlite3 * handle)
       {
 	  fprintf (stderr, "SQL error: %s: %s\n", sql, sql_err);
 	  sqlite3_free (sql_err);
-	  return;
+	  return 0;
       }
+    return 1;
 }
 
 static int
@@ -5255,7 +5256,7 @@ copy_geometry_columns_4_2 (sqlite3 * handle)
 		  {
 		      fprintf (stderr,
 			       "copy_gc error: not existing Table or Column\n");
-		      return;
+		      goto error;
 		  }
 		sqlite3_bind_text (stmt_out, 1, p_table, strlen (p_table),
 				   free);
@@ -5382,7 +5383,7 @@ copy_geometry_columns_4_3 (sqlite3 * handle)
 		  {
 		      fprintf (stderr,
 			       "copy_gc error: not existing Table or Column\n");
-		      return;
+		      goto error;
 		  }
 		sqlite3_bind_text (stmt_out, 1, p_table, strlen (p_table),
 				   free);
