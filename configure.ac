@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 4.0.0, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 4.0.1, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -155,6 +155,7 @@ LIBS_SAVE="$LIBS"
 LIBS="$GEOS_LDFLAGS"
 AC_SEARCH_LIBS(GEOSTopologyPreserveSimplify,geos_c,,AC_MSG_ERROR([could not find libgeos_c - you may need to specify the directory of a geos-config file using --with-geosconfig]))
 LIBS="$LIBS_SAVE"
+LIBS=$LIBS$GEOS_LDFLAGS' -lgeos_c'
 
 PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
