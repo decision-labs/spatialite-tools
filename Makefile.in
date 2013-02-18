@@ -66,7 +66,8 @@ host_triplet = @host@
 @NO_READOSM_TRUE@	spatialite_network$(EXEEXT) \
 @NO_READOSM_TRUE@	shp_doctor$(EXEEXT) exif_loader$(EXEEXT) \
 @NO_READOSM_TRUE@	spatialite_osm_filter$(EXEEXT) \
-@NO_READOSM_TRUE@	spatialite_gml$(EXEEXT)
+@NO_READOSM_TRUE@	spatialite_gml$(EXEEXT) \
+@NO_READOSM_TRUE@	spatialite_convert$(EXEEXT)
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in $(srcdir)/config.h.in \

@@ -7,7 +7,8 @@ bin_PROGRAMS = spatialite \
 	shp_doctor \
 	exif_loader \
 	spatialite_osm_filter \
-	spatialite_gml
+	spatialite_gml \
+	spatialite_convert
 else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
