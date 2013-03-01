@@ -1429,7 +1429,7 @@ spatialite_autocreate (sqlite3 * db)
 	return;
 
 /* all right, it's empty: proceeding to initialize */
-    strcpy (sql, "SELECT InitSpatialMetadata()");
+    strcpy (sql, "SELECT InitSpatialMetadata(1)");
     ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
