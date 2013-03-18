@@ -1150,8 +1150,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
     double a_star_length;
     double a_star_coeff;
     double min_a_star_coeff = DBL_MAX;
-/* initializing SpatiaLite */
-    spatialite_init (0);
+    void *cache;
+
 /* showing the SQLite version */
     fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
 /* showing the SpatiaLite version */
@@ -1167,6 +1167,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	  sqlite3_close (handle);
 	  return;
       }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
     spatialite_autocreate (handle);
 
     fprintf (stderr, "Step   I - checking for table and columns existence\n");
@@ -1824,6 +1826,7 @@ validate (char *path, char *table, char *from_column, char *to_column,
     if (ret != SQLITE_OK)
 	fprintf (stderr, "sqlite3_close() error: %s\n",
 		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
     graph_free (p_graph);
 }
 

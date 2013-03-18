@@ -114,8 +114,8 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
     int ret;
     int rows;
     sqlite3 *handle;
-/* initializing SpatiaLite */
-    spatialite_init (0);
+    void *cache;
+
 /* showing the SQLite version */
     fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
 /* showing the SpatiaLite version */
@@ -131,6 +131,8 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
 	  sqlite3_close (handle);
 	  return;
       }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
     spatialite_autocreate (handle);
     if (load_dbf (handle, dbf_path, table, charset, 0, &rows, NULL))
 	fprintf (stderr, "Inserted %d rows into '%s' from '%s'\n", rows, table,
@@ -142,6 +144,7 @@ do_import_dbf (char *db_path, char *dbf_path, char *table, char *charset)
     if (ret != SQLITE_OK)
 	fprintf (stderr, "sqlite3_close() error: %s\n",
 		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
 }
 
 static void
@@ -152,8 +155,8 @@ do_import_shp (char *db_path, char *shp_path, char *table, char *charset,
     int ret;
     int rows;
     sqlite3 *handle;
-/* initializing SpatiaLite */
-    spatialite_init (0);
+    void *cache;
+
 /* showing the SQLite version */
     fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
 /* showing the SpatiaLite version */
@@ -169,6 +172,8 @@ do_import_shp (char *db_path, char *shp_path, char *table, char *charset,
 	  sqlite3_close (handle);
 	  return;
       }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
     spatialite_autocreate (handle);
     if (load_shapefile
 	(handle, shp_path, table, charset, srid, column, coerce2d, compressed,
@@ -182,6 +187,7 @@ do_import_shp (char *db_path, char *shp_path, char *table, char *charset,
     if (ret != SQLITE_OK)
 	fprintf (stderr, "sqlite3_close() error: %s\n",
 		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
 }
 
 static void
@@ -192,8 +198,8 @@ do_export (char *db_path, char *shp_path, char *table, char *column,
     int ret;
     int rows;
     sqlite3 *handle;
-/* initializing SpatiaLite */
-    spatialite_init (0);
+    void *cache;
+
 /* showing the SQLite version */
     fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
 /* showing the SpatiaLite version */
@@ -207,6 +213,8 @@ do_export (char *db_path, char *shp_path, char *table, char *column,
 	  sqlite3_close (handle);
 	  return;
       }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
     if (dump_shapefile
 	(handle, table, column, shp_path, charset, type, 0, &rows, NULL))
 	fprintf (stderr, "Exported %d rows into '%s.shp' from '%s'\n", rows,
@@ -218,6 +226,7 @@ do_export (char *db_path, char *shp_path, char *table, char *column,
     if (ret != SQLITE_OK)
 	fprintf (stderr, "sqlite3_close() error: %s\n",
 		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
 }
 
 static void

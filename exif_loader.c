@@ -1475,6 +1475,7 @@ main (int argc, char *argv[])
     sqlite3 *handle;
     int ret;
     int cnt = 0;
+    void *cache;
     for (i = 1; i < argc; i++)
       {
 	  /* parsing the invocation arguments */
@@ -1593,6 +1594,8 @@ main (int argc, char *argv[])
 	  sqlite3_close (handle);
 	  return -1;
       }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
     spatialite_autocreate (handle);
     if (!checkExifTables (handle))
       {
@@ -1609,6 +1612,7 @@ main (int argc, char *argv[])
     if (ret != SQLITE_OK)
 	fprintf (stderr, "sqlite3_close() error: %s\n",
 		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
     if (cnt)
 	fprintf (stderr,
 		 "\n\n***   %d EXIF photo%s successfully inserted into the DB\n",

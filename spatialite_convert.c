@@ -6823,14 +6823,13 @@ check_version (sqlite3 * handle, int *version, int *has_3d)
 }
 
 static void
-open_db (const char *path, sqlite3 ** handle)
+open_db (const char *path, sqlite3 ** handle, void *cache)
 {
 /* opening the DB */
     sqlite3 *db_handle;
     int ret;
 
     *handle = NULL;
-    spatialite_init (0);
     printf ("SQLite version: %s\n", sqlite3_libversion ());
     printf ("SpatiaLite version: %s\n\n", spatialite_version ());
 
@@ -6842,6 +6841,7 @@ open_db (const char *path, sqlite3 ** handle)
 	  sqlite3_close (db_handle);
 	  return;
       }
+    spatialite_init_ex (db_handle, cache, 0);
     *handle = db_handle;
     return;
 }
@@ -6875,6 +6875,7 @@ main (int argc, char *argv[])
     int error = 0;
     int in_version = 0;
     int has_3d = 0;
+    void *cache;
 
     for (i = 1; i < argc; i++)
       {
@@ -6946,7 +6947,8 @@ main (int argc, char *argv[])
       }
 
 /* opening the DB */
-    open_db (db_path, &handle);
+    cache = spatialite_alloc_connection ();
+    open_db (db_path, &handle, cache);
     if (!handle)
 	return -1;
 
@@ -7033,5 +7035,6 @@ main (int argc, char *argv[])
     fprintf (stderr, "*** ERROR: conversion failed\n");
   end:
     sqlite3_close (handle);
+    spatialite_cleanup_ex (cache);
     return 0;
 }

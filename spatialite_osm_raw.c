@@ -631,7 +631,7 @@ spatialite_autocreate (sqlite3 * db)
 }
 
 static void
-open_db (const char *path, sqlite3 ** handle, int cache_size)
+open_db (const char *path, sqlite3 ** handle, int cache_size, void *cache)
 {
 /* opening the DB */
     sqlite3 *db_handle;
@@ -659,7 +659,6 @@ open_db (const char *path, sqlite3 ** handle, int cache_size)
     int columns;
 
     *handle = NULL;
-    spatialite_init (0);
     printf ("SQLite version: %s\n", sqlite3_libversion ());
     printf ("SpatiaLite version: %s\n\n", spatialite_version ());
 
@@ -673,6 +672,7 @@ open_db (const char *path, sqlite3 ** handle, int cache_size)
 	  sqlite3_close (db_handle);
 	  return;
       }
+    spatialite_init_ex (db_handle, cache, 0);
     spatialite_autocreate (db_handle);
     if (cache_size > 0)
       {
@@ -974,6 +974,7 @@ main (int argc, char *argv[])
     int error = 0;
     struct aux_params params;
     const void *osm_handle;
+    void *cache;
 
 /* initializing the aux-structs */
     params.db_handle = NULL;
@@ -1101,7 +1102,8 @@ main (int argc, char *argv[])
 /* opening the DB */
     if (in_memory)
 	cache_size = 0;
-    open_db (db_path, &handle, cache_size);
+    cache = spatialite_alloc_connection ();
+    open_db (db_path, &handle, cache_size, cache);
     if (!handle)
 	return -1;
     if (in_memory)
@@ -1219,5 +1221,6 @@ main (int argc, char *argv[])
 
 /* closing the DB connection */
     sqlite3_close (handle);
+    spatialite_cleanup_ex (cache);
     return 0;
 }

@@ -1303,7 +1303,7 @@ spatialite_autocreate (sqlite3 * db)
 }
 
 static void
-open_db (const char *path, sqlite3 ** handle)
+open_db (const char *path, sqlite3 ** handle, void *cache)
 {
 /* opening the DB */
     sqlite3 *db_handle;
@@ -1330,7 +1330,6 @@ open_db (const char *path, sqlite3 ** handle)
     int columns;
 
     *handle = NULL;
-    spatialite_init (0);
     printf ("SQLite version: %s\n", sqlite3_libversion ());
     printf ("SpatiaLite version: %s\n\n", spatialite_version ());
 
@@ -1345,6 +1344,7 @@ open_db (const char *path, sqlite3 ** handle)
 	  db_handle = NULL;
 	  return;
       }
+    spatialite_init_ex (db_handle, cache, 0);
     spatialite_autocreate (db_handle);
 
 /* checking the GEOMETRY_COLUMNS table */
@@ -1617,6 +1617,7 @@ main (int argc, char *argv[])
     struct gml_params params;
     int ret;
     char *err_msg = NULL;
+    void *cache;
 
     params.db_handle = NULL;
     params.stmt = NULL;
@@ -1752,7 +1753,8 @@ main (int argc, char *argv[])
       }
 
 /* opening the DB */
-    open_db (db_path, &handle);
+    cache = spatialite_alloc_connection ();
+    open_db (db_path, &handle, cache);
     if (!handle)
 	return -1;
     params.db_handle = handle;
@@ -1935,5 +1937,6 @@ main (int argc, char *argv[])
       }
 
     sqlite3_close (handle);
+    spatialite_cleanup_ex (cache);
     return 0;
 }
