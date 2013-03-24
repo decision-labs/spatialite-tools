@@ -757,51 +757,42 @@ update_triggers (sqlite3 * sqlite, const char *table,
 		if (ret != SQLITE_OK)
 		    goto error;
 
-		if (version == 4)
-		  {
-		      /* deleting the old UPDATE (timestamp) trigger [if any] */
-		      raw = sqlite3_mprintf ("tmu_%s_%s", p_table, p_column);
-		      quoted_trigger = gaiaDoubleQuotedSql (raw);
-		      sqlite3_free (raw);
-		      sql_statement =
-			  sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
-					   quoted_trigger);
-		      free (quoted_trigger);
-		      ret =
-			  sqlite3_exec (sqlite, sql_statement, NULL, NULL,
-					&errMsg);
-		      sqlite3_free (sql_statement);
-		      if (ret != SQLITE_OK)
-			  goto error;
-		      /* deleting the old INSERT (timestamp) trigger [if any] */
-		      raw = sqlite3_mprintf ("tmi_%s_%s", p_table, p_column);
-		      quoted_trigger = gaiaDoubleQuotedSql (raw);
-		      sqlite3_free (raw);
-		      sql_statement =
-			  sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
-					   quoted_trigger);
-		      free (quoted_trigger);
-		      ret =
-			  sqlite3_exec (sqlite, sql_statement, NULL, NULL,
-					&errMsg);
-		      sqlite3_free (sql_statement);
-		      if (ret != SQLITE_OK)
-			  goto error;
-		      /* deleting the old DELETE (timestamp) trigger [if any] */
-		      raw = sqlite3_mprintf ("tmd_%s_%s", p_table, p_column);
-		      quoted_trigger = gaiaDoubleQuotedSql (raw);
-		      sqlite3_free (raw);
-		      sql_statement =
-			  sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
-					   quoted_trigger);
-		      free (quoted_trigger);
-		      ret =
-			  sqlite3_exec (sqlite, sql_statement, NULL, NULL,
-					&errMsg);
-		      sqlite3_free (sql_statement);
-		      if (ret != SQLITE_OK)
-			  goto error;
-		  }
+		/* deleting the old UPDATE (timestamp) trigger [if any] */
+		raw = sqlite3_mprintf ("tmu_%s_%s", p_table, p_column);
+		quoted_trigger = gaiaDoubleQuotedSql (raw);
+		sqlite3_free (raw);
+		sql_statement =
+		    sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
+				     quoted_trigger);
+		free (quoted_trigger);
+		ret = sqlite3_exec (sqlite, sql_statement, NULL, NULL, &errMsg);
+		sqlite3_free (sql_statement);
+		if (ret != SQLITE_OK)
+		    goto error;
+		/* deleting the old INSERT (timestamp) trigger [if any] */
+		raw = sqlite3_mprintf ("tmi_%s_%s", p_table, p_column);
+		quoted_trigger = gaiaDoubleQuotedSql (raw);
+		sqlite3_free (raw);
+		sql_statement =
+		    sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
+				     quoted_trigger);
+		free (quoted_trigger);
+		ret = sqlite3_exec (sqlite, sql_statement, NULL, NULL, &errMsg);
+		sqlite3_free (sql_statement);
+		if (ret != SQLITE_OK)
+		    goto error;
+		/* deleting the old DELETE (timestamp) trigger [if any] */
+		raw = sqlite3_mprintf ("tmd_%s_%s", p_table, p_column);
+		quoted_trigger = gaiaDoubleQuotedSql (raw);
+		sqlite3_free (raw);
+		sql_statement =
+		    sqlite3_mprintf ("DROP TRIGGER IF EXISTS \"%s\"",
+				     quoted_trigger);
+		free (quoted_trigger);
+		ret = sqlite3_exec (sqlite, sql_statement, NULL, NULL, &errMsg);
+		sqlite3_free (sql_statement);
+		if (ret != SQLITE_OK)
+		    goto error;
 
 		if (index == 0 && cached == 0)
 		  {
