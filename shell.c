@@ -2576,7 +2576,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
       {
 	  char *output_dir = azArg[1];
 	  open_db (p);
-	  check_all_geometry_columns (p->db, output_dir, NULL);
+	  check_all_geometry_columns (p->db, output_dir, NULL, NULL);
       }
     else if (c == 's' && strncmp (azArg[0], "sanegeom", n) == 0 && nArg == 5)
       {
@@ -2592,7 +2592,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  char *tmp_prefix = azArg[1];
 	  char *output_dir = azArg[2];
 	  open_db (p);
-	  sanitize_all_geometry_columns (p->db, tmp_prefix, output_dir, NULL);
+	  sanitize_all_geometry_columns (p->db, tmp_prefix, output_dir, NULL, NULL);
       }
     else if (c == 'e' && strncmp (azArg[0], "elemgeo", n) == 0 && nArg == 6)
       {
