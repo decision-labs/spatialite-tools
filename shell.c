@@ -2180,6 +2180,9 @@ static char zTimerHelp[] =
     ".dropgeo <table>  Drops a Spatial Table (or Spatial View) completely\n"
     "                  removing any related stuff (metadata definitions,\n"
     "                  Spatial Index and alike)\n"
+    ".loadwfs <args>   Loads data from some WFS source into a SpatiaLite table\n"
+    "                  arg_list: WFS_path_or_URL table_name [pk_column]\n"
+    "                      [with_spatial_index]\n\n"
 /* end Sandro Furieri 2008-06-20 */
 ;
 
@@ -2531,6 +2534,30 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  load_XL (p->db, xl_path, table, worksheet, firstLine, &rows, NULL);
       }
 #endif /* end FREEXL support */
+    else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadwfs", n) == 0
+	     && (nArg == 3 || nArg == 4 || nArg == 5))
+      {
+	  char *path_or_url = azArg[1];
+	  char *table = azArg[2];
+	  int with_spatial_index = 0;
+	  char *pk = NULL;
+	  char *err_msg = NULL;
+	  int rows;
+	  if (nArg >= 4)
+	      pk = azArg[3];
+	  if (nArg == 5)
+	      with_spatial_index = 1;
+	  open_db (p);
+	  if (load_from_wfs (p->db, path_or_url, table, pk, with_spatial_index, &rows, &err_msg) == 0)
+		{
+			fprintf(stderr, "Unable to load data from WFS:\n");
+			fprintf(stderr, "%s\n\n", err_msg);
+		}
+		else
+			fprintf(stderr, "inserted %d rows from WFS into table \"%s\"\n\n", rows, table);
+		if (err_msg)
+			free(err_msg);
+      }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
 	  FILE *alt;

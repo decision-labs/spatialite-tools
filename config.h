@@ -14,7 +14,7 @@
 #define HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED 1
 
 /* depending on SQLite library version. */
-/* #undef HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE */
+#define HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE 1
 
 /* depending on SQLite library version. */
 #define HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT 1
