@@ -319,7 +319,7 @@ static void iotracePrintf(const char *zFormat, ...){
     Sandro Furieri 2013-04-29
      WFS progress handler callback
 */
-static void wfs_page_done(int features)
+static void wfs_page_done(int features, void *ptr)
 {
     if (isatty (1))
     {
@@ -2194,7 +2194,7 @@ static char zTimerHelp[] =
     "                  removing any related stuff (metadata definitions,\n"
     "                  Spatial Index and alike)\n"
     ".loadwfs <args>   Loads data from some WFS source into a SpatiaLite table\n"
-    "                  arg_list: WFS_path_or_URL table_name [pk_column]\n"
+    "                  arg_list: WFS_path_or_URL lyer_name table_name [pk_column]\n"
     "                      [swap] [page_size] [with_spatial_index]\n\n"
 /* end Sandro Furieri 2008-06-20 */
 ;
@@ -2548,32 +2548,33 @@ static int do_meta_command(char *zLine, struct callback_data *p){
       }
 #endif /* end FREEXL support */
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadwfs", n) == 0
-	     && (nArg == 3 || nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7))
+	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
       {
 	  char *path_or_url = azArg[1];
-	  char *table = azArg[2];
+          char *layer_name = azArg[2];
+	  char *table = azArg[3];
 	  int swap_axes = 0;
 	  int with_spatial_index = 0;
 	  int page_size = -1;
 	  char *pk = NULL;
 	  char *err_msg = NULL;
 	  int rows;
-	  if (nArg >= 4)
-	      pk = azArg[3];
 	  if (nArg >= 5)
+	      pk = azArg[4];
+	  if (nArg >= 6)
           {
-              if (strcasecmp(azArg[4], "swap") == 0 ||
-                  strcasecmp(azArg[4], "swap_axis") == 0 ||
-                  strcasecmp(azArg[4], "swap_axes") == 0)
+              if (strcasecmp(azArg[5], "swap") == 0 ||
+                  strcasecmp(azArg[5], "swap_axis") == 0 ||
+                  strcasecmp(azArg[5], "swap_axes") == 0)
                   swap_axes = 1;
           }
-	  if (nArg >= 6)
-	      page_size = atoi(azArg[5]);
-	  if (nArg == 7)
+	  if (nArg >= 7)
+	      page_size = atoi(azArg[6]);
+	  if (nArg == 8)
 	      with_spatial_index = 1;
 	  open_db (p);
-	  if (load_from_wfs_paged (p->db, path_or_url, swap_axes, table, pk, with_spatial_index, page_size,
-		&rows, &err_msg, wfs_page_done) == 0)
+	  if (load_from_wfs_paged (p->db, path_or_url, layer_name, swap_axes, table, pk, with_spatial_index, page_size,
+		&rows, &err_msg, wfs_page_done, NULL) == 0)
 		{
 			fprintf(stderr, "Unable to load data from WFS:\n");
 			fprintf(stderr, "%s\n\n", err_msg);
