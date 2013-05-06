@@ -2181,12 +2181,12 @@ static char zTimerHelp[] =
     "                      [format] [precision]\n"
     "                  format={ none | MBR | withShortCRS | MBRwithShortCRS\n"
     "                           | withLongCRS | MBRwithLongCRS }\n\n"
-	".checkgeom <args> Checks a Geometry Column for validity\n"
-	"                  arg_list: table_name geom_column report_path\n"
-	"                  or (all vectors): output_dir\n\n"
-	".sanegeom <args>  Sanitizes a Geometry Column\n"
-	"                  arg_list: table_name geom_column tmp_table report_path\n"
-	"                  or (all vectors): tmp_prefix output_dir\n\n"
+    ".checkgeom <args> Checks a Geometry Column for validity\n"
+    "                  arg_list: table_name geom_column report_path\n"
+    "                  or (all vectors): output_dir\n\n"
+    ".sanegeom <args>  Sanitizes a Geometry Column\n"
+    "                  arg_list: table_name geom_column tmp_table report_path\n"
+    "                  or (all vectors): tmp_prefix output_dir\n\n"
     ".read <args>      Execute an SQL script\n"
     "                  arg_list: script_path charset\n"
     ".sqllog ON|OFF    Turn SQL Log on or off\n"
@@ -2622,14 +2622,28 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  char *table = azArg[1];
 	  char *geometry = azArg[2];
 	  char *report = azArg[3];
+	  char *err_msg = NULL;
 	  open_db (p);
-	  check_geometry_column (p->db, table, geometry, report, NULL, NULL, NULL);
+	  if (!check_geometry_column (p->db, table, geometry, report, NULL, NULL, &err_msg))
+          {
+              fprintf(stderr, "check_geometry_column error:\n");
+              fprintf(stderr, "%s\n\n", err_msg);
+          }
+          if (err_msg)
+              free(err_msg);
       }
     else if (c == 'c' && strncmp (azArg[0], "checkgeom", n) == 0 && nArg == 2)
       {
 	  char *output_dir = azArg[1];
+	  char *err_msg = NULL;
 	  open_db (p);
-	  check_all_geometry_columns (p->db, output_dir, NULL, NULL);
+	  if (!check_all_geometry_columns (p->db, output_dir, NULL, &err_msg))
+          {
+              fprintf(stderr, "check_all_geometry_columns error:\n");
+              fprintf(stderr, "%s\n\n", err_msg);
+          }
+          if (err_msg)
+              free(err_msg);
       }
     else if (c == 's' && strncmp (azArg[0], "sanegeom", n) == 0 && nArg == 5)
       {
@@ -2637,15 +2651,29 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  char *geometry = azArg[2];
 	  char *tmp_table = azArg[3];
 	  char *report = azArg[4];
+	  char *err_msg = NULL;
 	  open_db (p);
-	  sanitize_geometry_column (p->db, table, geometry, tmp_table, report, NULL, NULL, NULL, NULL, NULL);
+	  if (!sanitize_geometry_column (p->db, table, geometry, tmp_table, report, NULL, NULL, NULL, NULL, &err_msg))
+          {
+              fprintf(stderr, "sanitize_geometry_column error:\n");
+              fprintf(stderr, "%s\n\n", err_msg);
+          }
+          if (err_msg)
+              free(err_msg);
       }
     else if (c == 's' && strncmp (azArg[0], "sanegeom", n) == 0 && nArg == 3)
       {
 	  char *tmp_prefix = azArg[1];
 	  char *output_dir = azArg[2];
+	  char *err_msg = NULL;
 	  open_db (p);
-	  sanitize_all_geometry_columns (p->db, tmp_prefix, output_dir, NULL, NULL);
+	  if (!sanitize_all_geometry_columns (p->db, tmp_prefix, output_dir, NULL, &err_msg))
+          {
+              fprintf(stderr, "sanitize_all_geometry_columns error:\n");
+              fprintf(stderr, "%s\n\n", err_msg);
+          }
+          if (err_msg)
+              free(err_msg);
       }
     else if (c == 'e' && strncmp (azArg[0], "elemgeo", n) == 0 && nArg == 6)
       {
