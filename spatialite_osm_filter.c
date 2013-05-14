@@ -1779,6 +1779,9 @@ main (int argc, char *argv[])
 	  sqlite3_close (handle);
 	  handle = mem_db_handle;
 	  printf ("\nusing IN-MEMORY database\n");
+	  spatialite_cleanup_ex (cache);
+	  cache = spatialite_alloc_connection ();
+	  spatialite_init_ex (handle, cache, 0);
       }
 
     out = fopen (osm_path, "wb");
