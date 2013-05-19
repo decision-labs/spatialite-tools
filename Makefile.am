@@ -8,7 +8,8 @@ bin_PROGRAMS = spatialite \
 	exif_loader \
 	spatialite_osm_filter \
 	spatialite_gml \
-	spatialite_convert
+	spatialite_convert \
+	spatialite_dxf
 else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
@@ -20,7 +21,8 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_raw \
 	spatialite_osm_filter \
 	spatialite_gml \
-	spatialite_convert
+	spatialite_convert \
+	spatialite_dxf
 endif
 
 INCLUDES = @CFLAGS@
