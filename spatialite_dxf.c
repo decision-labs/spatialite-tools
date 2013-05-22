@@ -1,5 +1,5 @@
 /* 
-/ spatialite_tool
+/ spatialite_dxf
 /
 / an utility CLI tool for DXF import
 /

@@ -52,6 +52,7 @@
 
 #include <spatialite.h>
 #include <spatialite/gaiaaux.h>
+#include <spatialite/gg_dxf.h>
 #ifdef __MINGW32__
 #define LIBICONV_STATIC
 #endif
@@ -2194,8 +2195,13 @@ static char zTimerHelp[] =
     "                  removing any related stuff (metadata definitions,\n"
     "                  Spatial Index and alike)\n"
     ".loadwfs <args>   Loads data from some WFS source into a SpatiaLite table\n"
-    "                  arg_list: WFS_path_or_URL lyer_name table_name [pk_column]\n"
+    "                  arg_list: WFS_path_or_URL layer_name table_name [pk_column]\n"
     "                      [swap] [page_size] [with_spatial_index]\n\n"
+    ".loaddxf <args>   Loads data from some DXF source into SpatiaLite tables\n"
+    "                  arg_list: DXF_path [srid] [append] [dims] [mode]\n"
+    "                      [rings] [table_prefix] [layer_name]\n"
+    "                  append={Y|N} dims={AUTO|2D|3D} mode={DISTINCT|MIXED}\n"
+    "                  rings={NONE|LINKED|UNLINKED}\n\n"
 /* end Sandro Furieri 2008-06-20 */
 ;
 
@@ -2583,6 +2589,75 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 			fprintf(stderr, "inserted %d rows from WFS into table \"%s\"\n\n", rows, table);
 		if (err_msg)
 			free(err_msg);
+      }
+    else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddxf", n) == 0
+	     && (nArg == 2 || (nArg >= 3 && nArg <= 9)))
+      {
+	  char *dxf_path = azArg[1];
+	  int srid = -1;
+  	  int append = 0;
+          int special_rings = GAIA_DXF_RING_NONE;
+          int mode = GAIA_DXF_IMPORT_BY_LAYER;
+          int force_dims = GAIA_DXF_AUTO_2D_3D;
+          char *prefix = NULL;
+          char *layer_name = NULL;
+          gaiaDxfParserPtr dxf = NULL;
+	  if (nArg >= 3)
+	      srid = atoi(azArg[2]);
+	  if (nArg >= 4)
+          {
+              if (strcasecmp(azArg[3], "y") == 0 ||
+                  strcasecmp(azArg[3], "yes") == 0)
+                  append = 1;
+          }
+	  if (nArg >= 5)
+          {
+              if (strcasecmp(azArg[4], "2D") == 0)
+                  force_dims = GAIA_DXF_FORCE_2D;
+              if (strcasecmp(azArg[4], "3D") == 0)
+                  force_dims = GAIA_DXF_FORCE_3D;
+          }
+	  if (nArg >= 6)
+          {
+              if (strcasecmp(azArg[5], "mixed") == 0)
+                  mode = GAIA_DXF_IMPORT_MIXED;
+          }
+	  if (nArg >= 7)
+          {
+              if (strcasecmp(azArg[6], "linked") == 0)
+                  special_rings = GAIA_DXF_RING_LINKED;
+              if (strcasecmp(azArg[6], "unlinked") == 0)
+                  special_rings = GAIA_DXF_RING_UNLINKED;
+          }
+          if (nArg >= 8)
+          {
+              if (strlen(azArg[7]) > 0)
+                  prefix = azArg[7];
+          }
+          if (nArg == 9)
+          {
+              if (strlen(azArg[8]) > 0)
+                  layer_name = azArg[8];
+          }
+	  open_db (p);
+      /* creating a DXF parser */
+          dxf = gaiaCreateDxfParser (srid, force_dims, prefix, layer_name,
+                special_rings);
+          if (dxf == NULL)
+              goto stop_dxf;
+      /* attempting to parse the DXF input file */
+          if (gaiaParseDxfFile (dxf, dxf_path))
+          {
+      /* loading into the DB */
+              if (!gaiaLoadFromDxfParser (p->db, dxf, mode, append))
+                  fprintf (stderr, "DB error while loading: %s\n", dxf_path);
+          }
+          else
+              fprintf (stderr, "Unable to parse: %s\n", dxf_path);
+          fprintf(stderr, "\n*** DXF file succesfully loaded\n"); 
+stop_dxf:
+      /* destroying the DXF parser */
+          gaiaDestroyDxfParser (dxf);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
