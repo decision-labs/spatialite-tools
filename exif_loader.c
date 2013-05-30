@@ -965,12 +965,12 @@ load_file (sqlite3 * handle, const char *file_path, int gps_only, int metadata)
       }
   stop:
     if (!ok_exif)
-	printf ("file '%s' doesn't seems to be a valid EXIF\n", file_path);
+	printf ("file '%s' doesn't seem to be a valid EXIF file\n", file_path);
     else if (!loaded)
       {
 	  if (gps_skip)
 	      printf
-		  ("file '%s' is a valid EXIF, but doesn't contains any GPS info\n",
+		  ("file '%s' is a valid EXIF file, but doesn't contain any GPS info\n",
 		   file_path);
 	  else
 	      printf ("SQL error(s): file '%s' was not loaded\n", file_path);
@@ -1447,16 +1447,16 @@ do_help ()
     fprintf (stderr,
 	     "==============================================================\n");
     fprintf (stderr,
-	     "-h or --help                      print this help message\n");
+	     "-h or --help                    print this help message\n");
     fprintf (stderr,
-	     "-d or --db-path pathname          the SpatiaLite db path\n");
+	     "-d or --db-path    pathname     the SpatiaLite db path\n");
     fprintf (stderr,
-	     "-D or --dir     dir_path          the DIR path containing EXIF files\n");
-    fprintf (stderr, "-f or --file    file_name         a single EXIF file\n");
+	     "-D or --dir        dir_path     the DIR path containing EXIF files\n");
+    fprintf (stderr, "-f or --file-path  file_name    a single EXIF file\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
-    fprintf (stderr, "--any-exif                 *default*\n");
+    fprintf (stderr, "--any-exif         *default*\n");
     fprintf (stderr, "--gps-exif-only\n\n");
-    fprintf (stderr, "--metadata                 *default*\n");
+    fprintf (stderr, "--metadata         *default*\n");
     fprintf (stderr, "--no-metadata\n\n");
 }
 
