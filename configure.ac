@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 4.1.0-RC1, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 4.1.0, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
