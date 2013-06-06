@@ -52,6 +52,7 @@
 
 #include <spatialite.h>
 #include <spatialite/gaiaaux.h>
+#include <spatialite/gg_wfs.h>
 #include <spatialite/gg_dxf.h>
 #ifdef __MINGW32__
 #define LIBICONV_STATIC
@@ -2556,15 +2557,15 @@ static int do_meta_command(char *zLine, struct callback_data *p){
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadwfs", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
       {
-	  char *path_or_url = azArg[1];
+          char *path_or_url = azArg[1];
           char *layer_name = azArg[2];
-	  char *table = azArg[3];
-	  int swap_axes = 0;
-	  int with_spatial_index = 0;
-	  int page_size = -1;
-	  char *pk = NULL;
-	  char *err_msg = NULL;
-	  int rows;
+          char *table = azArg[3];
+          int swap_axes = 0;
+          int with_spatial_index = 0;
+          int page_size = -1;
+          char *pk = NULL;
+          char *err_msg = NULL;
+          int rows;
 	  if (nArg >= 5)
 	      pk = azArg[4];
 	  if (nArg >= 6)
@@ -2579,8 +2580,8 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  if (nArg == 8)
 	      with_spatial_index = 1;
 	  open_db (p);
-	  if (load_from_wfs_paged (p->db, path_or_url, layer_name, swap_axes, table, pk, with_spatial_index, page_size,
-		&rows, &err_msg, wfs_page_done, NULL) == 0)
+	  if (load_from_wfs_paged (p->db, path_or_url, NULL, layer_name, swap_axes, table, pk, with_spatial_index, 
+        page_size, &rows, &err_msg, wfs_page_done, NULL) == 0)
 		{
 			fprintf(stderr, "Unable to load data from WFS:\n");
 			fprintf(stderr, "%s\n\n", err_msg);
