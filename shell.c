@@ -1179,6 +1179,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 		  convert_from_utf8 (buf, len * 4);
 		  fprintf (p->out, "%*s = %s\n", w, azCol[i],
 			   azArg[i] ? buf : p->nullvalue);
+                  free(buf);
+                  buf = NULL;
 	      }
 /* end Sandro Furieri 11 July 2008 */
       }
@@ -1251,6 +1253,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 		  fprintf (p->out, "%-*.*s%s", w, w,
 			   azArg[i] ? buf : p->nullvalue,
 			   i == nArg - 1 ? "\n" : "  ");
+                  free(buf);
+                  buf = NULL;
 	      }
 /* end Sandro Furieri 11 July 2008 */
         fprintf(p->out,"%-*.*s%s",w,w,
@@ -1286,6 +1290,9 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 	      }
 /* end Sandro Furieri 11 July 2008 */
         fprintf(p->out, "%s", z);
+        if (buf)
+            free(buf);
+        buf = NULL;
         if( i<nArg-1 ){
           fprintf(p->out, "%s", p->separator);
         }else if( p->mode==MODE_Semi ){
@@ -1325,6 +1332,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 		  convert_from_utf8 (buf, len * 4);
 		  output_html_string (p->out,
 				      azArg[i] ? buf : p->nullvalue);
+                  free(buf);
+                  buf = NULL;
 	      }
 /* end Sandro Furieri 11 July 2008 */
         fprintf(p->out,"</TD>\n");
@@ -1357,6 +1366,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 		  convert_from_utf8 (buf, len * 4);
 		  output_c_string (p->out,
 				   azArg[i] ? buf : p->nullvalue);
+                  free(buf);
+                  buf = NULL;
 	      }
 /* end Sandro Furieri 11 July 2008 */
         fprintf(p->out, "%s", p->separator);
@@ -1387,6 +1398,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 			  strcpy (buf, azArg[i]);
 			  convert_from_utf8 (buf, len * 4);
 			  output_csv (p, buf, i < nArg - 1);
+                          free(buf);
+                          buf = NULL;
 		      }
 /* end Sandro Furieri 11 July 2008 */
       }
@@ -1417,6 +1430,8 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 			strcpy (buf, azArg[i]);
 			convert_from_utf8 (buf, len * 4);
 			output_quoted_string (p->out, buf);
+                        free(buf);
+                        buf = NULL;
 		    }
 /* end Sandro Furieri 11 July 2008 */
         }else if( aiType && (aiType[i]==SQLITE_INTEGER || aiType[i]==SQLITE_FLOAT) ){
