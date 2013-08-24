@@ -25,8 +25,8 @@ bin_PROGRAMS = spatialite \
 	spatialite_dxf
 endif
 
-INCLUDES = @CFLAGS@
-INCLUDES += -I$(top_srcdir)
+AM_CPPFLAGS = @CFLAGS@
+AM_CPPFLAGS += -I$(top_srcdir)
 
 spatialite_SOURCES = shell.c
 spatialite_tool_SOURCES = spatialite_tool.c
