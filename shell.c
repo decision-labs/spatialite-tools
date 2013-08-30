@@ -259,6 +259,13 @@ static int sql_log_enabled = 1;
 static int bail_on_error = 0;
 
 /*
+** sandro 2013-08-30
+** If the following flag is set, no welcome message will be
+** printed at all.
+*/
+static int silent = 0;
+
+/*
 ** Threat stdin as an interactive input if the following variable
 ** is true.  Otherwise, assume stdin is connected to a file or pipe.
 */
@@ -4049,6 +4056,7 @@ static const char zOptions[] =
   "   -interactive         force interactive I/O\n"
   "   -line                set output mode to 'line'\n"
   "   -list                set output mode to 'list'\n"
+  "   -silent              suppress the welcome message\n"
 #ifdef SQLITE_ENABLE_MULTIPLEX
   "   -multiplex           enable the multiplexor VFS\n"
 #endif
@@ -4112,8 +4120,15 @@ int main(int argc, char **argv){
 Sandro Furieri 30 May 2008
 ===========================
 registering the SpatiaLite extension
+2013-08-30: supporting "silent mode"
 */
-    spatialite_init (1);
+  for(i=1; i<argc && argv[i][0]=='-'; i++){
+    char *z = argv[i];
+    if( z[1]=='-' ){ z++; }
+    if( strcmp(z,"-silent")==0 ){ silent = 1;}
+	}
+fprintf(stderr, "silent %d %d\n", silent, (silent == 0) ? 1 : 0);
+    spatialite_init ((silent == 0) ? 1 : 0);
 
   stdin_is_interactive = isatty(0);
 
@@ -4285,6 +4300,10 @@ registering the SpatiaLite extension
       data.statsOn = 1;
     }else if( strcmp(z,"-bail")==0 ){
       bail_on_error = 1;
+    }else if( strcmp(z,"-silent")==0 ){
+/* sandro 2013-08-30 */
+      silent = 1;
+/* end sandro */
     }else if( strcmp(z,"-version")==0 ){
       printf("%s %s\n", sqlite3_libversion(), sqlite3_sourceid());
       return 0;
