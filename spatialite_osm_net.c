@@ -2747,5 +2747,6 @@ main (int argc, char *argv[])
     sqlite3_close (handle);
     spatialite_cleanup_ex (cache);
     free_params (&params);
+    spatialite_shutdown ();
     return 0;
 }

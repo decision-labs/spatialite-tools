@@ -480,7 +480,7 @@ main (int argc, char *argv[])
     if (dxf == NULL)
 	goto stop;
 /* attempting to parse the DXF input file */
-    if (gaiaParseDxfFile (dxf, dxf_path))
+    if (gaiaParseDxfFile_r (cache, dxf, dxf_path))
       {
 	  /* loading into the DB */
 	  if (!gaiaLoadFromDxfParser (handle, dxf, mode, append))
@@ -541,5 +541,6 @@ main (int argc, char *argv[])
 		       sqlite3_errmsg (handle));
       }
     spatialite_cleanup_ex (cache);
+    spatialite_shutdown ();
     return 0;
 }

@@ -119,6 +119,10 @@ extern int isatty(int);
 /* True if the timer is enabled */
 static int enableTimer = 0;
 
+/* sandro 2013-11-07 */
+void *splite_cache = NULL;
+/* end sandro 2013-11-07 */
+
 /* ctype macros that work with signed characters */
 #define IsSpace(X)  isspace((unsigned char)X)
 #define IsDigit(X)  isdigit((unsigned char)X)
@@ -263,7 +267,7 @@ static int bail_on_error = 0;
 ** If the following flag is set, no welcome message will be
 ** printed at all.
 */
-static int silent = 0;
+static int splite_silent = 0;
 
 /*
 ** Threat stdin as an interactive input if the following variable
@@ -2249,6 +2253,7 @@ static void open_db(struct callback_data *p){
           p->zDbFilename, sqlite3_errmsg(db));
       exit(1);
     }
+    spatialite_init_ex (p->db, splite_cache, (splite_silent == 0) ? 1 : 0);
 #ifndef SQLITE_OMIT_LOAD_EXTENSION
     sqlite3_enable_load_extension(p->db, 1);
 #endif
@@ -2669,7 +2674,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
           if (dxf == NULL)
               goto stop_dxf;
       /* attempting to parse the DXF input file */
-          if (gaiaParseDxfFile (dxf, dxf_path))
+          if (gaiaParseDxfFile_r (splite_cache, dxf, dxf_path))
           {
       /* loading into the DB */
               if (!gaiaLoadFromDxfParser (p->db, dxf, mode, append))
@@ -4108,6 +4113,9 @@ int main(int argc, char **argv){
   char *zFirstCmd = 0;
   int i;
   int rc = 0;
+  
+/* initializing the SpatiaLite's internal cache */
+  splite_cache = spatialite_alloc_connection ();
 
   if( strcmp(sqlite3_sourceid(),SQLITE_SOURCE_ID)!=0 ){
     fprintf(stderr, "SQLite header and source version mismatch\n%s\n%s\n",
@@ -4125,10 +4133,8 @@ registering the SpatiaLite extension
   for(i=1; i<argc && argv[i][0]=='-'; i++){
     char *z = argv[i];
     if( z[1]=='-' ){ z++; }
-    if( strcmp(z,"-silent")==0 ){ silent = 1;}
+    if( strcmp(z,"-silent")==0 ){ splite_silent = 1;}
 	}
-fprintf(stderr, "silent %d %d\n", silent, (silent == 0) ? 1 : 0);
-    spatialite_init ((silent == 0) ? 1 : 0);
 
   stdin_is_interactive = isatty(0);
 
@@ -4302,7 +4308,7 @@ fprintf(stderr, "silent %d %d\n", silent, (silent == 0) ? 1 : 0);
       bail_on_error = 1;
     }else if( strcmp(z,"-silent")==0 ){
 /* sandro 2013-08-30 */
-      silent = 1;
+      splite_silent = 1;
 /* end sandro */
     }else if( strcmp(z,"-version")==0 ){
       printf("%s %s\n", sqlite3_libversion(), sqlite3_sourceid());
@@ -4381,6 +4387,7 @@ fprintf(stderr, "silent %d %d\n", silent, (silent == 0) ? 1 : 0);
         sqlite3_libversion(), sqlite3_sourceid()
       );
 */
+     open_db(&data);
      if (isatty (1))
           printf ("SQLite version ......: %s\n",
      sqlite3_libversion ());
@@ -4433,7 +4440,9 @@ Sandro Furieri 30 May 2008
 ===========================
 memory cleanup for SpatiaLite extension
 */
-    sqlite3_reset_auto_extension ();
+    
+  spatialite_cleanup_ex (splite_cache);
+  spatialite_shutdown ();
 
   return rc;
 }

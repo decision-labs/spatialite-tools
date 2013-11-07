@@ -102,7 +102,7 @@
 #define HAVE_MEMSET 1
 
 /* Define to 1 if you have the `readline' function. */
-/* #undef HAVE_READLINE */
+#define HAVE_READLINE 1
 
 /* Define to 1 if you have the `sqrt' function. */
 /* #undef HAVE_SQRT */

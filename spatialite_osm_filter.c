@@ -1864,5 +1864,6 @@ main (int argc, char *argv[])
     spatialite_cleanup_ex (cache);
     if (out != NULL)
 	fclose (out);
+    spatialite_shutdown ();
     return 0;
 }

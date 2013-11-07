@@ -2832,5 +2832,6 @@ main (int argc, char *argv[])
     db_vacuum (handle);
     sqlite3_close (handle);
     spatialite_cleanup_ex (cache);
+    spatialite_shutdown ();
     return 0;
 }

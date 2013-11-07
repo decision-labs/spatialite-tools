@@ -539,5 +539,6 @@ main (int argc, char *argv[])
 		       coerce2d, compressed);
     if (export)
 	do_export (db_path, shp_path, table, column, charset, type);
+    spatialite_shutdown ();
     return 0;
 }

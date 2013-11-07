@@ -2123,5 +2123,6 @@ main (int argc, char *argv[])
     validate (path, table, from_column, to_column, cost_column, geom_column,
 	      name_column, oneway_tofrom, oneway_fromto, bidirectional,
 	      out_table, force_creation, a_star_supported);
+    spatialite_shutdown ();
     return 0;
 }

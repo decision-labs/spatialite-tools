@@ -7027,5 +7027,6 @@ main (int argc, char *argv[])
   end:
     sqlite3_close (handle);
     spatialite_cleanup_ex (cache);
+    spatialite_shutdown ();
     return 0;
 }

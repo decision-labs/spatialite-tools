@@ -1941,5 +1941,6 @@ main (int argc, char *argv[])
 
     sqlite3_close (handle);
     spatialite_cleanup_ex (cache);
+    spatialite_shutdown ();
     return 0;
 }
