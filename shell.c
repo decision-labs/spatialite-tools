@@ -722,6 +722,40 @@ convert_to_utf8 (char *buf, int maxlen)
     free (utf8buf);
 }
 
+/* sandro 2013-11-17 */
+static void
+split_drop_name(const char *str, char **prefix, char **table)
+{
+    int len1;
+    int len2;
+    const char *pt = NULL;
+    const char *p = str;
+    *prefix = NULL;
+    *table = NULL;
+    while (*p != '\0')
+    {
+        if (*p == '.')
+        {
+            pt = p;
+            break;
+        }
+        p++;
+    }
+    if (pt == NULL)
+        return;
+    len1 = pt - str;
+    len2 = strlen(pt + 1);
+    if (len1 > 0 && len2 > 0)
+    {
+        *prefix = malloc(len1 + 1);
+        memcpy(*prefix, str, len1);
+        *(*prefix + len1) = '\0';
+        *table = malloc(len2 + 1);
+        strcpy(*table, pt + 1);
+    }
+}
+/* end sandro 2013-11-17 */
+
 static void
 convert_input_to_utf8 (char *buf, int maxlen)
 {
@@ -2794,17 +2828,29 @@ stop_dxf:
       }
     else if (c == 'd' && strncmp (azArg[0], "dropgeo", n) == 0 && nArg > 1)
       {
+          char *prefix;
+          char *table;
+          int ret;
           int cnt0 = sqlite3_total_changes(p->db);
-	  if (gaiaDropTable (p->db, azArg[1]))
+          split_drop_name(azArg[1], &prefix, &table);
+          if (prefix != NULL && table != NULL)
+              ret = gaiaDropTableEx (p->db, prefix, table);
+          else
+	      ret = gaiaDropTable (p->db, azArg[1]);
+          if (ret)
           {
               int cnt1 = sqlite3_total_changes(p->db);
               if (cnt1 > cnt0)
-                  fprintf(stderr, "SpatialTable \"%s\" succesfully removed\n", azArg[1]);
+                  fprintf(stderr, "SpatialTable %s succesfully removed\n", azArg[1]);
               else
-                  fprintf(stderr, "SpatialTable \"%s\" seems not to exist\n", azArg[1]);
+                  fprintf(stderr, "SpatialTable %s seems not to exist\n", azArg[1]);
           }
           else
-              fprintf(stderr, "ERROR: unable to remove SpatialTable \"%s\"\n", azArg[1]);
+              fprintf(stderr, "ERROR: unable to remove SpatialTable %s\n", azArg[1]);
+          if (prefix != NULL)
+              free(prefix);
+          if (table != NULL)
+              free(table);
       } else
 /* end sandro 2008-06-20 */
   if( c=='b' && n>=3 && strncmp(azArg[0], "backup", n)==0 && nArg>1 && nArg<4){
