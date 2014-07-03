@@ -9,7 +9,10 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_filter \
 	spatialite_gml \
 	spatialite_convert \
-	spatialite_dxf
+	spatialite_dxf \
+	spatialite_xml_load \
+	spatialite_xml_collapse \
+	spatialite_xml_print
 else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
@@ -22,7 +25,10 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_filter \
 	spatialite_gml \
 	spatialite_convert \
-	spatialite_dxf
+	spatialite_dxf \
+	spatialite_xml_load \
+	spatialite_xml_collapse \
+	spatialite_xml_print
 endif
 
 AM_CPPFLAGS = @CFLAGS@
@@ -33,6 +39,9 @@ spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
+spatialite_xml_load_SOURCES = spatialite_xml_load.c
+spatialite_xml_collapse_SOURCES = spatialite_xml_collapse.c
+spatialite_xml_print_SOURCES = spatialite_xml_print.c 
 if NO_READOSM
 else
 spatialite_osm_net_SOURCES = spatialite_osm_net.c
@@ -54,6 +63,10 @@ spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 spatialite_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
 	@READLINE_LIBS@
+spatialite_xml_load_LDADD = @LIBSPATIALITE_LIBS@ \
+	-lexpat
+spatialite_xml_collapse_LDADD = @LIBSPATIALITE_LIBS@
+spatialite_xml_print_LADD = @LIBSPATIALIATE_LIBS@
 LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@
 

@@ -2186,8 +2186,10 @@ static char zHelp[] =
   "                         If TABLE specified, only show tables matching\n"
   "                         LIKE pattern TABLE.\n"
   ".separator STRING      Change separator used by output mode and .import\n"
+  ".shell CMD ARGS...     Run CMD ARGS... in a system shell\n"
   ".show                  Show the current values for various settings\n"
   ".stats ON|OFF          Turn stats on or off\n"
+  ".system CMD ARGS...    Run CMD ARGS... in a system shell\n"
   ".tables ?TABLE?        List names of tables\n"
   "                         If TABLE specified, only list tables matching\n"
   "                         LIKE pattern TABLE.\n"
@@ -3463,6 +3465,27 @@ stop_dxf:
     sqlite3_snprintf(sizeof(p->separator), p->separator,
                      "%.*s", (int)sizeof(p->separator)-1, azArg[1]);
   }else
+
+  if( c=='s'
+   && (strncmp(azArg[0], "shell", n)==0 || strncmp(azArg[0],"system",n)==0)
+  ){
+    char *zCmd;
+    int i;
+    if( nArg<2 ){
+      fprintf(stderr, "Usage: .system COMMAND\n");
+      rc = 1;
+    }
+    else {
+      zCmd = sqlite3_mprintf(strchr(azArg[1],' ')==0?"%s":"\"%s\"", azArg[1]);
+      for(i=2; i<nArg; i++){
+        zCmd = sqlite3_mprintf(strchr(azArg[i],' ')==0?"%z %s":"%z \"%s\"",
+                               zCmd, azArg[i]);
+      }
+      (void)system(zCmd);
+      sqlite3_free(zCmd);
+    }
+  }else
+
 
   if( c=='s' && strncmp(azArg[0], "show", n)==0 && nArg==1 ){
     int i;

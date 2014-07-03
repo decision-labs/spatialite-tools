@@ -2155,6 +2155,34 @@ copy_views_geometry_columns_4_3 (sqlite3 * handle)
 }
 
 static int
+check_views_geometry_columns (sqlite3 * handle)
+{
+/* may be v2.4 - testing for views_geometry_columns */
+    const char *sql;
+    char **results;
+    int ret;
+    int rows;
+    int columns;
+    int i;
+    char *errMsg = NULL;
+    int ok = 0;
+
+/* testing for an existing VIEWS_GEOMETRY_COLUMNS */
+    sql = "SELECT Count(*) FROM sqlite_master WHERE type = 'table' "
+	"AND Lower(name) = 'views_geometry_columns'";
+    ret = sqlite3_get_table (handle, sql, &results, &rows, &columns, &errMsg);
+    if (ret != SQLITE_OK)
+	return 0;
+    for (i = 1; i <= rows; i++)
+      {
+	  if (atoi (results[(i * columns)]) > 0)
+	      ok = 1;
+      }
+    sqlite3_free_table (results);
+    return ok;
+}
+
+static int
 cvt_views_geometry_columns (sqlite3 * handle, int in_version, int version)
 {
 /* converting VIEWS_GEOMETRY_COLUMNS */
@@ -2168,13 +2196,23 @@ cvt_views_geometry_columns (sqlite3 * handle, int in_version, int version)
       }
     else
       {
-	  /* if version=2 we'll simply create the table and exit */
-	  if (version == 3)
-	      ret = create_views_geometry_columns_3 (handle);
-	  if (version == 4)
-	      ret = create_views_geometry_columns_4 (handle);
-	  if (!ret)
-	      return 0;
+	  if (check_views_geometry_columns (handle))
+	    {
+		/* preparing the input table */
+		if (!prepare_input (handle, "views_geometry_columns"))
+		    return 0;
+	    }
+	  else
+	    {
+		/* if version=2 we'll simply create the table and exit */
+		if (version == 3)
+		    ret = create_views_geometry_columns_3 (handle);
+		if (version == 4)
+		    ret = create_views_geometry_columns_4 (handle);
+		if (!ret)
+		    return 0;
+		return 1;
+	    }
       }
     drop_views_geometry_columns (handle);
 
@@ -2191,15 +2229,6 @@ cvt_views_geometry_columns (sqlite3 * handle, int in_version, int version)
 
 /* copying any row */
     ret = 0;
-    if (in_version == 2)
-	ret = 1;
-    if (in_version == 3)
-      {
-	  if (version == 2)
-	      ret = 1;
-	  if (version == 4)
-	      ret = copy_views_geometry_columns_3_4 (handle);
-      }
     if (in_version == 4)
       {
 	  if (version == 2)
@@ -2207,15 +2236,19 @@ cvt_views_geometry_columns (sqlite3 * handle, int in_version, int version)
 	  if (version == 3)
 	      ret = copy_views_geometry_columns_4_3 (handle);
       }
+    else
+      {
+	  if (version == 2)
+	      ret = 1;
+	  if (version == 4)
+	      ret = copy_views_geometry_columns_3_4 (handle);
+      }
     if (!ret)
 	return 0;
 
-    if (in_version != 2)
-      {
-	  /* dropping the temporary input table */
-	  if (!drop_input_table (handle))
-	      return 0;
-      }
+    /* dropping the temporary input table */
+    if (!drop_input_table (handle))
+	return 0;
 
     return 1;
 }
@@ -3893,8 +3926,6 @@ static int
 cvt_extra_stuff (sqlite3 * handle, int version)
 {
 /* converting extra-sfuff Tables and Views */
-    int ret;
-
     if (version != 3)
 	drop_layer_statistics (handle);
 
@@ -4248,6 +4279,7 @@ register_virtual (sqlite3 * sqlite, const char *table, int version)
     int rows;
     int columns;
     int i;
+    int count = 0;
     char *errMsg = NULL;
     int xdims = -1;
 
@@ -4268,8 +4300,14 @@ register_virtual (sqlite3 * sqlite, const char *table, int version)
       {
 	  strcpy (gtype, results[(i * columns)]);
 	  srid = atoi (results[(i * columns) + 1]);
+	  count++;
       }
     sqlite3_free_table (results);
+    if (count == 0)
+      {
+	  /* empty table */
+	  return 1;
+      }
 
 /* normalized Geometry type */
     if (strcmp (gtype, "POINT") == 0)
