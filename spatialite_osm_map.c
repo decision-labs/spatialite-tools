@@ -1549,22 +1549,32 @@ destroy_ring_refs (struct ring_refs *rings)
 
     if (rings == NULL)
 	return;
-    if (rings->id != NULL)
-	free (rings->id);
-    if (rings->found != NULL)
-	free (rings->found);
-    if (rings->outer != NULL)
-	free (rings->outer);
     if (rings->geom != NULL)
       {
 	  for (i = 0; i < rings->count; i++)
 	    {
 		g = *(rings->geom + i);
 		if (g)
-		    gaiaFreeGeomColl (g);
+		  {
+		      int j;
+		      sqlite3_int64 id = *(rings->id + i);
+		      gaiaFreeGeomColl (g);
+		      for (j = 0; j < rings->count; j++)
+			{
+			    sqlite3_int64 id2 = *(rings->id + j);
+			    if (id == id2)
+				*(rings->geom + j) = NULL;
+			}
+		  }
 	    }
 	  free (rings->geom);
       }
+    if (rings->id != NULL)
+	free (rings->id);
+    if (rings->found != NULL)
+	free (rings->found);
+    if (rings->outer != NULL)
+	free (rings->outer);
     free (rings);
 }
 
@@ -1806,7 +1816,7 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
 			  sqlite3_bind_text (layer->ins_polygon_stmt, 3, name,
 					     strlen (name), SQLITE_STATIC);
 		      sqlite3_bind_blob (layer->ins_polygon_stmt, 4, blob,
-					 blob_size, SQLITE_STATIC);
+					 blob_size, free);
 		      ret = sqlite3_step (layer->ins_polygon_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
@@ -1849,7 +1859,7 @@ multiline_generic_insert (struct aux_params *params,
 	      sqlite3_bind_text (params->ins_generic_linestring_stmt, 2, name,
 				 strlen (name), SQLITE_STATIC);
 	  sqlite3_bind_blob (params->ins_generic_linestring_stmt, 3, blob,
-			     blob_size, SQLITE_STATIC);
+			     blob_size, free);
 	  ret = sqlite3_step (params->ins_generic_linestring_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
@@ -1889,7 +1899,7 @@ multipolygon_generic_insert (struct aux_params *params,
 	      sqlite3_bind_text (params->ins_generic_polygon_stmt, 2, name,
 				 strlen (name), SQLITE_STATIC);
 	  sqlite3_bind_blob (params->ins_generic_polygon_stmt, 3, blob,
-			     blob_size, SQLITE_STATIC);
+			     blob_size, free);
 	  ret = sqlite3_step (params->ins_generic_polygon_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
