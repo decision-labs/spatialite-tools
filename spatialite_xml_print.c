@@ -24,6 +24,15 @@
 /
 */
 
+/*
+ 
+CREDITS:
+
+inital development of the XML tools has been funded by:
+Regione Toscana - Settore Sistema Informativo Territoriale ed Ambientale
+
+*/
+
 #include <sys/time.h>
 
 #if defined(_WIN32) && !defined(__MINGW32__)
@@ -926,7 +935,7 @@ do_help ()
     fprintf (stderr,
 	     "-d or --db-path     pathname    the SpatiaLite DB [INPUT] path\n\n");
     fprintf (stderr,
-	     "-x or --xml-path pathname       the XML file [OUUPUT] path\n");
+	     "-x or --xml-path    pathname    the XML file [OUTPUT] path\n");
     fprintf (stderr,
 	     "-cs or --cache-size    num      DB cache size (how many pages)\n");
     fprintf (stderr,

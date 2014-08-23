@@ -2220,7 +2220,7 @@ static char zTimerHelp[] =
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
     "                  arg_list: shp_path table_name charset [SRID] [column_name]\n"
     "                      [pk_column] [geom_type] [2d | 3d] [compressed]\n"
-    "                      [with_spatial_index]\n"
+    "                      [with_spatial_index] [text_dates]\n"
     "                      geom_type={ AUTO | LINESTRING[ Z | M | ZM ]\n"
     "                                 | MULTILINESTRING[ Z | M | ZM ]\n"
     "                                 | POLYGON[ Z | M | ZM ]\n"
@@ -2229,7 +2229,7 @@ static char zTimerHelp[] =
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
     ".loaddbf <args>   Loads a DBF into a SpatiaLite table\n"
-    "                  arg_list: dbf_path table_name charset [pk_column]\n\n"
+    "                  arg_list: dbf_path table_name charset [pk_column] [text_dates]\n\n"
     ".dumpdbf <args>   Dumps a SpatiaLite table into a DBF\n"
     "                  arg_list: table_name dbf_path charset\n\n"
 #ifndef OMIT_FREEXL		/* FreeXL is enabled */
@@ -2546,7 +2546,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadshp", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 ||
-		 nArg == 8 || nArg == 9 || nArg == 10 || nArg == 11))
+		 nArg == 8 || nArg == 9 || nArg == 10 || nArg == 11 || nArg == 12))
       {
 	  char *shp_path = azArg[1];
 	  char *table = azArg[2];
@@ -2555,6 +2555,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  int coerce2d = 0;
 	  int compressed = 0;
 	  int with_spatial_index = 0;
+	  int text_dates = 0;
 	  char *column = NULL;
 	  char *gtype = NULL;
           char *pk = NULL;
@@ -2579,23 +2580,28 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  }
 	  if (nArg == 11)
 	      with_spatial_index = 1;
+	  if (nArg == 12)
+	      text_dates = atoi(azArg[11]);
 	  open_db (p);
-	  load_shapefile_ex (p->db, shp_path, table, inCS, srid, column, gtype, pk,
-			     coerce2d, compressed, 1, with_spatial_index, &rows,
-			     NULL);
+	  load_shapefile_ex2 (p->db, shp_path, table, inCS, srid, column, gtype, pk,
+			     coerce2d, compressed, 1, with_spatial_index, text_dates,
+			     &rows, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
-	     && (nArg == 4 || nArg == 5))
+	     && (nArg == 4 || nArg == 5 || nArg == 6))
       {
 	  char *dbf_path = azArg[1];
 	  char *table = azArg[2];
 	  char *inCS = azArg[3];
-          char *pk = NULL;
+      char *pk = NULL;
+      int text_dates = 0;
 	  int rows;
-          if (nArg == 5)
-              pk = azArg[4];
+      if (nArg == 5)
+          pk = azArg[4];
+      if (nArg == 6)
+          text_dates = atoi(azArg[5]);
 	  open_db (p);
-	  load_dbf_ex (p->db, dbf_path, table, pk, inCS, 1, &rows, NULL);
+	  load_dbf_ex2 (p->db, dbf_path, table, pk, inCS, 1, text_dates, &rows, NULL);
       }
 #ifndef OMIT_FREEXL		/* FREEXL is enabled */
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0

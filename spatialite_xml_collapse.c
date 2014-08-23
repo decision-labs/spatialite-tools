@@ -25,6 +25,15 @@
 /
 */
 
+/*
+ 
+CREDITS:
+
+inital development of the XML tools has been funded by:
+Regione Toscana - Settore Sistema Informativo Territoriale ed Ambientale
+
+*/
+
 #if defined(_WIN32) && !defined(__MINGW32__)
 /* MSVC strictly requires this include [off_t] */
 #include <sys/types.h>
