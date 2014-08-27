@@ -2444,6 +2444,22 @@ static int do_meta_command(char *zLine, struct callback_data *p){
   n = strlen30(azArg[0]);
   c = azArg[0][0];
 
+#ifndef SQLITE_OMIT_LOAD_EXTENSION
+  if( c=='l' && strncmp(azArg[0], "load", n)==0 && nArg>=2 ){
+    const char *zFile, *zProc;
+    char *zErrMsg = 0;
+    zFile = azArg[1];
+    zProc = nArg>=3 ? azArg[2] : 0;
+    open_db(p);
+    rc = sqlite3_load_extension(p->db, zFile, zProc, &zErrMsg);
+    if( rc!=SQLITE_OK ){
+      fprintf(stderr, "Error: %s\n", zErrMsg);
+      sqlite3_free(zErrMsg);
+      rc = 1;
+    }
+  }else
+#endif
+
 /* Sandro Furieri 2008-06-20 */
     if (c == 'c' && n > 1 && strncmp (azArg[0], "charset", n) == 0 && nArg == 1)
       {
@@ -3215,22 +3231,6 @@ stop_dxf:
       }else{
         sqlite3IoTrace = iotracePrintf;
       }
-    }
-  }else
-#endif
-
-#ifndef SQLITE_OMIT_LOAD_EXTENSION
-  if( c=='l' && strncmp(azArg[0], "load", n)==0 && nArg>=2 ){
-    const char *zFile, *zProc;
-    char *zErrMsg = 0;
-    zFile = azArg[1];
-    zProc = nArg>=3 ? azArg[2] : 0;
-    open_db(p);
-    rc = sqlite3_load_extension(p->db, zFile, zProc, &zErrMsg);
-    if( rc!=SQLITE_OK ){
-      fprintf(stderr, "Error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-      rc = 1;
     }
   }else
 #endif
