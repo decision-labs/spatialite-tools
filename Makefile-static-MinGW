@@ -12,6 +12,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_osm_raw.exe ./static_bin/spatialite_osm_filter.exe \
 	./static_bin/spatialite_convert.exe ./static_bin/spatialite_dxf.exe \
 	./static_bin/spatialite_xml_collapse.exe \
+	./static_bin/spatialite_xml_validator.exe \
 	./static_bin/spatialite_xml_load.exe \
 	./static_bin/spatialite_xml_print.exe
 
@@ -233,6 +234,15 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_collapse.exe
 
+./static_bin/spatialite_xml_validator.exe: spatialite_xml_validator.o
+	$(CC) spatialite_xml_validator.o -o ./static_bin/spatialite_xml_validator.exe \
+	/usr/local/lib/libxml2.a \
+	/usr/local/lib/liblzma.a \
+	/usr/local/lib/libz.a \
+	/usr/local/lib/libiconv.a \
+	-lm -lws2_32 -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml_validator.exe
+
 ./static_bin/spatialite_xml_load.exe: spatialite_xml_load.o
 	$(GG) spatialite_xml_load.o -o ./static_bin/spatialite_xml_load.exe \
 	/usr/local/lib/libspatialite.a \
@@ -298,6 +308,9 @@ spatialite_osm_filter.o:
 
 spatialite_xml_collapse.o:
 	$(CC) $(CFLAGS) spatialite_xml_collapse.c -c
+
+spatialite_xml_validator.o:
+	$(CC) $(CFLAGS) spatialite_xml_validator.c -c
 
 spatialite_xml_load.o:
 	$(CC) $(CFLAGS) spatialite_xml_load.c -c

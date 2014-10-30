@@ -10,6 +10,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_gml \
 	spatialite_convert \
 	spatialite_dxf \
+	spatialite_xml_validator \
 	spatialite_xml_load \
 	spatialite_xml_collapse \
 	spatialite_xml_print
@@ -26,12 +27,13 @@ bin_PROGRAMS = spatialite \
 	spatialite_gml \
 	spatialite_convert \
 	spatialite_dxf \
+	spatialite_xml_validator \
 	spatialite_xml_load \
 	spatialite_xml_collapse \
 	spatialite_xml_print
 endif
 
-AM_CPPFLAGS = @CFLAGS@
+AM_CPPFLAGS = @CFLAGS@ @LIBXML2_CFLAGS@
 AM_CPPFLAGS += -I$(top_srcdir)
 
 spatialite_SOURCES = shell.c
@@ -39,6 +41,7 @@ spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
 exif_loader_SOURCES = exif_loader.c
+spatialite_xml_validator_SOURCES = spatialite_xml_validator.c
 spatialite_xml_load_SOURCES = spatialite_xml_load.c
 spatialite_xml_collapse_SOURCES = spatialite_xml_collapse.c
 spatialite_xml_print_SOURCES = spatialite_xml_print.c 
@@ -63,6 +66,7 @@ spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 spatialite_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
 	@READLINE_LIBS@
+spatialite_xml_validator_LDADD = @LIBXML2_LIBS@
 spatialite_xml_load_LDADD = @LIBSPATIALITE_LIBS@ \
 	-lexpat
 spatialite_xml_collapse_LDADD = @LIBSPATIALITE_LIBS@

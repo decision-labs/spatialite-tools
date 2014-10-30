@@ -17,6 +17,8 @@ AH_TEMPLATE([OMIT_FREEXL],
             [Should be defined in order to disable FREEXL support.])
 AH_TEMPLATE([OMIT_READOSM],
             [Should be defined in order to disable ReadOSM support.])
+AH_TEMPLATE([ENABLE_LIBXML2],
+            [Should be defined in order to enable LIBXML2 support.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_CONFIG_URI],
             [depending on SQLite library version.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED],
@@ -112,6 +114,7 @@ if test x"$enable_readline" != xno ; then
 fi
 AC_SUBST(READLINE_LIBS)
 
+AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 AC_CHECK_LIB(expat,XML_ParserCreate,,AC_MSG_ERROR(['expat' is required but it doesn't seem to be installed on this system.]))
 AC_CHECK_LIB(proj,pj_init_plus,,AC_MSG_ERROR(['libproj' is required but it doesn't seem to be installed on this system.]),-lm)
 
@@ -195,6 +198,19 @@ else
 fi
 
 AM_CONDITIONAL([NO_READOSM], [test "$NOREADOSM" = "true"])
+
+#-----------------------------------------------------------------------
+#   --enable-libxml2
+#
+AC_ARG_ENABLE(libxml2, [AS_HELP_STRING(
+  [--enable-libxml2], [enables libxml2 inclusion [default=yes]])],
+  [], [enable_libxml2=yes])
+if test x"$enable_libxml2" != "xno"; then
+  PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], , AC_MSG_ERROR(['libxml2' is required but it doesn't seem to be installed on this system.]))
+  AC_SUBST(LIBXML2_CFLAGS)
+  AC_SUBST(LIBXML2_LIBS)
+  AC_DEFINE(ENABLE_LIBXML2)
+fi
 
 # checks for SQLite version-depending constants
 AC_CHECK_DECL([SQLITE_CONFIG_URI],

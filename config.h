@@ -1,6 +1,9 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Should be defined in order to enable LIBXML2 support. */
+#define ENABLE_LIBXML2 1
+
 /* depending on SQLite library version. */
 #define HAVE_DECL_SQLITE_CONFIG_URI 1
 
@@ -51,6 +54,9 @@
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1
+
+/* Define to 1 if you have the <expat.h> header file. */
+#define HAVE_EXPAT_H 1
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H 1
