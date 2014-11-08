@@ -70,6 +70,7 @@
 #define ARG_ONEWAY_TOFROM	8
 #define ARG_ONEWAY_FROMTO	9
 #define ARG_OUT_TABLE		10
+#define ARG_VIRT_TABLE		11
 
 #define MAX_BLOCK	1048576
 
@@ -245,7 +246,7 @@ cmp_nodes2_id (const void *p1, const void *p2)
 }
 
 static struct node *
-find_node (struct graph *p_graph, sqlite3_int64 id, char *code)
+find_node (struct graph *p_graph, sqlite3_int64 id, const char *code)
 {
 /* searching a Node into the sorted list */
     struct node **ret;
@@ -344,7 +345,8 @@ sort_nodes (struct graph *p_graph)
 }
 
 static void
-insert_node (struct graph *p_graph, sqlite3_int64 id, char *code, int node_code)
+insert_node (struct graph *p_graph, sqlite3_int64 id, const char *code,
+	     int node_code)
 {
 /* inserts a Node into the preliminary list */
     struct pre_node *pP = malloc (sizeof (struct pre_node));
@@ -376,7 +378,7 @@ insert_node (struct graph *p_graph, sqlite3_int64 id, char *code, int node_code)
 }
 
 static void
-add_node (struct graph *p_graph, sqlite3_int64 id, char *code)
+add_node (struct graph *p_graph, sqlite3_int64 id, const char *code)
 {
 /* inserts a Node into the final list */
     int len;
@@ -411,8 +413,8 @@ add_node (struct graph *p_graph, sqlite3_int64 id, char *code)
 }
 
 static struct node *
-process_node (struct graph *p_graph, sqlite3_int64 id, char *code, double x,
-	      double y, struct node **pOther)
+process_node (struct graph *p_graph, sqlite3_int64 id, const char *code,
+	      double x, double y, struct node **pOther)
 {
 /* inserts a new node or retrieves an already defined one */
     struct node *pN = find_node (p_graph, id, code);
@@ -468,7 +470,7 @@ add_outcoming_arc (struct node *pN, struct arc *pA)
 
 static void
 add_arc (struct graph *p_graph, sqlite3_int64 rowid, sqlite3_int64 id_from,
-	 sqlite3_int64 id_to, char *code_from, char *code_to,
+	 sqlite3_int64 id_to, const char *code_from, const char *code_to,
 	 double node_from_x, double node_from_y, double node_to_x,
 	 double node_to_y, double cost)
 {
@@ -800,10 +802,12 @@ output_node (unsigned char *auxbuf, int *size, int ind, int node_code,
 }
 
 static int
-create_network_data (sqlite3 * handle, char *out_table, int force_creation,
-		     struct graph *p_graph, char *table, char *from_column,
-		     char *to_column, char *geom_column, char *name_column,
-		     int a_star_supported, double a_star_coeff)
+create_network_data (sqlite3 * handle, const char *out_table,
+		     int force_creation, struct graph *p_graph,
+		     const char *table, const char *from_column,
+		     const char *to_column, const char *geom_column,
+		     const char *name_column, int a_star_supported,
+		     double a_star_coeff)
 {
 /* creates the NETWORK-DATA table */
     int ret;
@@ -910,11 +914,15 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
 	  out += len;
 	  /* inserting the Geometry column name */
 	  *out++ = GAIA_NET_GEOM;
-	  len = strlen (geom_column) + 1;
+	  if (!geom_column)
+	      len = 1;
+	  else
+	      len = strlen (geom_column) + 1;
 	  gaiaExport16 (out, len, 1, endian_arch);	/* the Geometry column Name length, including last '\0' */
 	  out += 2;
 	  memset (out, '\0', len);
-	  strcpy ((char *) out, geom_column);
+	  if (geom_column)
+	      strcpy ((char *) out, geom_column);
 	  out += len;
 	  /* inserting the Name column name - may be empty */
 	  *out++ = GAIA_NET_NAME;
@@ -1037,6 +1045,40 @@ create_network_data (sqlite3 * handle, char *out_table, int force_creation,
     return 0;
 }
 
+static int
+create_virtual_network (sqlite3 * handle, const char *out_table,
+			const char *virt_table, int force_creation)
+{
+/* creates the VirtualNetwork table */
+    int ret;
+    char sql[1024];
+    char *err_msg = NULL;
+    if (force_creation)
+      {
+	  sprintf (sql, "DROP TABLE IF EXISTS \"%s\"", virt_table);
+	  ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
+	  if (ret != SQLITE_OK)
+	    {
+		printf ("DROP TABLE error: %s\n", err_msg);
+		sqlite3_free (err_msg);
+		goto abort;
+	    }
+      }
+/* creating the VirtualNetwork table */
+    sprintf (sql, "CREATE VIRTUAL TABLE \"%s\" USING  VirtualNetwork(\"%s\")",
+	     virt_table, out_table);
+    ret = sqlite3_exec (handle, sql, NULL, NULL, &err_msg);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("CREATE TABLE error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  goto abort;
+      }
+    return 1;
+  abort:
+    return 0;
+}
+
 static void
 spatialite_autocreate (sqlite3 * db)
 {
@@ -1079,10 +1121,12 @@ spatialite_autocreate (sqlite3 * db)
 }
 
 static void
-validate (char *path, char *table, char *from_column, char *to_column,
-	  char *cost_column, char *geom_column, char *name_column,
-	  char *oneway_tofrom, char *oneway_fromto, int bidirectional,
-	  char *out_table, int force_creation, int a_star_supported)
+validate (const char *path, const char *table, const char *from_column,
+	  const char *to_column, const char *cost_column,
+	  const char *geom_column, const char *name_column,
+	  const char *oneway_tofrom, const char *oneway_fromto,
+	  int bidirectional, const char *out_table, const char *virt_table,
+	  int force_creation, int a_star_supported)
 {
 /* performs all the actual network validation */
     int ret;
@@ -1206,6 +1250,9 @@ validate (char *path, char *table, char *from_column, char *to_column,
     if (out_table)
       {
 	  printf ("\nNETWORK-DATA table creation required: '%s'\n", out_table);
+	  if (virt_table)
+	      printf ("\nVirtualNetwork table creation required: '%s'\n",
+		      virt_table);
 	  if (force_creation)
 	      printf ("Overwrite allowed if table already exists\n");
 	  else
@@ -1602,8 +1649,8 @@ validate (char *path, char *table, char *from_column, char *to_column,
 	  goto abort;
       }
     init_nodes (p_graph);
-    fprintf (stderr, "Step III - checking topologic consistency\n");
-/* checking topologic consistency */
+    fprintf (stderr, "Step III - checking topological consistency\n");
+/* checking topological consistency */
     sprintf (sql,
 	     "SELECT ROWID, \"%s\", \"%s\", X(StartPoint(\"%s\")), Y(StartPoint(\"%s\")), X(EndPoint(\"%s\")), Y(EndPoint(\"%s\"))",
 	     from_column, to_column, geom_column, geom_column, geom_column,
@@ -1819,6 +1866,680 @@ validate (char *path, char *table, char *from_column, char *to_column,
 		     out_table);
 		fprintf (stderr, "ERROR: table '%s' failure\n", out_table);
 	    }
+	  if (virt_table)
+	    {
+		ret =
+		    create_virtual_network (handle, out_table, virt_table,
+					    force_creation);
+		if (ret)
+		    fprintf (stderr, "OK: table '%s' successfully created\n",
+			     virt_table);
+		else
+		    fprintf (stderr, "ERROR: table '%s' failure\n", virt_table);
+	    }
+      }
+  abort:
+/* disconnecting the SpatiaLite DB */
+    ret = sqlite3_close (handle);
+    if (ret != SQLITE_OK)
+	fprintf (stderr, "sqlite3_close() error: %s\n",
+		 sqlite3_errmsg (handle));
+    spatialite_cleanup_ex (cache);
+    graph_free (p_graph);
+}
+
+static void
+validate_no_geom (const char *path, const char *table, const char *from_column,
+		  const char *to_column, const char *cost_column,
+		  const char *name_column, const char *oneway_tofrom,
+		  const char *oneway_fromto, int bidirectional,
+		  const char *out_table, const char *virt_table,
+		  int force_creation)
+{
+/* performs all the actual network validation - NO-GEOMETRY */
+    int ret;
+    sqlite3 *handle;
+    sqlite3_stmt *stmt;
+    struct graph *p_graph = NULL;
+    char sql[1024];
+    char sql2[128];
+    char **results;
+    int n_rows;
+    int n_columns;
+    int i;
+    char *err_msg = NULL;
+    char *col_name;
+    int type;
+    int ok_from_column = 0;
+    int ok_to_column = 0;
+    int ok_cost_column = 0;
+    int ok_name_column = 0;
+    int ok_oneway_tofrom = 0;
+    int ok_oneway_fromto = 0;
+    int from_null = 0;
+    int from_int = 0;
+    int from_double = 0;
+    int from_text = 0;
+    int from_blob = 0;
+    int to_null = 0;
+    int to_int = 0;
+    int to_double = 0;
+    int to_text = 0;
+    int to_blob = 0;
+    int cost_null = 0;
+    int cost_text = 0;
+    int cost_blob = 0;
+    int tofrom_null = 0;
+    int tofrom_double = 0;
+    int tofrom_text = 0;
+    int tofrom_blob = 0;
+    int fromto_null = 0;
+    int fromto_double = 0;
+    int fromto_text = 0;
+    int fromto_blob = 0;
+    int col_n;
+    int fromto_n;
+    int tofrom_n;
+    sqlite3_int64 rowid;
+    sqlite3_int64 id_from;
+    sqlite3_int64 id_to;
+    char code_from[1024];
+    char code_to[1024];
+    double cost;
+    int fromto;
+    int tofrom;
+    char xRowid[128];
+    char xIdFrom[128];
+    char xIdTo[128];
+    void *cache;
+
+/* showing the SQLite version */
+    fprintf (stderr, "SQLite version: %s\n", sqlite3_libversion ());
+/* showing the SpatiaLite version */
+    fprintf (stderr, "SpatiaLite version: %s\n", spatialite_version ());
+/* trying to connect the SpatiaLite DB  */
+    ret =
+	sqlite3_open_v2 (path, &handle,
+			 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  fprintf (stderr, "cannot open '%s': %s\n", path,
+		   sqlite3_errmsg (handle));
+	  sqlite3_close (handle);
+	  return;
+      }
+    cache = spatialite_alloc_connection ();
+    spatialite_init_ex (handle, cache, 0);
+    spatialite_autocreate (handle);
+
+    fprintf (stderr, "Step   I - checking for table and columns existence\n");
+/* reporting args */
+    printf ("\nspatialite-network\n\n");
+    printf
+	("==================================================================\n");
+    printf ("   SpatiaLite db: %s\n", path);
+    printf ("validating table: %s\n\n", table);
+    printf ("columns layout\n");
+    printf
+	("==================================================================\n");
+    printf ("FromNode: %s\n", from_column);
+    printf ("  ToNode: %s\n", to_column);
+    printf ("    Cost: %s\n", cost_column);
+    if (!name_column)
+	printf ("    Name: *unused*\n");
+    else
+	printf ("    Name: %s\n", name_column);
+    printf ("Geometry: *** unsupported ***\n\n");
+    if (bidirectional)
+      {
+	  printf ("assuming arcs to be BIDIRECTIONAL\n");
+	  if (oneway_tofrom && oneway_fromto)
+	    {
+		printf ("OneWay To->From: %s\n", oneway_tofrom);
+		printf ("OneWay From->To: %s\n", oneway_fromto);
+	    }
+      }
+    else
+	printf ("assuming arcs to be UNIDIRECTIONAL\n");
+    if (out_table)
+      {
+	  printf ("\nNETWORK-DATA table creation required: '%s'\n", out_table);
+	  if (virt_table)
+	      printf ("\nVirtualNetwork table creation required: '%s'\n",
+		      virt_table);
+	  if (force_creation)
+	      printf ("Overwrite allowed if table already exists\n");
+	  else
+	      printf ("Overwrite not allowed if table already exists\n");
+      }
+    else
+	printf
+	    ("\nsimple validation required\n[NETWORK-DATA table creation is disabled]\n");
+    printf
+	("==================================================================\n\n");
+/* checking for table existence */
+    sprintf (sql,
+	     "SELECT \"tbl_name\" FROM \"sqlite_master\" WHERE Upper(\"tbl_name\") = Upper('%s') and \"type\" = 'table'",
+	     table);
+    ret =
+	sqlite3_get_table (handle, sql, &results, &n_rows, &n_columns,
+			   &err_msg);
+    if (ret != SQLITE_OK)
+      {
+/* some error occurred */
+	  fprintf (stderr, "query#1 SQL error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  goto abort;
+      }
+    if (n_rows == 0)
+      {
+	  /* required table does not exists */
+	  printf ("ERROR: table '%s' does not exists\n", table);
+	  goto abort;
+      }
+    else
+	sqlite3_free_table (results);
+/* checking for columns existence */
+    sprintf (sql, "PRAGMA table_info(\"%s\")", table);
+    ret =
+	sqlite3_get_table (handle, sql, &results, &n_rows, &n_columns,
+			   &err_msg);
+    if (ret != SQLITE_OK)
+      {
+/* some error occurred */
+	  fprintf (stderr, "query#2 SQL error: %s\n", err_msg);
+	  sqlite3_free (err_msg);
+	  goto abort;
+      }
+    if (n_rows > 1)
+      {
+	  for (i = 1; i <= n_rows; i++)
+	    {
+		col_name = results[(i * n_columns) + 1];
+		if (strcasecmp (from_column, col_name) == 0)
+		    ok_from_column = 1;
+		if (strcasecmp (to_column, col_name) == 0)
+		    ok_to_column = 1;
+		if (cost_column)
+		  {
+		      if (strcasecmp (cost_column, col_name) == 0)
+			  ok_cost_column = 1;
+		  }
+		if (name_column)
+		  {
+		      if (strcasecmp (name_column, col_name) == 0)
+			  ok_name_column = 1;
+		  }
+		if (oneway_tofrom)
+		  {
+		      if (strcasecmp (oneway_tofrom, col_name) == 0)
+			  ok_oneway_tofrom = 1;
+		  }
+		if (oneway_fromto)
+		  {
+		      if (strcasecmp (oneway_fromto, col_name) == 0)
+			  ok_oneway_fromto = 1;
+		  }
+	    }
+	  sqlite3_free_table (results);
+      }
+    if (!ok_from_column)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		from_column);
+    if (!ok_to_column)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		to_column);
+    if (cost_column && !ok_cost_column)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		cost_column);
+    if (name_column && !ok_name_column)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		name_column);
+    if (oneway_tofrom && !ok_oneway_tofrom)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		oneway_tofrom);
+    if (oneway_fromto && !ok_oneway_fromto)
+	printf ("ERROR: column \"%s\".\"%s\" does not exists\n", table,
+		oneway_fromto);
+    if (!name_column)
+	ok_name_column = 1;
+    if (ok_from_column && ok_to_column && ok_name_column)
+	;
+    else
+	goto abort;
+    if (cost_column && !ok_cost_column)
+	goto abort;
+    if (oneway_tofrom && !ok_oneway_tofrom)
+	goto abort;
+    if (oneway_fromto && !ok_oneway_fromto)
+	goto abort;
+    fprintf (stderr, "Step  II - checking value types consistency\n");
+/* checking column types */
+    p_graph = graph_init ();
+    sprintf (sql, "SELECT \"%s\", \"%s\", \"%s\"", from_column, to_column,
+	     cost_column);
+    col_n = 3;
+    if (oneway_tofrom)
+      {
+	  sprintf (sql2, ", \"%s\"", oneway_tofrom);
+	  strcat (sql, sql2);
+	  tofrom_n = col_n;
+	  col_n++;
+      }
+    if (oneway_fromto)
+      {
+	  sprintf (sql2, ", \"%s\"", oneway_fromto);
+	  strcat (sql, sql2);
+	  fromto_n = col_n;
+	  col_n++;
+      }
+    sprintf (sql2, " FROM \"%s\"", table);
+    strcat (sql, sql2);
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("query#4 SQL error: %s\n", sqlite3_errmsg (handle));
+	  goto abort;
+      }
+    n_columns = sqlite3_column_count (stmt);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		/* the NodeFrom type */
+		type = sqlite3_column_type (stmt, 0);
+		if (type == SQLITE_NULL)
+		    from_null = 1;
+		if (type == SQLITE_INTEGER)
+		  {
+		      from_int = 1;
+		      id_from = sqlite3_column_int (stmt, 0);
+		      insert_node (p_graph, id_from, "", 0);
+		  }
+		if (type == SQLITE_FLOAT)
+		    from_double = 1;
+		if (type == SQLITE_TEXT)
+		  {
+		      from_text = 1;
+		      strcpy (code_from,
+			      (char *) sqlite3_column_text (stmt, 0));
+		      insert_node (p_graph, -1, code_from, 1);
+		  }
+		if (type == SQLITE_BLOB)
+		    from_blob = 1;
+		/* the NodeTo type */
+		type = sqlite3_column_type (stmt, 1);
+		if (type == SQLITE_NULL)
+		    to_null = 1;
+		if (type == SQLITE_INTEGER)
+		  {
+		      to_int = 1;
+		      id_to = sqlite3_column_int (stmt, 1);
+		      insert_node (p_graph, id_to, "", 0);
+		  }
+		if (type == SQLITE_FLOAT)
+		    to_double = 1;
+		if (type == SQLITE_TEXT)
+		  {
+		      to_text = 1;
+		      strcpy (code_to, (char *) sqlite3_column_text (stmt, 1));
+		      insert_node (p_graph, -1, code_to, 1);
+		  }
+		if (type == SQLITE_BLOB)
+		    to_blob = 1;
+		/* the Cost type */
+		type = sqlite3_column_type (stmt, 2);
+		if (type == SQLITE_NULL)
+		    cost_null = 1;
+		if (type == SQLITE_TEXT)
+		    cost_text = 1;
+		if (type == SQLITE_BLOB)
+		    cost_blob = 1;
+		col_n = 3;
+		if (oneway_fromto)
+		  {
+		      /* the FromTo type */
+		      type = sqlite3_column_type (stmt, col_n);
+		      col_n++;
+		      if (type == SQLITE_NULL)
+			  fromto_null = 1;
+		      if (type == SQLITE_FLOAT)
+			  fromto_double = 1;
+		      if (type == SQLITE_TEXT)
+			  fromto_text = 1;
+		      if (type == SQLITE_BLOB)
+			  fromto_blob = 1;
+		  }
+		if (oneway_tofrom)
+		  {
+		      /* the ToFrom type */
+		      type = sqlite3_column_type (stmt, col_n);
+		      col_n++;
+		      if (type == SQLITE_NULL)
+			  tofrom_null = 1;
+		      if (type == SQLITE_FLOAT)
+			  tofrom_double = 1;
+		      if (type == SQLITE_TEXT)
+			  tofrom_text = 1;
+		      if (type == SQLITE_BLOB)
+			  tofrom_blob = 1;
+		  }
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
+		sqlite3_finalize (stmt);
+		goto abort;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    ret = 1;
+    if (from_null)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains NULL values\n", table,
+		  from_column);
+	  ret = 0;
+      }
+    if (from_blob)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains BLOB values\n", table,
+		  from_column);
+	  ret = 0;
+      }
+    if (from_double)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains DOUBLE values\n", table,
+		  from_column);
+	  ret = 0;
+      }
+    if (to_null)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains NULL values\n", table,
+		  to_column);
+	  ret = 0;
+      }
+    if (to_blob)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains BLOB values\n", table,
+		  to_column);
+	  ret = 0;
+      }
+    if (to_double)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains DOUBLE values\n", table,
+		  to_column);
+	  ret = 0;
+      }
+    if (cost_null)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains NULL values\n",
+		  table, cost_column);
+	  ret = 0;
+      }
+    if (cost_blob)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains BLOB values\n",
+		  table, cost_column);
+	  ret = 0;
+      }
+    if (cost_text)
+      {
+	  printf ("ERROR: column \"%s\".\"%s\" contains TEXT values\n",
+		  table, cost_column);
+	  ret = 0;
+      }
+    if (oneway_fromto)
+      {
+	  if (fromto_null)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains NULL values\n",
+			table, oneway_fromto);
+		ret = 0;
+	    }
+	  if (fromto_blob)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains BLOB values\n",
+			table, oneway_fromto);
+		ret = 0;
+	    }
+	  if (fromto_text)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains TEXT values\n",
+			table, oneway_fromto);
+		ret = 0;
+	    }
+	  if (fromto_double)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains DOUBLE values\n",
+			table, oneway_fromto);
+		ret = 0;
+	    }
+      }
+    if (oneway_tofrom)
+      {
+	  if (tofrom_null)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains NULL values\n",
+			table, oneway_tofrom);
+		ret = 0;
+	    }
+	  if (tofrom_blob)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains BLOB values\n",
+			table, oneway_tofrom);
+		ret = 0;
+	    }
+	  if (tofrom_text)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains TEXT values\n",
+			table, oneway_tofrom);
+		ret = 0;
+	    }
+	  if (tofrom_double)
+	    {
+		printf ("ERROR: column \"%s\".\"%s\" contains DOUBLE values\n",
+			table, oneway_tofrom);
+		ret = 0;
+	    }
+      }
+    if (!ret)
+	goto abort;
+    if (from_int && to_int)
+      {
+	  /* each node is identified by an INTEGER id */
+	  p_graph->node_code = 0;
+      }
+    else if (from_text && to_text)
+      {
+	  /* each node is identified by a TEXT code */
+	  p_graph->node_code = 1;
+      }
+    else
+      {
+	  printf ("ERROR: NodeFrom / NodeTo have different value types\n");
+	  goto abort;
+      }
+    init_nodes (p_graph);
+    fprintf (stderr, "Step III - checking topological consistency\n");
+/* checking topological consistency */
+    sprintf (sql,
+	     "SELECT ROWID, \"%s\", \"%s\", \"%s\"",
+	     from_column, to_column, cost_column);
+    col_n = 3;
+    if (oneway_tofrom)
+      {
+	  sprintf (sql2, ", \"%s\"", oneway_tofrom);
+	  strcat (sql, sql2);
+	  tofrom_n = col_n;
+	  col_n++;
+      }
+    if (oneway_fromto)
+      {
+	  sprintf (sql2, ", \"%s\"", oneway_fromto);
+	  strcat (sql, sql2);
+	  fromto_n = col_n;
+	  col_n++;
+      }
+    sprintf (sql2, " FROM \"%s\"", table);
+    strcat (sql, sql2);
+    ret = sqlite3_prepare_v2 (handle, sql, strlen (sql), &stmt, NULL);
+    if (ret != SQLITE_OK)
+      {
+	  printf ("query#4 SQL error: %s\n", sqlite3_errmsg (handle));
+	  goto abort;
+      }
+    n_columns = sqlite3_column_count (stmt);
+    while (1)
+      {
+	  ret = sqlite3_step (stmt);
+	  if (ret == SQLITE_DONE)
+	      break;
+	  if (ret == SQLITE_ROW)
+	    {
+		fromto = 1;
+		tofrom = 1;
+		if (p_graph->node_code)
+		  {
+		      id_from = -1;
+		      id_to = -1;
+		  }
+		else
+		  {
+		      *code_from = '\0';
+		      *code_to = '\0';
+		  }
+		/* fetching the ROWID */
+		rowid = sqlite3_column_int64 (stmt, 0);
+		/* fetching the NodeFrom value */
+		if (p_graph->node_code)
+		    strcpy (code_from, (char *) sqlite3_column_text (stmt, 1));
+		else
+		    id_from = sqlite3_column_int64 (stmt, 1);
+		/* fetching the NodeTo value */
+		if (p_graph->node_code)
+		    strcpy (code_to, (char *) sqlite3_column_text (stmt, 2));
+		else
+		    id_to = sqlite3_column_int64 (stmt, 2);
+		/* fetching the Cost value */
+		cost = sqlite3_column_double (stmt, 3);
+		if (oneway_fromto)
+		  {
+		      /* fetching the OneWay-FromTo value */
+		      fromto = sqlite3_column_int (stmt, fromto_n);
+		  }
+		if (oneway_tofrom)
+		  {
+		      /* fetching the OneWay-ToFrom value */
+		      tofrom = sqlite3_column_int (stmt, tofrom_n);
+		  }
+		sprintf (xRowid, FORMAT_64, rowid);
+		if (cost <= 0.0)
+		  {
+		      printf
+			  ("ERROR: arc ROWID=%s has NEGATIVE or NULL cost [%1.6f]\n",
+			   xRowid, cost);
+		      p_graph->error = 1;
+		  }
+		if (bidirectional)
+		  {
+		      if (!fromto && !tofrom)
+			{
+			    if (p_graph->node_code)
+				printf
+				    ("WARNING: arc forbidden in both directions; ROWID=%s From=%s To=%s\n",
+				     xRowid, code_from, code_to);
+			    else
+			      {
+				  sprintf (xIdFrom, FORMAT_64, id_from);
+				  sprintf (xIdTo, FORMAT_64, id_to);
+				  printf
+				      ("WARNING: arc forbidden in both directions; ROWID=%s From=%s To=%s\n",
+				       xRowid, xIdFrom, xIdTo);
+			      }
+			}
+		      if (fromto)
+			  add_arc (p_graph, rowid, id_from, id_to, code_from,
+				   code_to, DBL_MAX, DBL_MAX, DBL_MAX, DBL_MAX,
+				   cost);
+		      if (tofrom)
+			  add_arc (p_graph, rowid, id_to, id_from, code_to,
+				   code_from, DBL_MAX, DBL_MAX, DBL_MAX,
+				   DBL_MAX, cost);
+		  }
+		else
+		    add_arc (p_graph, rowid, id_from, id_to, code_from, code_to,
+			     DBL_MAX, DBL_MAX, DBL_MAX, DBL_MAX, cost);
+		if (p_graph->error)
+		  {
+		      printf ("\n\nERROR: network failed validation\n");
+		      printf
+			  ("\tyou cannot apply this configuration to build a valid VirtualNetwork\n");
+		      sqlite3_finalize (stmt);
+		      goto abort;
+		  }
+	    }
+	  else
+	    {
+		printf ("sqlite3_step() error: %s\n", sqlite3_errmsg (handle));
+		sqlite3_finalize (stmt);
+		goto abort;
+	    }
+      }
+    sqlite3_finalize (stmt);
+    fprintf (stderr, "Step  IV - final evaluation\n");
+/* final printout */
+    if (p_graph->error)
+      {
+	  printf ("\n\nERROR: network failed validation\n");
+	  printf
+	      ("\tyou cannot apply this configuration to build a valid VirtualNetwork\n");
+	  fprintf (stderr, "ERROR: VALIDATION FAILURE\n");
+      }
+    else
+      {
+	  print_report (p_graph);
+	  printf ("\n\nOK: network passed validation\n");
+	  printf
+	      ("\tyou can apply this configuration to build a valid VirtualNetwork\n");
+	  fprintf (stderr, "OK: validation passed\n");
+      }
+    if (out_table)
+      {
+	  ret =
+	      create_network_data (handle, out_table, force_creation, p_graph,
+				   table, from_column, to_column, NULL,
+				   name_column, 0, DBL_MAX);
+	  if (ret)
+	    {
+		printf
+		    ("\n\nOK: NETWORK-DATA table '%s' successfully created\n",
+		     out_table);
+		fprintf (stderr, "OK: table '%s' successfully created\n",
+			 out_table);
+		if (virt_table)
+		  {
+		      ret =
+			  create_virtual_network (handle, out_table, virt_table,
+						  force_creation);
+		      if (ret)
+			  fprintf (stderr,
+				   "OK: table '%s' successfully created\n",
+				   virt_table);
+		      else
+			  fprintf (stderr, "ERROR: table '%s' failure\n",
+				   virt_table);
+		  }
+	    }
+	  else
+	    {
+		printf
+		    ("\n\nERROR: creating the NETWORK-DATA table '%s' was not possible\n",
+		     out_table);
+		fprintf (stderr, "ERROR: table '%s' failure\n", out_table);
+	    }
       }
   abort:
 /* disconnecting the SpatiaLite DB */
@@ -1877,6 +2598,7 @@ do_help ()
     fprintf (stderr, "in order to create a permanent NETWORK-DATA table\n");
     fprintf (stderr, "you can select the following options:\n");
     fprintf (stderr, "-o or --output-table table_name\n");
+    fprintf (stderr, "-v or --virtual-table table_name\n");
     fprintf (stderr, "--overwrite-output\n\n");
 }
 
@@ -1896,6 +2618,7 @@ main (int argc, char *argv[])
     char *oneway_tofrom = NULL;
     char *oneway_fromto = NULL;
     char *out_table = NULL;
+    char *virt_table = NULL;
     int bidirectional = 1;
     int force_creation = 0;
     int error = 0;
@@ -1915,6 +2638,9 @@ main (int argc, char *argv[])
 		      break;
 		  case ARG_OUT_TABLE:
 		      out_table = argv[i];
+		      break;
+		  case ARG_VIRT_TABLE:
+		      virt_table = argv[i];
 		      break;
 		  case ARG_FROM_COLUMN:
 		      from_column = argv[i];
@@ -1975,6 +2701,16 @@ main (int argc, char *argv[])
 	  if (strcmp (argv[i], "-o") == 0)
 	    {
 		next_arg = ARG_OUT_TABLE;
+		continue;
+	    }
+	  if (strcasecmp (argv[i], "--virtual-table") == 0)
+	    {
+		next_arg = ARG_VIRT_TABLE;
+		continue;
+	    }
+	  if (strcmp (argv[i], "-v") == 0)
+	    {
+		next_arg = ARG_VIRT_TABLE;
 		continue;
 	    }
 	  if (strcasecmp (argv[i], "--from-column") == 0)
@@ -2120,9 +2856,30 @@ main (int argc, char *argv[])
 	  do_help ();
 	  return -1;
       }
-    validate (path, table, from_column, to_column, cost_column, geom_column,
-	      name_column, oneway_tofrom, oneway_fromto, bidirectional,
-	      out_table, force_creation, a_star_supported);
+    if (strcasecmp (geom_column, "NULL") == 0
+	|| strcasecmp (geom_column, "NONE") == 0
+	|| strcasecmp (geom_column, "NO") == 0)
+      {
+	  /* NULL-Geometry has been explicitly requested */
+	  geom_column = NULL;
+	  a_star_supported = 0;
+	  fprintf (stderr, "\nWARNING: a NO-GEOMETRY graph would be processed\n"
+		   "the A* algorithm will be consequently disabled.\n\n");
+	  if (!cost_column)
+	    {
+		fprintf (stderr,
+			 "NO-GEOMETRY strictly requires to specify some --cost-column argument\n");
+		return -1;
+	    }
+      }
+    if (geom_column == NULL)
+	validate_no_geom (path, table, from_column, to_column, cost_column,
+			  name_column, oneway_tofrom, oneway_fromto,
+			  bidirectional, out_table, virt_table, force_creation);
+    else
+	validate (path, table, from_column, to_column, cost_column, geom_column,
+		  name_column, oneway_tofrom, oneway_fromto, bidirectional,
+		  out_table, virt_table, force_creation, a_star_supported);
     spatialite_shutdown ();
     return 0;
 }
