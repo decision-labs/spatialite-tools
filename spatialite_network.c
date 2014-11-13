@@ -1413,7 +1413,7 @@ validate (const char *path, const char *table, const char *from_column,
 		if (type == SQLITE_INTEGER)
 		  {
 		      from_int = 1;
-		      id_from = sqlite3_column_int (stmt, 0);
+		      id_from = sqlite3_column_int64 (stmt, 0);
 		      insert_node (p_graph, id_from, "", 0);
 		  }
 		if (type == SQLITE_FLOAT)
@@ -1434,7 +1434,7 @@ validate (const char *path, const char *table, const char *from_column,
 		if (type == SQLITE_INTEGER)
 		  {
 		      to_int = 1;
-		      id_to = sqlite3_column_int (stmt, 1);
+		      id_to = sqlite3_column_int64 (stmt, 1);
 		      insert_node (p_graph, id_to, "", 0);
 		  }
 		if (type == SQLITE_FLOAT)
@@ -2156,7 +2156,7 @@ validate_no_geom (const char *path, const char *table, const char *from_column,
 		if (type == SQLITE_INTEGER)
 		  {
 		      from_int = 1;
-		      id_from = sqlite3_column_int (stmt, 0);
+		      id_from = sqlite3_column_int64 (stmt, 0);
 		      insert_node (p_graph, id_from, "", 0);
 		  }
 		if (type == SQLITE_FLOAT)
@@ -2177,7 +2177,7 @@ validate_no_geom (const char *path, const char *table, const char *from_column,
 		if (type == SQLITE_INTEGER)
 		  {
 		      to_int = 1;
-		      id_to = sqlite3_column_int (stmt, 1);
+		      id_to = sqlite3_column_int64 (stmt, 1);
 		      insert_node (p_graph, id_to, "", 0);
 		  }
 		if (type == SQLITE_FLOAT)

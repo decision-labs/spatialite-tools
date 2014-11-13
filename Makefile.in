@@ -92,7 +92,8 @@ host_triplet = @host@
 @NO_READOSM_FALSE@	spatialite_xml_validator$(EXEEXT) \
 @NO_READOSM_FALSE@	spatialite_xml_load$(EXEEXT) \
 @NO_READOSM_FALSE@	spatialite_xml_collapse$(EXEEXT) \
-@NO_READOSM_FALSE@	spatialite_xml_print$(EXEEXT)
+@NO_READOSM_FALSE@	spatialite_xml_print$(EXEEXT) \
+@NO_READOSM_FALSE@	spatialite_osm_overpass$(EXEEXT)
 @NO_READOSM_TRUE@bin_PROGRAMS = spatialite$(EXEEXT) \
 @NO_READOSM_TRUE@	spatialite_tool$(EXEEXT) \
 @NO_READOSM_TRUE@	spatialite_network$(EXEEXT) \
@@ -104,7 +105,8 @@ host_triplet = @host@
 @NO_READOSM_TRUE@	spatialite_xml_validator$(EXEEXT) \
 @NO_READOSM_TRUE@	spatialite_xml_load$(EXEEXT) \
 @NO_READOSM_TRUE@	spatialite_xml_collapse$(EXEEXT) \
-@NO_READOSM_TRUE@	spatialite_xml_print$(EXEEXT)
+@NO_READOSM_TRUE@	spatialite_xml_print$(EXEEXT) \
+@NO_READOSM_TRUE@	spatialite_osm_overpass$(EXEEXT)
 subdir = .
 DIST_COMMON = INSTALL NEWS README AUTHORS ChangeLog \
 	$(srcdir)/Makefile.in $(srcdir)/Makefile.am \
@@ -170,6 +172,11 @@ am__spatialite_osm_net_SOURCES_DIST = spatialite_osm_net.c
 @NO_READOSM_FALSE@	spatialite_osm_net.$(OBJEXT)
 spatialite_osm_net_OBJECTS = $(am_spatialite_osm_net_OBJECTS)
 spatialite_osm_net_DEPENDENCIES =
+am_spatialite_osm_overpass_OBJECTS =  \
+	spatialite_osm_overpass.$(OBJEXT)
+spatialite_osm_overpass_OBJECTS =  \
+	$(am_spatialite_osm_overpass_OBJECTS)
+spatialite_osm_overpass_DEPENDENCIES =
 am__spatialite_osm_raw_SOURCES_DIST = spatialite_osm_raw.c
 @NO_READOSM_FALSE@am_spatialite_osm_raw_OBJECTS =  \
 @NO_READOSM_FALSE@	spatialite_osm_raw.$(OBJEXT)
@@ -234,8 +241,10 @@ SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_SOURCES) spatialite_convert.c spatialite_dxf.c \
 	$(spatialite_gml_SOURCES) $(spatialite_network_SOURCES) \
 	$(spatialite_osm_filter_SOURCES) $(spatialite_osm_map_SOURCES) \
-	$(spatialite_osm_net_SOURCES) $(spatialite_osm_raw_SOURCES) \
-	$(spatialite_tool_SOURCES) $(spatialite_xml_collapse_SOURCES) \
+	$(spatialite_osm_net_SOURCES) \
+	$(spatialite_osm_overpass_SOURCES) \
+	$(spatialite_osm_raw_SOURCES) $(spatialite_tool_SOURCES) \
+	$(spatialite_xml_collapse_SOURCES) \
 	$(spatialite_xml_load_SOURCES) $(spatialite_xml_print_SOURCES) \
 	$(spatialite_xml_validator_SOURCES)
 DIST_SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
@@ -244,6 +253,7 @@ DIST_SOURCES = $(exif_loader_SOURCES) $(shp_doctor_SOURCES) \
 	$(spatialite_osm_filter_SOURCES) \
 	$(am__spatialite_osm_map_SOURCES_DIST) \
 	$(am__spatialite_osm_net_SOURCES_DIST) \
+	$(spatialite_osm_overpass_SOURCES) \
 	$(am__spatialite_osm_raw_SOURCES_DIST) \
 	$(spatialite_tool_SOURCES) $(spatialite_xml_collapse_SOURCES) \
 	$(spatialite_xml_load_SOURCES) $(spatialite_xml_print_SOURCES) \
@@ -444,8 +454,12 @@ spatialite_xml_print_SOURCES = spatialite_xml_print.c
 @NO_READOSM_FALSE@spatialite_osm_raw_SOURCES = spatialite_osm_raw.c
 spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
+spatialite_osm_overpass_SOURCES = spatialite_osm_overpass.c
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@ 
+
+spatialite_osm_overpass_LDADD = @LIBSPATIALITE_LIBS@ \
+	@LIBFREEXL_LIBS@ @LIBXML2_LIBS@ 
 
 spatialite_osm_raw_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@
@@ -621,6 +635,10 @@ spatialite_osm_net$(EXEEXT): $(spatialite_osm_net_OBJECTS) $(spatialite_osm_net_
 	@rm -f spatialite_osm_net$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(spatialite_osm_net_OBJECTS) $(spatialite_osm_net_LDADD) $(LIBS)
 
+spatialite_osm_overpass$(EXEEXT): $(spatialite_osm_overpass_OBJECTS) $(spatialite_osm_overpass_DEPENDENCIES) $(EXTRA_spatialite_osm_overpass_DEPENDENCIES) 
+	@rm -f spatialite_osm_overpass$(EXEEXT)
+	$(AM_V_CCLD)$(LINK) $(spatialite_osm_overpass_OBJECTS) $(spatialite_osm_overpass_LDADD) $(LIBS)
+
 spatialite_osm_raw$(EXEEXT): $(spatialite_osm_raw_OBJECTS) $(spatialite_osm_raw_DEPENDENCIES) $(EXTRA_spatialite_osm_raw_DEPENDENCIES) 
 	@rm -f spatialite_osm_raw$(EXEEXT)
 	$(AM_V_CCLD)$(LINK) $(spatialite_osm_raw_OBJECTS) $(spatialite_osm_raw_LDADD) $(LIBS)
@@ -661,6 +679,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_filter.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_map.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_net.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_overpass.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_osm_raw.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_tool.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/spatialite_xml_collapse.Po@am__quote@
