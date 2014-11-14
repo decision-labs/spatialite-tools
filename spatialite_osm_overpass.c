@@ -921,39 +921,45 @@ osm_parse (struct aux_params *params, struct download_tile *tile, int object)
       {
 	  /* downloading a full MAP */
 	  if (object == OBJ_NODES)
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(node(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(node(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
 	  else if (object == OBJ_WAYS)
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(way(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(way(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
 	  else
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(relation(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(relation(%1.12f,%1.12f,%1.12f,%1.12f););out body;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
       }
     else
       {
 	  /* downloading a full MAP - raw mode */
 	  if (object == OBJ_NODES)
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(node(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
-	 else if (object == OBJ_WAYS)
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(way(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(node(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
+	  else if (object == OBJ_WAYS)
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(way(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
 	  else
-	  url =
-	      sqlite3_mprintf
-	      ("%s/interpreter?data=[timeout:600];(relation(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
-	       params->osm_url, tile->miny, tile->minx, tile->maxy, tile->maxx);
+	      url =
+		  sqlite3_mprintf
+		  ("%s/interpreter?data=[timeout:600];(relation(%1.12f,%1.12f,%1.12f,%1.12f););out meta;",
+		   params->osm_url, tile->miny, tile->minx, tile->maxy,
+		   tile->maxx);
       }
 
     xml_doc = xmlReadFile (url, NULL, 0);
@@ -1267,7 +1273,8 @@ create_road_tables (struct aux_params *params)
     strcat (sql, "name TEXT,\n");
     strcat (sql, "lanes INTEGER,\n");
     strcat (sql, "maxspeed INTEGER,\n");
-    strcat (sql, "oneway INTEGER,\n");
+    strcat (sql, "oneway_ft INTEGER,\n");
+    strcat (sql, "oneway_tf INTEGER,\n");
     strcat (sql, "CONSTRAINT fk_arc_from FOREIGN KEY (node_from)\n");
     strcat (sql, "REFERENCES road_nodes (node_id),\n");
     strcat (sql, "CONSTRAINT fk_arc_to FOREIGN KEY (node_to)\n");
@@ -1477,12 +1484,13 @@ populate_road_network (struct aux_params *params, int *cnt_nodes, int *cnt_arcs)
 
 /* main SQL query extracting all Arcs */
     sql = "SELECT w1.way_id AS osm_id, w1.v AS class, w2.v AS name, "
-	"w3.v AS lanes, w4.v AS maxspeed, w5.v AS onewway "
+	"w3.v AS lanes, w4.v AS maxspeed, w5.v AS onewway, w6.v AS roundabout "
 	"FROM osm_way_tags AS w1 "
 	"LEFT JOIN osm_way_tags AS w2 ON (w2.way_id = w1.way_id AND w2.k = 'name') "
 	"LEFT JOIN osm_way_tags AS w3 ON (w3.way_id = w1.way_id AND w3.k = 'lanes') "
 	"LEFT JOIN osm_way_tags AS w4 ON (w4.way_id = w1.way_id AND w4.k = 'maxspeed') "
 	"LEFT JOIN osm_way_tags AS w5 ON (w5.way_id = w1.way_id AND w5.k = 'oneway') "
+	"LEFT JOIN osm_way_tags AS w6 ON (w6.way_id = w1.way_id AND w6.k = 'junction') "
 	"WHERE w1.k = 'highway'";
     ret =
 	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
@@ -1524,8 +1532,8 @@ populate_road_network (struct aux_params *params, int *cnt_nodes, int *cnt_arcs)
 
 /* INSERT INTO arcs statement */
     sql =
-	"INSERT INTO road_arcs (arc_id, osm_id, node_from, node_to, type, name, "
-	"lanes, maxspeed, oneway, geometry) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+	"INSERT INTO road_arcs (arc_id, osm_id, node_from, node_to, type, name, lanes, "
+	"maxspeed, oneway_ft, oneway_tf, geometry) VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     ret =
 	sqlite3_prepare_v2 (params->db_handle, sql, strlen (sql),
 			    &ins_arcs_stmt, NULL);
@@ -1580,6 +1588,11 @@ populate_road_network (struct aux_params *params, int *cnt_nodes, int *cnt_arcs)
 		arc = arcs.first;
 		while (arc != NULL)
 		  {
+		      int oneway_ft = 1;
+		      int oneway_tf = 1;
+		      const char *p_oneway = "";
+		      const char *p_roundabout = "";
+		      const char *p_motorway = "";
 		      /* looping on split arcs */
 		      arc_n = arc->next;
 		      /* inserting NODE From */
@@ -1647,27 +1660,52 @@ populate_road_network (struct aux_params *params, int *cnt_nodes, int *cnt_arcs)
 			  sqlite3_bind_int (ins_arcs_stmt, 7,
 					    sqlite3_column_int (query_main_stmt,
 								4));
-		      if (sqlite3_column_type (query_main_stmt, 5) ==
+		      if (sqlite3_column_type (query_main_stmt, 5) !=
 			  SQLITE_NULL)
-			  sqlite3_bind_null (ins_arcs_stmt, 7);
-		      else if (sqlite3_column_type (query_main_stmt, 5) ==
-			       SQLITE_TEXT)
+			  p_oneway =
+			      (const char *)
+			      sqlite3_column_text (query_main_stmt, 5);
+		      if (sqlite3_column_type (query_main_stmt, 6) !=
+			  SQLITE_NULL)
+			  p_roundabout =
+			      (const char *)
+			      sqlite3_column_text (query_main_stmt, 6);
+		      if (sqlite3_column_type (query_main_stmt, 1) !=
+			  SQLITE_NULL)
+			  p_motorway =
+			      (const char *)
+			      sqlite3_column_text (query_main_stmt, 1);
+		      if (strcmp (p_roundabout, "roundabout") == 0)
 			{
-			    const char *v =
-				(const char *)
-				sqlite3_column_text (query_main_stmt, 5);
-			    if (strcmp (v, "yes") == 0)
-				sqlite3_bind_int (ins_arcs_stmt, 8, 1);
-			    else
-				sqlite3_bind_int (ins_arcs_stmt, 8, 0);
+			    /* all roundabouts are always implicitly oneway */
+			    oneway_ft = 1;
+			    oneway_tf = 0;
 			}
-		      else
-			  sqlite3_bind_int (ins_arcs_stmt, 8,
-					    sqlite3_column_int (query_main_stmt,
-								5));
+		      if (strcmp (p_motorway, "motorway") == 0)
+			{
+			    /* all motorways are always implicitly oneway */
+			    oneway_ft = 1;
+			    oneway_tf = 0;
+			}
+		      if (strcmp (p_oneway, "1") == 0
+			  || strcmp (p_oneway, "yes") == 0)
+			{
+			    /* declared to be oneway From -> To */
+			    oneway_ft = 1;
+			    oneway_tf = 0;
+			}
+		      if (strcmp (p_oneway, "-1") == 0
+			  || strcmp (p_oneway, "reverse") == 0)
+			{
+			    /* declared to be oneway To -> From */
+			    oneway_ft = 0;
+			    oneway_tf = 1;
+			}
+		      sqlite3_bind_int (ins_arcs_stmt, 8, oneway_ft);
+		      sqlite3_bind_int (ins_arcs_stmt, 9, oneway_tf);
 		      gaiaToSpatiaLiteBlobWkb (arc->geom, &blob, &blob_size);
 		      gaiaFreeGeomColl (arc->geom);
-		      sqlite3_bind_blob (ins_arcs_stmt, 9, blob, blob_size,
+		      sqlite3_bind_blob (ins_arcs_stmt, 10, blob, blob_size,
 					 free);
 		      ret = sqlite3_step (ins_arcs_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
@@ -3471,7 +3509,8 @@ populate_map_layers (struct aux_params *params, int *points, int *linestrings,
 							    2);
 		if (sqlite3_column_type (query_rel_ways_stmt, 3) != SQLITE_NULL)
 		    name =
-			(const char *) sqlite3_column_text (query_rel_ways_stmt, 3);
+			(const char *) sqlite3_column_text (query_rel_ways_stmt,
+							    3);
 		if (!build_rel_way_geom
 		    (params->cache, params->db_handle, query_rel_way_nodes_stmt,
 		     id, &geom))
@@ -4023,7 +4062,7 @@ main (int argc, char *argv[])
     int ok_maxy = 0;
     int bbox = 1;
     int mode = MODE_MAP;
-	int preserve_osm_tables = 0;
+    int preserve_osm_tables = 0;
     struct aux_params params;
     struct tiled_download downloader;
     struct download_tile *tile;
@@ -4357,51 +4396,54 @@ main (int argc, char *argv[])
       {
 	  /* downloading and parsing an input OSM dataset (tiled) */
 	  if (mode == MODE_ROAD || mode == MODE_RAIL)
-	  {
-	  printf ("Downloading and parsing OSM tile %d of %d\r", tile->tile_no,
-		  downloader.count);
-	  if (!osm_parse (&params, tile, 0))
 	    {
-		fprintf (stderr,
-			 "\noperation aborted due to unrecoverable errors\n\n");
-		finalize_sql_stmts (&params);
-		sqlite3_close (handle);
-		return -1;
+		printf ("Downloading and parsing OSM tile %d of %d\r",
+			tile->tile_no, downloader.count);
+		if (!osm_parse (&params, tile, 0))
+		  {
+		      fprintf (stderr,
+			       "\noperation aborted due to unrecoverable errors\n\n");
+		      finalize_sql_stmts (&params);
+		      sqlite3_close (handle);
+		      return -1;
+		  }
 	    }
-	}
-	else
-	{
-	  printf ("Downloading and parsing OSM tile %d of %d - Nodes        \r", tile->tile_no,
-		  downloader.count);
-	  if (!osm_parse (&params, tile, OBJ_NODES))
+	  else
 	    {
-		fprintf (stderr,
-			 "\noperation aborted due to unrecoverable errors\n\n");
-		finalize_sql_stmts (&params);
-		sqlite3_close (handle);
-		return -1;
+		printf
+		    ("Downloading and parsing OSM tile %d of %d - Nodes        \r",
+		     tile->tile_no, downloader.count);
+		if (!osm_parse (&params, tile, OBJ_NODES))
+		  {
+		      fprintf (stderr,
+			       "\noperation aborted due to unrecoverable errors\n\n");
+		      finalize_sql_stmts (&params);
+		      sqlite3_close (handle);
+		      return -1;
+		  }
+		printf
+		    ("Downloading and parsing OSM tile %d of %d - Ways          \r",
+		     tile->tile_no, downloader.count);
+		if (!osm_parse (&params, tile, OBJ_WAYS))
+		  {
+		      fprintf (stderr,
+			       "\noperation aborted due to unrecoverable errors\n\n");
+		      finalize_sql_stmts (&params);
+		      sqlite3_close (handle);
+		      return -1;
+		  }
+		printf
+		    ("Downloading and parsing OSM tile %d of %d - Relations     \r",
+		     tile->tile_no, downloader.count);
+		if (!osm_parse (&params, tile, OBJ_RELATIONS))
+		  {
+		      fprintf (stderr,
+			       "\noperation aborted due to unrecoverable errors\n\n");
+		      finalize_sql_stmts (&params);
+		      sqlite3_close (handle);
+		      return -1;
+		  }
 	    }
-	  printf ("Downloading and parsing OSM tile %d of %d - Ways          \r", tile->tile_no,
-		  downloader.count);
-	  if (!osm_parse (&params, tile, OBJ_WAYS))
-	    {
-		fprintf (stderr,
-			 "\noperation aborted due to unrecoverable errors\n\n");
-		finalize_sql_stmts (&params);
-		sqlite3_close (handle);
-		return -1;
-	    }
-	  printf ("Downloading and parsing OSM tile %d of %d - Relations     \r", tile->tile_no,
-		  downloader.count);
-	  if (!osm_parse (&params, tile, OBJ_RELATIONS))
-	    {
-		fprintf (stderr,
-			 "\noperation aborted due to unrecoverable errors\n\n");
-		finalize_sql_stmts (&params);
-		sqlite3_close (handle);
-		return -1;
-	    }
-	}
 	  tile = tile->next;
       }
     printf ("Download completed                                        \n");
@@ -4442,7 +4484,7 @@ main (int argc, char *argv[])
 	  printf ("inserted %d ROAD nodes\n", cnt_nodes);
 	  printf ("inserted %d ROAD arcs\n", cnt_arcs);
 	  if (!preserve_osm_tables)
-	  do_clean_roads (&params);
+	      do_clean_roads (&params);
       }
     else if (mode == MODE_RAIL)
       {
@@ -4470,7 +4512,7 @@ main (int argc, char *argv[])
 	  printf ("inserted %d RAIL arcs\n", cnt_arcs);
 	  printf ("inserted %d RAIL stations\n", cnt_stations);
 	  if (!preserve_osm_tables)
-	  do_clean_rails (&params);
+	      do_clean_rails (&params);
       }
     else if (mode == MODE_MAP)
       {
@@ -4499,7 +4541,7 @@ main (int argc, char *argv[])
 	  printf ("inserted %d MultiLinestring Features\n", multi_linestrings);
 	  printf ("inserted %d MultiPolygon Features\n", multi_polygons);
 	  if (!preserve_osm_tables)
-	  do_clean_map (&params);
+	      do_clean_map (&params);
       }
 
     if (in_memory)
