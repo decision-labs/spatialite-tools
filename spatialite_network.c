@@ -2368,7 +2368,7 @@ validate_no_geom (const char *path, const char *table, const char *from_column,
     sprintf (sql,
 	     "SELECT ROWID, \"%s\", \"%s\", \"%s\"",
 	     from_column, to_column, cost_column);
-    col_n = 3;
+    col_n = 4;
     if (oneway_tofrom)
       {
 	  sprintf (sql2, ", \"%s\"", oneway_tofrom);
