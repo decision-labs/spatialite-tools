@@ -2574,7 +2574,7 @@ do_help ()
     fprintf (stderr,
 	     "                                  if omitted, GLength(g)\n");
     fprintf (stderr,
-	     "                                  will be used by defualt\n\n");
+	     "                                  will be used by default\n\n");
     fprintf (stderr, "you can specify the following options as well:\n");
     fprintf (stderr, "----------------------------------------------\n");
     fprintf (stderr, "--a-star-supported                *default*\n");
