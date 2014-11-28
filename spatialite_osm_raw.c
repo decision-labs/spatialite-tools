@@ -947,7 +947,7 @@ do_help ()
     fprintf (stderr,
 	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
     fprintf (stderr,
-	     "                 (*.osm.pbf) are indifferenctly supported.\n\n");
+	     "                 (*.osm.pbf) are indifferently supported.\n\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
@@ -1219,7 +1219,7 @@ main (int argc, char *argv[])
 	  ret = sqlite3_backup_finish (backup);
 	  sqlite3_close (handle);
 	  handle = disk_db_handle;
-	  printf ("\tIN_MEMORY database succesfully exported\n");
+	  printf ("\tIN_MEMORY database successfully exported\n");
       }
 
 /* closing the DB connection */

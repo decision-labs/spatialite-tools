@@ -1330,7 +1330,7 @@ create_qualified_nodes (struct aux_params *params, const char *table)
 	  fprintf (stderr, "COMMIT TRANSACTION error: %s\n", sql_err);
 	  sqlite3_free (sql_err);
       }
-    printf ("\tHelper table '%s_nodes' succesfully created\n", table);
+    printf ("\tHelper table '%s_nodes' successfully created\n", table);
     return 1;
   error:
     if (query_stmt != NULL)
@@ -1759,7 +1759,7 @@ db_vacuum (sqlite3 * handle)
 	  sqlite3_free (sql_err);
 	  return;
       }
-    printf ("\tAll done: OSM graph was succesfully loaded\n");
+    printf ("\tAll done: OSM graph was successfully loaded\n");
 }
 
 static int
@@ -2255,7 +2255,7 @@ do_help ()
     fprintf (stderr,
 	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
     fprintf (stderr,
-	     "                 (*.osm.pbf) are indifferenctly supported.\n\n");
+	     "                 (*.osm.pbf) are indifferently supported.\n\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n");
     fprintf (stderr,
@@ -2481,7 +2481,7 @@ main (int argc, char *argv[])
 		error = 1;
 	    }
 	  if (print_template (template_path, railways))
-	      printf ("template-file \"%s\" succesfully created\n\n",
+	      printf ("template-file \"%s\" successfully created\n\n",
 		      template_path);
 	  return 0;
       }
@@ -2518,7 +2518,7 @@ main (int argc, char *argv[])
 		error = 1;
 	    }
 	  if (parse_template (&params, template_path))
-	      printf ("template-file \"%s\" succesfully acquired\n\n",
+	      printf ("template-file \"%s\" successfully acquired\n\n",
 		      template_path);
 	  else
 	      return -1;
@@ -2740,7 +2740,7 @@ main (int argc, char *argv[])
 	  ret = sqlite3_backup_finish (backup);
 	  sqlite3_close (handle);
 	  handle = disk_handle;
-	  printf ("\tIN_MEMORY database succesfully exported\n");
+	  printf ("\tIN_MEMORY database successfully exported\n");
       }
 /* VACUUMing */
     db_vacuum (handle);

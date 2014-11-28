@@ -2740,7 +2740,7 @@ static int do_meta_command(char *zLine, struct callback_data *p){
           }
           else
               fprintf (stderr, "Unable to parse: %s\n", dxf_path);
-          fprintf(stderr, "\n*** DXF file succesfully loaded\n"); 
+          fprintf(stderr, "\n*** DXF file successfully loaded\n"); 
 stop_dxf:
       /* destroying the DXF parser */
           gaiaDestroyDxfParser (dxf);
@@ -2865,7 +2865,7 @@ stop_dxf:
           {
               int cnt1 = sqlite3_total_changes(p->db);
               if (cnt1 > cnt0)
-                  fprintf(stderr, "SpatialTable %s succesfully removed\n", azArg[1]);
+                  fprintf(stderr, "SpatialTable %s successfully removed\n", azArg[1]);
               else
                   fprintf(stderr, "SpatialTable %s seems not to exist\n", azArg[1]);
           }

@@ -7056,7 +7056,7 @@ main (int argc, char *argv[])
 	  sqlite3_free (sql_err);
 	  goto stop;
       }
-    printf ("\tDB-file succesfully converted !!!\n\n");
+    printf ("\tDB-file successfully converted !!!\n\n");
     goto end;
 
 /* closing the DB */

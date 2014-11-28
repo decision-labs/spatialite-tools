@@ -528,7 +528,7 @@ main (int argc, char *argv[])
 	  ret = sqlite3_backup_finish (backup);
 	  sqlite3_close (handle);
 	  handle = disk_handle;
-	  printf ("\tIN_MEMORY database succesfully exported\n");
+	  printf ("\tIN_MEMORY database successfully exported\n");
       }
 
 /* memory cleanup */
