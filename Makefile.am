@@ -85,5 +85,5 @@ EXTRA_DIST = makefile.vc nmake.opt \
 	Makefile-static-Linux \
 	Makefile-static-MacOsX
 
-AUTOMAKE_OPTIONS = dist-zip
+AUTOMAKE_OPTIONS = dist-zip foreign
 

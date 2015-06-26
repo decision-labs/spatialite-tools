@@ -87,6 +87,9 @@
 /* Define to 1 if you have the `proj' library (-lproj). */
 #undef HAVE_LIBPROJ
 
+/* Define to 1 if you have the `sqlite3' library (-lsqlite3). */
+#undef HAVE_LIBSQLITE3
+
 /* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
 
@@ -108,6 +111,12 @@
 
 /* Define to 1 if you have the `readline' function. */
 #undef HAVE_READLINE
+
+/* Define to 1 if you have the <sqlite3ext.h> header file. */
+#undef HAVE_SQLITE3EXT_H
+
+/* Define to 1 if you have the <sqlite3.h> header file. */
+#undef HAVE_SQLITE3_H
 
 /* Define to 1 if you have the `sqrt' function. */
 #undef HAVE_SQRT

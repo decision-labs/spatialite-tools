@@ -4192,11 +4192,18 @@ int main(int argc, char **argv){
 /* initializing the SpatiaLite's internal cache */
   splite_cache = spatialite_alloc_connection ();
 
+/*
+ * sandro: 2015-06-26
+ * 
+ * disabling version check as suggested by Fedora and Debian maintainers
+ * 
   if( strcmp(sqlite3_sourceid(),SQLITE_SOURCE_ID)!=0 ){
     fprintf(stderr, "SQLite header and source version mismatch\n%s\n%s\n",
             sqlite3_sourceid(), SQLITE_SOURCE_ID);
     exit(1);
   }
+*/
+ 
   Argv0 = argv[0];
   main_init(&data);
 /*
