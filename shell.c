@@ -4509,6 +4509,11 @@ registering the SpatiaLite extension
 /* Sandro Furieri 2008-11-20 */
 	  auto_fdo_stop (data.db);
 /* end Sandro Furieri 2008-11-20 */
+
+/* Sandro Furieri 2015-09-14 */
+    spatialite_finalize_topologies (splite_cache);
+/* end Sandro Furieri 2015-09-14 */
+
 	  if (sqlite3_close (data.db) != SQLITE_OK)
 	    {
 		fprintf (stderr, "error closing database: %s\n",
