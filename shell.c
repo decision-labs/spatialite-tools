@@ -2748,7 +2748,12 @@ stop_dxf:
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
 	  FILE *alt;
-	  if (nArg != 3)
+	  char *arg2 = NULL;
+	  if (nArg == 2)
+		;
+	  else if (nArg == 3)
+		arg2 = azArg[2];
+	  else
 	    {
 		fprintf (stderr,
 			 "invalid arguments: .read script_path charset\n");
@@ -2761,7 +2766,7 @@ stop_dxf:
 	    }
 	  else
 	    {
-		process_input (p, alt, azArg[2]);
+		process_input (p, alt, arg2);
 		fclose (alt);
 	    }
       }
@@ -3333,7 +3338,7 @@ stop_dxf:
     rc = 2;
   }else
 
-  if( c=='r' && n>=3 && strncmp(azArg[0], "read", n)==0 && nArg==2 ){
+  if( c=='r' && n>=3 && strncmp(azArg[0], "read", n)==0 && nArg > 0 ){
     FILE *alt = fopen(azArg[1], "rb");
     if( alt==0 ){
       fprintf(stderr,"Error: cannot open \"%s\"\n", azArg[1]);
