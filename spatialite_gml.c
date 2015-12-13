@@ -591,6 +591,8 @@ end1_tag (void *data, const char *el)
 	  *(params->CharData + params->CharDataLen) = '\0';
 	  column_name (params, el);
       }
+    *(params->CharData) = '\0';
+    params->CharDataLen = 0;
 }
 
 static void
@@ -1259,6 +1261,8 @@ end2_tag (void *data, const char *el)
 	parse_coords_1 (params);
     if (strcasecmp (el, "gml:posList") == 0 || strcasecmp (el, "gml:pos") == 0)
 	parse_coords_2 (params);
+    *(params->CharData) = '\0';
+    params->CharDataLen = 0;
 }
 
 static void
@@ -1640,6 +1644,7 @@ main (int argc, char *argv[])
     params.CharDataStep = 65536;
     params.CharDataMax = params.CharDataStep;
     params.CharData = malloc (params.CharDataStep);
+    params.CharDataLen = 0;
 
     for (i = 1; i < argc; i++)
       {
