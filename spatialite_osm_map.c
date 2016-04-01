@@ -367,11 +367,10 @@ point_layer_insert (struct aux_params *params, const char *layer_name,
 		      ret = sqlite3_step (layer->ins_point_stmt);
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
-		      fprintf (stderr, "sqlite3_step() error: INS_POINT %s\n",
-			       layer_name);
-		      sqlite3_finalize (layer->ins_point_stmt);
-		      layer->ins_point_stmt = NULL;
-		      return 0;
+		      fprintf (stderr,
+			       "sqlite3_step() error: INS_POINT %s (%s)\n",
+			       layer_name, sqlite3_errmsg (params->db_handle));
+		      return 1;
 		  }
 		return 1;
 	    }
@@ -406,10 +405,9 @@ point_generic_insert (struct aux_params *params, const readosm_node * node,
 	  ret = sqlite3_step (params->ins_generic_point_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
-	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POINT\n");
-	  sqlite3_finalize (params->ins_generic_point_stmt);
-	  params->ins_generic_point_stmt = NULL;
-	  return 0;
+	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POINT (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
@@ -468,10 +466,9 @@ address_insert (struct aux_params *params, const readosm_node * node,
 	  ret = sqlite3_step (params->ins_addresses_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
-	  fprintf (stderr, "sqlite3_step() error: INS_ADDRESSES\n");
-	  sqlite3_finalize (params->ins_addresses_stmt);
-	  params->ins_addresses_stmt = NULL;
-	  return 0;
+	  fprintf (stderr, "sqlite3_step() error: INS_ADDRESSES (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
@@ -490,10 +487,9 @@ tmp_nodes_insert (struct aux_params *params, const readosm_node * node)
     ret = sqlite3_step (params->ins_tmp_nodes_stmt);
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	return 1;
-    fprintf (stderr, "sqlite3_step() error: INS_TMP_NODES\n");
-    sqlite3_finalize (params->ins_tmp_nodes_stmt);
-    params->ins_tmp_nodes_stmt = NULL;
-    return 0;
+    fprintf (stderr, "sqlite3_step() error: INS_TMP_NODES (%s)\n",
+	     sqlite3_errmsg (params->db_handle));
+    return 1;
 }
 
 static int
@@ -808,11 +804,9 @@ line_layer_insert (struct aux_params *params, const char *layer_name,
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
 		      fprintf (stderr,
-			       "sqlite3_step() error: INS_LINESTRING %s\n",
-			       layer_name);
-		      sqlite3_finalize (layer->ins_linestring_stmt);
-		      layer->ins_linestring_stmt = NULL;
-		      return 0;
+			       "sqlite3_step() error: INS_LINESTRING %s (%s)\n",
+			       layer_name, sqlite3_errmsg (params->db_handle));
+		      return 1;
 		  }
 		return 1;
 	    }
@@ -862,11 +856,9 @@ polygon_layer_insert (struct aux_params *params, const char *layer_name,
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
 		      fprintf (stderr,
-			       "sqlite3_step() error: INS_POLYGON %s\n",
-			       layer_name);
-		      sqlite3_finalize (layer->ins_polygon_stmt);
-		      layer->ins_polygon_stmt = NULL;
-		      return 0;
+			       "sqlite3_step() error: INS_POLYGON %s (%s)\n",
+			       layer_name, sqlite3_errmsg (params->db_handle));
+		      return 1;
 		  }
 		return 1;
 	    }
@@ -894,10 +886,10 @@ line_generic_insert (struct aux_params *params, sqlite3_int64 id,
 	  ret = sqlite3_step (params->ins_generic_linestring_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
-	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_LINESTRING\n");
-	  sqlite3_finalize (params->ins_generic_linestring_stmt);
-	  params->ins_generic_linestring_stmt = NULL;
-	  return 0;
+	  fprintf (stderr,
+		   "sqlite3_step() error: INS_GENERIC_LINESTRING (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
@@ -922,10 +914,9 @@ polygon_generic_insert (struct aux_params *params, sqlite3_int64 id,
 	  ret = sqlite3_step (params->ins_generic_polygon_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
-	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POLYGON\n");
-	  sqlite3_finalize (params->ins_generic_polygon_stmt);
-	  params->ins_generic_polygon_stmt = NULL;
-	  return 0;
+	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_POLYGON (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
@@ -947,10 +938,9 @@ tmp_ways_insert (struct aux_params *params, sqlite3_int64 id, int area,
 
     if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	return 1;
-    fprintf (stderr, "sqlite3_step() error: INS_TMP_WAYS\n");
-    sqlite3_finalize (params->ins_tmp_ways_stmt);
-    params->ins_tmp_ways_stmt = NULL;
-    return 0;
+    fprintf (stderr, "sqlite3_step() error: INS_TMP_WAYS (%s)\n",
+	     sqlite3_errmsg (params->db_handle));
+    return 1;
 }
 
 static int
@@ -1422,11 +1412,9 @@ multiline_layer_insert (struct aux_params *params, const char *layer_name,
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
 		      fprintf (stderr,
-			       "sqlite3_step() error: INS_MULTILINESTRING %s\n",
-			       layer_name);
-		      sqlite3_finalize (layer->ins_linestring_stmt);
-		      layer->ins_linestring_stmt = NULL;
-		      return 0;
+			       "sqlite3_step() error: INS_MULTILINESTRING %s (%s)\n",
+			       layer_name, sqlite3_errmsg (params->db_handle));
+		      return 1;
 		  }
 		return 1;
 	    }
@@ -1821,11 +1809,9 @@ multipolygon_layer_insert (struct aux_params *params, const char *layer_name,
 		      if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 			  return 1;
 		      fprintf (stderr,
-			       "sqlite3_step() error: INS_MULTIPOLYGON %s\n",
-			       layer_name);
-		      sqlite3_finalize (layer->ins_polygon_stmt);
-		      layer->ins_polygon_stmt = NULL;
-		      return 0;
+			       "sqlite3_step() error: INS_MULTIPOLYGON %s (%s)\n",
+			       layer_name, sqlite3_errmsg (params->db_handle));
+		      return 1;
 		  }
 		return 1;
 	    }
@@ -1864,10 +1850,9 @@ multiline_generic_insert (struct aux_params *params,
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
 	  fprintf (stderr,
-		   "sqlite3_step() error: INS_GENERIC_MULTILINESTRING\n");
-	  sqlite3_finalize (params->ins_generic_linestring_stmt);
-	  params->ins_generic_linestring_stmt = NULL;
-	  return 0;
+		   "sqlite3_step() error: INS_GENERIC_MULTILINESTRING (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
@@ -1903,10 +1888,10 @@ multipolygon_generic_insert (struct aux_params *params,
 	  ret = sqlite3_step (params->ins_generic_polygon_stmt);
 	  if (ret == SQLITE_DONE || ret == SQLITE_ROW)
 	      return 1;
-	  fprintf (stderr, "sqlite3_step() error: INS_GENERIC_MULTIPOLYGON\n");
-	  sqlite3_finalize (params->ins_generic_polygon_stmt);
-	  params->ins_generic_polygon_stmt = NULL;
-	  return 0;
+	  fprintf (stderr,
+		   "sqlite3_step() error: INS_GENERIC_MULTIPOLYGON (%s)\n",
+		   sqlite3_errmsg (params->db_handle));
+	  return 1;
       }
     return 1;
 }
