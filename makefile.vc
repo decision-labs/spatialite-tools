@@ -7,6 +7,7 @@
 SPATIALITE_EXE            = spatialite.exe
 EXIF_LOADER_EXE           = exif_loader.exe
 SHP_DOCTOR_EXE            = shp_doctor.exe
+SHP_REPACK_EXE            = shp_repack.exe
 SPATIALITE_NETWORK_EXE    = spatialite_network.exe
 SPATIALITE_TOOL_EXE       = spatialite_tool.exe
 SPATIALITE_OSM_NET_EXE    = spatialite_osm_net.exe
@@ -23,7 +24,7 @@ all: $(SPATIALITE_EXE) $(SHP_DOCTOR_EXE) $(SPATIALITE_TOOL_EXE) \
 	$(SPATIALITE_NETWORK_EXE) $(EXIF_LOADER_EXE) \
 	$(SPATIALITE_OSM_NET_EXE) $(SPATIALITE_OSM_MAP_EXE) \
 	$(SPATIALITE_GML_EXE) $(SPATIALITE_OSM_RAW_EXE) \
-	$(SPATIALITE_OSM_FILTER_EXE)
+	$(SPATIALITE_OSM_FILTER_EXE) $(SHP_REPACK_EXE)
 
 $(SPATIALITE_EXE): shell.obj
 	cl shell.obj C:\OSGeo4W\lib\proj_i.lib \
@@ -46,6 +47,13 @@ $(SHP_DOCTOR_EXE):	shp_doctor.obj
 		C:\OSGeo4W\lib\spatialite_i.lib C:\OSGeo4W\lib\sqlite3_i.lib 
 	if exist $(SHP_DOCTOR_EXE).manifest mt -manifest \
 		$(SHP_DOCTOR_EXE).manifest -outputresource:$(SHP_DOCTOR_EXE);1
+
+$(SHP_REPACK_EXE):	shp_repack.obj
+	cl shp_repack.obj  C:\OSGeo4W\lib\proj_i.lib \
+		C:\OSGeo4W\lib\iconv.lib C:\OSGeo4W\lib\geos_c.lib \
+		C:\OSGeo4W\lib\spatialite_i.lib C:\OSGeo4W\lib\sqlite3_i.lib 
+	if exist $(SHP_REPACK_EXE).manifest mt -manifest \
+		$(SHP_REPACK_EXE).manifest -outputresource:$(SHP_REPACK_EXE);1
 
 $(SPATIALITE_NETWORK_EXE):	spatialite_network.obj
 	cl spatialite_network.obj C:\OSGeo4W\lib\proj_i.lib \
