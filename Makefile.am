@@ -4,7 +4,7 @@ if NO_READOSM
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
 	spatialite_network \
-	shp_doctor shp_repack \
+	shp_doctor shp_sanitize \
 	exif_loader \
 	spatialite_osm_filter \
 	spatialite_gml \
@@ -19,7 +19,7 @@ else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
 	spatialite_network \
-	shp_doctor shp_repack \
+	shp_doctor shp_sanitize \
 	exif_loader \
 	spatialite_osm_net \
 	spatialite_osm_map \
@@ -42,7 +42,7 @@ spatialite_SOURCES = shell.c
 spatialite_tool_SOURCES = spatialite_tool.c
 spatialite_network_SOURCES = spatialite_network.c
 shp_doctor_SOURCES = shp_doctor.c
-shp_repack_SOURCES = shp_repack.c
+shp_sanitize_SOURCES = shp_sanitize.c
 exif_loader_SOURCES = exif_loader.c
 spatialite_xml_validator_SOURCES = spatialite_xml_validator.c
 spatialite_xml_load_SOURCES = spatialite_xml_load.c
