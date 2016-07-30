@@ -29,6 +29,14 @@
 #include <string.h>
 #include <float.h>
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
+#include "config.h"
+#endif
+
+#ifdef ENABLE_LIBXML2		/* only if LIBXML2 is enabled */
+
 #include <libxml/parser.h>
 #include <libxml/nanohttp.h>
 
@@ -4038,10 +4046,19 @@ do_help ()
 	     "-p or --preserve                skipping final cleanup (preserving OSM tables)\n");
 }
 
+#endif /* end LIBXML2 conditional */
+
 int
 main (int argc, char *argv[])
 {
 /* the MAIN function simply perform arguments checking */
+
+#ifndef ENABLE_LIBXML2		/* only if LIBXML2 is disabled */
+    fprintf (stderr, "\nthis copy of \"spatialite_osm_overpass\"\n"
+	     "was built by disabling LIBXML2 support.\n"
+	     "Sorry, cowardly quitting ...\n");
+    return 0;
+#else
     sqlite3 *handle;
     int i;
     int next_arg = ARG_NONE;
@@ -4588,4 +4605,5 @@ main (int argc, char *argv[])
     spatialite_shutdown ();
     downloader_cleanup (&downloader);
     return 0;
+#endif /* end LIBXML2 conditional */
 }

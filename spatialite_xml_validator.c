@@ -28,7 +28,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
 #include "config.h"
+#endif
+
+#ifdef ENABLE_LIBXML2		/* only if LIBXML2 is enabled */
 
 #include <libxml/parser.h>
 #include <libxml/xmlschemas.h>
@@ -636,10 +642,19 @@ validate_xml_document (struct schema_cache *cache, const char *path)
     return 0;
 }
 
+#endif /* end LIBXML2 conditional */
+
 int
 main (int argc, char *argv[])
 {
 /* the MAIN function mainly perform arguments checking */
+
+#ifndef ENABLE_LIBXML2		/* only if LIBXML2 is disabled */
+    fprintf (stderr, "\nthis copy of \"spatialite_xml_validator\"\n"
+	     "was built by disabling LIBXML2 support.\n"
+	     "Sorry, cowardly quitting ...\n");
+    return 0;
+#else
     const char *xml_path = NULL;
     const char *list_path = NULL;
     int single = 0;
@@ -715,4 +730,5 @@ main (int argc, char *argv[])
     cache_cleanup (&cache);
     xmlCleanupParser ();
     return -1;
+#endif /* end LIBXML2 conditional */
 }

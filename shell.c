@@ -71,31 +71,31 @@
 #endif /* not WIN32 */
 
 #if !defined(_WIN32) && !defined(WIN32)
-# include <signal.h>
-# if !defined(__RTP__) && !defined(_WRS_KERNEL)
-#  include <pwd.h>
-# endif
-# include <unistd.h>
-# include <sys/types.h>
+#include <signal.h>
+#if !defined(__RTP__) && !defined(_WRS_KERNEL)
+#include <pwd.h>
+#endif
+#include <unistd.h>
+#include <sys/types.h>
 #endif
 
 #ifdef HAVE_EDITLINE
-# include <editline/editline.h>
+#include <editline/editline.h>
 #endif
 #if defined(HAVE_READLINE) && HAVE_READLINE==1
-# include <readline/readline.h>
-# include <readline/history.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 #endif
 #if !defined(HAVE_EDITLINE) && (!defined(HAVE_READLINE) || HAVE_READLINE!=1)
-# define readline(p) local_getline(p,stdin,0)
-# define add_history(X)
-# define read_history(X)
-# define write_history(X)
-# define stifle_history(X)
+#define readline(p) local_getline(p,stdin,0)
+#define add_history(X)
+#define read_history(X)
+#define write_history(X)
+#define stifle_history(X)
 #endif
 
 #if defined(_WIN32) || defined(WIN32)
-# include <io.h>
+#include <io.h>
 #define isatty(h) _isatty(h)
 #define access(f,m) _access((f),(m))
 #undef popen
@@ -105,7 +105,7 @@
 #else
 /* Make sure isatty() has a prototype.
 */
-extern int isatty(int);
+extern int isatty (int);
 #endif
 
 #if defined(_WIN32_WCE)
@@ -138,29 +138,37 @@ static struct rusage sBegin;
 /*
 ** Begin timing an operation
 */
-static void beginTimer(void){
-  if( enableTimer ){
-    getrusage(RUSAGE_SELF, &sBegin);
-  }
+static void
+beginTimer (void)
+{
+    if (enableTimer)
+      {
+	  getrusage (RUSAGE_SELF, &sBegin);
+      }
 }
 
 /* Return the difference of two time_structs in seconds */
-static double timeDiff(struct timeval *pStart, struct timeval *pEnd){
-  return (pEnd->tv_usec - pStart->tv_usec)*0.000001 + 
-         (double)(pEnd->tv_sec - pStart->tv_sec);
+static double
+timeDiff (struct timeval *pStart, struct timeval *pEnd)
+{
+    return (pEnd->tv_usec - pStart->tv_usec) * 0.000001 +
+	(double) (pEnd->tv_sec - pStart->tv_sec);
 }
 
 /*
 ** Print the timing results.
 */
-static void endTimer(void){
-  if( enableTimer ){
-    struct rusage sEnd;
-    getrusage(RUSAGE_SELF, &sEnd);
-    printf("CPU Time: user %f sys %f\n",
-       timeDiff(&sBegin.ru_utime, &sEnd.ru_utime),
-       timeDiff(&sBegin.ru_stime, &sEnd.ru_stime));
-  }
+static void
+endTimer (void)
+{
+    if (enableTimer)
+      {
+	  struct rusage sEnd;
+	  getrusage (RUSAGE_SELF, &sEnd);
+	  printf ("CPU Time: user %f sys %f\n",
+		  timeDiff (&sBegin.ru_utime, &sEnd.ru_utime),
+		  timeDiff (&sBegin.ru_stime, &sEnd.ru_stime));
+      }
 }
 
 #define BEGIN_TIMER beginTimer()
@@ -175,64 +183,85 @@ static void endTimer(void){
 static HANDLE hProcess;
 static FILETIME ftKernelBegin;
 static FILETIME ftUserBegin;
-typedef BOOL (WINAPI *GETPROCTIMES)(HANDLE, LPFILETIME, LPFILETIME, LPFILETIME, LPFILETIME);
+typedef BOOL (WINAPI * GETPROCTIMES) (HANDLE, LPFILETIME, LPFILETIME,
+				      LPFILETIME, LPFILETIME);
 static GETPROCTIMES getProcessTimesAddr = NULL;
 
 /*
 ** Check to see if we have timer support.  Return 1 if necessary
 ** support found (or found previously).
 */
-static int hasTimer(void){
-  if( getProcessTimesAddr ){
-    return 1;
-  } else {
-    /* GetProcessTimes() isn't supported in WIN95 and some other Windows versions.
-    ** See if the version we are running on has it, and if it does, save off
-    ** a pointer to it and the current process handle.
-    */
-    hProcess = GetCurrentProcess();
-    if( hProcess ){
-      HINSTANCE hinstLib = LoadLibrary(TEXT("Kernel32.dll"));
-      if( NULL != hinstLib ){
-        getProcessTimesAddr = (GETPROCTIMES) GetProcAddress(hinstLib, "GetProcessTimes");
-        if( NULL != getProcessTimesAddr ){
-          return 1;
-        }
-        FreeLibrary(hinstLib); 
+static int
+hasTimer (void)
+{
+    if (getProcessTimesAddr)
+      {
+	  return 1;
       }
-    }
-  }
-  return 0;
+    else
+      {
+	  /* GetProcessTimes() isn't supported in WIN95 and some other Windows versions.
+	   ** See if the version we are running on has it, and if it does, save off
+	   ** a pointer to it and the current process handle.
+	   */
+	  hProcess = GetCurrentProcess ();
+	  if (hProcess)
+	    {
+		HINSTANCE hinstLib = LoadLibrary (TEXT ("Kernel32.dll"));
+		if (NULL != hinstLib)
+		  {
+		      getProcessTimesAddr =
+			  (GETPROCTIMES) GetProcAddress (hinstLib,
+							 "GetProcessTimes");
+		      if (NULL != getProcessTimesAddr)
+			{
+			    return 1;
+			}
+		      FreeLibrary (hinstLib);
+		  }
+	    }
+      }
+    return 0;
 }
 
 /*
 ** Begin timing an operation
 */
-static void beginTimer(void){
-  if( enableTimer && getProcessTimesAddr ){
-    FILETIME ftCreation, ftExit;
-    getProcessTimesAddr(hProcess, &ftCreation, &ftExit, &ftKernelBegin, &ftUserBegin);
-  }
+static void
+beginTimer (void)
+{
+    if (enableTimer && getProcessTimesAddr)
+      {
+	  FILETIME ftCreation, ftExit;
+	  getProcessTimesAddr (hProcess, &ftCreation, &ftExit, &ftKernelBegin,
+			       &ftUserBegin);
+      }
 }
 
 /* Return the difference of two FILETIME structs in seconds */
-static double timeDiff(FILETIME *pStart, FILETIME *pEnd){
-  sqlite_int64 i64Start = *((sqlite_int64 *) pStart);
-  sqlite_int64 i64End = *((sqlite_int64 *) pEnd);
-  return (double) ((i64End - i64Start) / 10000000.0);
+static double
+timeDiff (FILETIME * pStart, FILETIME * pEnd)
+{
+    sqlite_int64 i64Start = *((sqlite_int64 *) pStart);
+    sqlite_int64 i64End = *((sqlite_int64 *) pEnd);
+    return (double) ((i64End - i64Start) / 10000000.0);
 }
 
 /*
 ** Print the timing results.
 */
-static void endTimer(void){
-  if( enableTimer && getProcessTimesAddr){
-    FILETIME ftCreation, ftExit, ftKernelEnd, ftUserEnd;
-    getProcessTimesAddr(hProcess, &ftCreation, &ftExit, &ftKernelEnd, &ftUserEnd);
-    printf("CPU Time: user %f sys %f\n",
-       timeDiff(&ftUserBegin, &ftUserEnd),
-       timeDiff(&ftKernelBegin, &ftKernelEnd));
-  }
+static void
+endTimer (void)
+{
+    if (enableTimer && getProcessTimesAddr)
+      {
+	  FILETIME ftCreation, ftExit, ftKernelEnd, ftUserEnd;
+	  getProcessTimesAddr (hProcess, &ftCreation, &ftExit, &ftKernelEnd,
+			       &ftUserEnd);
+	  printf ("CPU Time: user %f sys %f\n",
+		  timeDiff (&ftUserBegin, &ftUserEnd), timeDiff (&ftKernelBegin,
+								 &ftKernelEnd));
+      }
 }
 
 #define BEGIN_TIMER beginTimer()
@@ -240,7 +269,7 @@ static void endTimer(void){
 #define HAS_TIMER hasTimer()
 
 #else
-#define BEGIN_TIMER 
+#define BEGIN_TIMER
 #define END_TIMER
 #define HAS_TIMER 0
 #endif
@@ -297,8 +326,8 @@ static char *Argv0;
 ** Prompt strings. Initialized in main. Settable with
 **   .prompt main continue
 */
-static char mainPrompt[20];     /* First line prompt. default: "spatialite> "*/
-static char continuePrompt[20]; /* Continuation prompt. default: "   ...> " */
+static char mainPrompt[20];	/* First line prompt. default: "spatialite> " */
+static char continuePrompt[20];	/* Continuation prompt. default: "   ...> " */
 
 /*
 ** Write I/O traces to the following stream.
@@ -314,15 +343,18 @@ static FILE *iotrace = 0;
 ** is written to iotrace.
 */
 #ifdef SQLITE_ENABLE_IOTRACE
-static void iotracePrintf(const char *zFormat, ...){
-  va_list ap;
-  char *z;
-  if( iotrace==0 ) return;
-  va_start(ap, zFormat);
-  z = sqlite3_vmprintf(zFormat, ap);
-  va_end(ap);
-  fprintf(iotrace, "%s", z);
-  sqlite3_free(z);
+static void
+iotracePrintf (const char *zFormat, ...)
+{
+    va_list ap;
+    char *z;
+    if (iotrace == 0)
+	return;
+    va_start (ap, zFormat);
+    z = sqlite3_vmprintf (zFormat, ap);
+    va_end (ap);
+    fprintf (iotrace, "%s", z);
+    sqlite3_free (z);
 }
 #endif
 
@@ -332,13 +364,14 @@ static void iotracePrintf(const char *zFormat, ...){
     Sandro Furieri 2013-04-29
      WFS progress handler callback
 */
-static void wfs_page_done(int features, void *ptr)
+static void
+wfs_page_done (int features, void *ptr)
 {
     if (isatty (1))
-    {
-	printf("WFS Features loaded since now: %d\r", features);
-	fflush(stdout);
-    }
+      {
+	  printf ("WFS Features loaded since now: %d\r", features);
+	  fflush (stdout);
+      }
 }
 
 /* 
@@ -724,7 +757,7 @@ convert_to_utf8 (char *buf, int maxlen)
 
 /* sandro 2013-11-17 */
 static void
-split_drop_name(const char *str, char **prefix, char **table)
+split_drop_name (const char *str, char **prefix, char **table)
 {
     int len1;
     int len2;
@@ -733,27 +766,28 @@ split_drop_name(const char *str, char **prefix, char **table)
     *prefix = NULL;
     *table = NULL;
     while (*p != '\0')
-    {
-        if (*p == '.')
-        {
-            pt = p;
-            break;
-        }
-        p++;
-    }
+      {
+	  if (*p == '.')
+	    {
+		pt = p;
+		break;
+	    }
+	  p++;
+      }
     if (pt == NULL)
-        return;
+	return;
     len1 = pt - str;
-    len2 = strlen(pt + 1);
+    len2 = strlen (pt + 1);
     if (len1 > 0 && len2 > 0)
-    {
-        *prefix = malloc(len1 + 1);
-        memcpy(*prefix, str, len1);
-        *(*prefix + len1) = '\0';
-        *table = malloc(len2 + 1);
-        strcpy(*table, pt + 1);
-    }
+      {
+	  *prefix = malloc (len1 + 1);
+	  memcpy (*prefix, str, len1);
+	  *(*prefix + len1) = '\0';
+	  *table = malloc (len2 + 1);
+	  strcpy (*table, pt + 1);
+      }
 }
+
 /* end sandro 2013-11-17 */
 
 static void
@@ -801,28 +835,49 @@ convert_input_to_utf8 (char *buf, int maxlen)
 /*
 ** Determines if a string is a number of not.
 */
-static int isNumber(const char *z, int *realnum){
-  if( *z=='-' || *z=='+' ) z++;
-  if( !IsDigit(*z) ){
-    return 0;
-  }
-  z++;
-  if( realnum ) *realnum = 0;
-  while( IsDigit(*z) ){ z++; }
-  if( *z=='.' ){
+static int
+isNumber (const char *z, int *realnum)
+{
+    if (*z == '-' || *z == '+')
+	z++;
+    if (!IsDigit (*z))
+      {
+	  return 0;
+      }
     z++;
-    if( !IsDigit(*z) ) return 0;
-    while( IsDigit(*z) ){ z++; }
-    if( realnum ) *realnum = 1;
-  }
-  if( *z=='e' || *z=='E' ){
-    z++;
-    if( *z=='+' || *z=='-' ) z++;
-    if( !IsDigit(*z) ) return 0;
-    while( IsDigit(*z) ){ z++; }
-    if( realnum ) *realnum = 1;
-  }
-  return *z==0;
+    if (realnum)
+	*realnum = 0;
+    while (IsDigit (*z))
+      {
+	  z++;
+      }
+    if (*z == '.')
+      {
+	  z++;
+	  if (!IsDigit (*z))
+	      return 0;
+	  while (IsDigit (*z))
+	    {
+		z++;
+	    }
+	  if (realnum)
+	      *realnum = 1;
+      }
+    if (*z == 'e' || *z == 'E')
+      {
+	  z++;
+	  if (*z == '+' || *z == '-')
+	      z++;
+	  if (!IsDigit (*z))
+	      return 0;
+	  while (IsDigit (*z))
+	    {
+		z++;
+	    }
+	  if (realnum)
+	      *realnum = 1;
+      }
+    return *z == 0;
 }
 
 /*
@@ -834,16 +889,14 @@ static int isNumber(const char *z, int *realnum){
 ** of work. Instead just use this hack, which is quite harmless.
 */
 static const char *zShellStatic = 0;
-static void shellstaticFunc(
-  sqlite3_context *context,
-  int argc,
-  sqlite3_value **argv
-){
-  assert( 0==argc );
-  assert( zShellStatic );
-  UNUSED_PARAMETER(argc);
-  UNUSED_PARAMETER(argv);
-  sqlite3_result_text(context, zShellStatic, -1, SQLITE_STATIC);
+static void
+shellstaticFunc (sqlite3_context * context, int argc, sqlite3_value ** argv)
+{
+    assert (0 == argc);
+    assert (zShellStatic);
+    UNUSED_PARAMETER (argc);
+    UNUSED_PARAMETER (argv);
+    sqlite3_result_text (context, zShellStatic, -1, SQLITE_STATIC);
 }
 
 
@@ -856,47 +909,60 @@ static void shellstaticFunc(
 ** The interface is like "readline" but no command-line editing
 ** is done.
 */
-static char *local_getline(char *zPrompt, FILE *in, int csvFlag){
-  char *zLine;
-  int nLine;
-  int n;
-  int inQuote = 0;
+static char *
+local_getline (char *zPrompt, FILE * in, int csvFlag)
+{
+    char *zLine;
+    int nLine;
+    int n;
+    int inQuote = 0;
 
-  if( zPrompt && *zPrompt ){
-    printf("%s",zPrompt);
-    fflush(stdout);
-  }
-  nLine = 100;
-  zLine = malloc( nLine );
-  if( zLine==0 ) return 0;
-  n = 0;
-  while( 1 ){
-    if( n+100>nLine ){
-      nLine = nLine*2 + 100;
-      zLine = realloc(zLine, nLine);
-      if( zLine==0 ) return 0;
-    }
-    if( fgets(&zLine[n], nLine - n, in)==0 ){
-      if( n==0 ){
-        free(zLine);
-        return 0;
+    if (zPrompt && *zPrompt)
+      {
+	  printf ("%s", zPrompt);
+	  fflush (stdout);
       }
-      zLine[n] = 0;
-      break;
-    }
-    while( zLine[n] ){
-      if( zLine[n]=='"' ) inQuote = !inQuote;
-      n++;
-    }
-    if( n>0 && zLine[n-1]=='\n' && (!inQuote || !csvFlag) ){
-      n--;
-      if( n>0 && zLine[n-1]=='\r' ) n--;
-      zLine[n] = 0;
-      break;
-    }
-  }
-  zLine = realloc( zLine, n+1 );
-  return zLine;
+    nLine = 100;
+    zLine = malloc (nLine);
+    if (zLine == 0)
+	return 0;
+    n = 0;
+    while (1)
+      {
+	  if (n + 100 > nLine)
+	    {
+		nLine = nLine * 2 + 100;
+		zLine = realloc (zLine, nLine);
+		if (zLine == 0)
+		    return 0;
+	    }
+	  if (fgets (&zLine[n], nLine - n, in) == 0)
+	    {
+		if (n == 0)
+		  {
+		      free (zLine);
+		      return 0;
+		  }
+		zLine[n] = 0;
+		break;
+	    }
+	  while (zLine[n])
+	    {
+		if (zLine[n] == '"')
+		    inQuote = !inQuote;
+		n++;
+	    }
+	  if (n > 0 && zLine[n - 1] == '\n' && (!inQuote || !csvFlag))
+	    {
+		n--;
+		if (n > 0 && zLine[n - 1] == '\r')
+		    n--;
+		zLine[n] = 0;
+		break;
+	    }
+      }
+    zLine = realloc (zLine, n + 1);
+    return zLine;
 }
 
 /*
@@ -905,29 +971,37 @@ static char *local_getline(char *zPrompt, FILE *in, int csvFlag){
 ** zPrior is a string of prior text retrieved.  If not the empty
 ** string, then issue a continuation prompt.
 */
-static char *one_input_line(const char *zPrior, FILE *in){
-  char *zPrompt;
-  char *zResult;
-  if( in!=0 ){
-    return local_getline(0, in, 0);
-  }
-  if( zPrior && zPrior[0] ){
-    zPrompt = continuePrompt;
-  }else{
-    zPrompt = mainPrompt;
-  }
-  zResult = readline(zPrompt);
+static char *
+one_input_line (const char *zPrior, FILE * in)
+{
+    char *zPrompt;
+    char *zResult;
+    if (in != 0)
+      {
+	  return local_getline (0, in, 0);
+      }
+    if (zPrior && zPrior[0])
+      {
+	  zPrompt = continuePrompt;
+      }
+    else
+      {
+	  zPrompt = mainPrompt;
+      }
+    zResult = readline (zPrompt);
 #if defined(HAVE_READLINE) && HAVE_READLINE==1
-  if( zResult && *zResult ) add_history(zResult);
+    if (zResult && *zResult)
+	add_history (zResult);
 #endif
-  return zResult;
+    return zResult;
 }
 
-struct previous_mode_data {
-  int valid;        /* Is there legit data in here? */
-  int mode;
-  int showHeader;
-  int colWidth[100];
+struct previous_mode_data
+{
+    int valid;			/* Is there legit data in here? */
+    int mode;
+    int showHeader;
+    int colWidth[100];
 };
 
 /*
@@ -935,56 +1009,57 @@ struct previous_mode_data {
 ** the main program to the callback.  This is used to communicate
 ** state and mode information.
 */
-struct callback_data {
-  sqlite3 *db;           /* The database */
-  int echoOn;            /* True to echo input commands */
-  int statsOn;           /* True to display memory stats before each finalize */
-  int cnt;               /* Number of records displayed so far */
-  FILE *out;             /* Write results here */
-  FILE *traceOut;        /* Output for sqlite3_trace() */
-  int nErr;              /* Number of errors seen */
-  int mode;              /* An output mode setting */
-  int writableSchema;    /* True if PRAGMA writable_schema=ON */
-  int showHeader;        /* True to show column names in List or Column mode */
-  char *zDestTable;      /* Name of destination table when MODE_Insert */
-  char separator[20];    /* Separator character for MODE_List */
-  int colWidth[100];     /* Requested width of each column when in column mode*/
-  int actualWidth[100];  /* Actual width of each column */
-  char nullvalue[20];    /* The text to print when a NULL comes back from
-                         ** the database */
-  struct previous_mode_data explainPrev;
-                         /* Holds the mode information just before
-                         ** .explain ON */
-  char outfile[FILENAME_MAX]; /* Filename for *out */
-  const char *zDbFilename;    /* name of the database file */
-  const char *zVfs;           /* Name of VFS to use */
-  sqlite3_stmt *pStmt;   /* Current statement if any. */
-  FILE *pLog;            /* Write log output here */
+struct callback_data
+{
+    sqlite3 *db;		/* The database */
+    int echoOn;			/* True to echo input commands */
+    int statsOn;		/* True to display memory stats before each finalize */
+    int cnt;			/* Number of records displayed so far */
+    FILE *out;			/* Write results here */
+    FILE *traceOut;		/* Output for sqlite3_trace() */
+    int nErr;			/* Number of errors seen */
+    int mode;			/* An output mode setting */
+    int writableSchema;		/* True if PRAGMA writable_schema=ON */
+    int showHeader;		/* True to show column names in List or Column mode */
+    char *zDestTable;		/* Name of destination table when MODE_Insert */
+    char separator[20];		/* Separator character for MODE_List */
+    int colWidth[100];		/* Requested width of each column when in column mode */
+    int actualWidth[100];	/* Actual width of each column */
+    char nullvalue[20];		/* The text to print when a NULL comes back from
+				 ** the database */
+    struct previous_mode_data explainPrev;
+    /* Holds the mode information just before
+     ** .explain ON */
+    char outfile[FILENAME_MAX];	/* Filename for *out */
+    const char *zDbFilename;	/* name of the database file */
+    const char *zVfs;		/* Name of VFS to use */
+    sqlite3_stmt *pStmt;	/* Current statement if any. */
+    FILE *pLog;			/* Write log output here */
 };
 
 /*
 ** These are the allowed modes.
 */
-#define MODE_Line     0  /* One column per line.  Blank line between records */
-#define MODE_Column   1  /* One record per line in neat columns */
-#define MODE_List     2  /* One record per line with a separator */
-#define MODE_Semi     3  /* Same as MODE_List but append ";" to each line */
-#define MODE_Html     4  /* Generate an XHTML table */
-#define MODE_Insert   5  /* Generate SQL "insert" statements */
-#define MODE_Tcl      6  /* Generate ANSI-C or TCL quoted elements */
-#define MODE_Csv      7  /* Quote strings, numbers are plain */
-#define MODE_Explain  8  /* Like MODE_Column, but do not truncate data */
+#define MODE_Line     0		/* One column per line.  Blank line between records */
+#define MODE_Column   1		/* One record per line in neat columns */
+#define MODE_List     2		/* One record per line with a separator */
+#define MODE_Semi     3		/* Same as MODE_List but append ";" to each line */
+#define MODE_Html     4		/* Generate an XHTML table */
+#define MODE_Insert   5		/* Generate SQL "insert" statements */
+#define MODE_Tcl      6		/* Generate ANSI-C or TCL quoted elements */
+#define MODE_Csv      7		/* Quote strings, numbers are plain */
+#define MODE_Explain  8		/* Like MODE_Column, but do not truncate data */
 
 static const char *modeDescr[] = {
-  "line",
-  "column",
-  "list",
-  "semi",
-  "html",
-  "insert",
-  "tcl",
-  "csv",
-  "explain",
+    "line",
+    "column",
+    "list",
+    "semi",
+    "html",
+    "insert",
+    "tcl",
+    "csv",
+    "explain",
 };
 
 /*
@@ -996,123 +1071,179 @@ static const char *modeDescr[] = {
 ** Compute a string length that is limited to what can be stored in
 ** lower 30 bits of a 32-bit signed integer.
 */
-static int strlen30(const char *z){
-  const char *z2 = z;
-  while( *z2 ){ z2++; }
-  return 0x3fffffff & (int)(z2 - z);
+static int
+strlen30 (const char *z)
+{
+    const char *z2 = z;
+    while (*z2)
+      {
+	  z2++;
+      }
+    return 0x3fffffff & (int) (z2 - z);
 }
 
 /*
 ** A callback for the sqlite3_log() interface.
 */
-static void shellLog(void *pArg, int iErrCode, const char *zMsg){
-  struct callback_data *p = (struct callback_data*)pArg;
-  if( p->pLog==0 ) return;
-  fprintf(p->pLog, "(%d) %s\n", iErrCode, zMsg);
-  fflush(p->pLog);
+static void
+shellLog (void *pArg, int iErrCode, const char *zMsg)
+{
+    struct callback_data *p = (struct callback_data *) pArg;
+    if (p->pLog == 0)
+	return;
+    fprintf (p->pLog, "(%d) %s\n", iErrCode, zMsg);
+    fflush (p->pLog);
 }
 
 /*
 ** Output the given string as a hex-encoded blob (eg. X'1234' )
 */
-static void output_hex_blob(FILE *out, const void *pBlob, int nBlob){
-  int i;
-  char *zBlob = (char *)pBlob;
-  fprintf(out,"X'");
-  for(i=0; i<nBlob; i++){ fprintf(out,"%02x",zBlob[i]&0xff); }
-  fprintf(out,"'");
+static void
+output_hex_blob (FILE * out, const void *pBlob, int nBlob)
+{
+    int i;
+    char *zBlob = (char *) pBlob;
+    fprintf (out, "X'");
+    for (i = 0; i < nBlob; i++)
+      {
+	  fprintf (out, "%02x", zBlob[i] & 0xff);
+      }
+    fprintf (out, "'");
 }
 
 /*
 ** Output the given string as a quoted string using SQL quoting conventions.
 */
-static void output_quoted_string(FILE *out, const char *z){
-  int i;
-  int nSingle = 0;
-  for(i=0; z[i]; i++){
-    if( z[i]=='\'' ) nSingle++;
-  }
-  if( nSingle==0 ){
-    fprintf(out,"'%s'",z);
-  }else{
-    fprintf(out,"'");
-    while( *z ){
-      for(i=0; z[i] && z[i]!='\''; i++){}
-      if( i==0 ){
-        fprintf(out,"''");
-        z++;
-      }else if( z[i]=='\'' ){
-        fprintf(out,"%.*s''",i,z);
-        z += i+1;
-      }else{
-        fprintf(out,"%s",z);
-        break;
+static void
+output_quoted_string (FILE * out, const char *z)
+{
+    int i;
+    int nSingle = 0;
+    for (i = 0; z[i]; i++)
+      {
+	  if (z[i] == '\'')
+	      nSingle++;
       }
-    }
-    fprintf(out,"'");
-  }
+    if (nSingle == 0)
+      {
+	  fprintf (out, "'%s'", z);
+      }
+    else
+      {
+	  fprintf (out, "'");
+	  while (*z)
+	    {
+		for (i = 0; z[i] && z[i] != '\''; i++)
+		  {
+		  }
+		if (i == 0)
+		  {
+		      fprintf (out, "''");
+		      z++;
+		  }
+		else if (z[i] == '\'')
+		  {
+		      fprintf (out, "%.*s''", i, z);
+		      z += i + 1;
+		  }
+		else
+		  {
+		      fprintf (out, "%s", z);
+		      break;
+		  }
+	    }
+	  fprintf (out, "'");
+      }
 }
 
 /*
 ** Output the given string as a quoted according to C or TCL quoting rules.
 */
-static void output_c_string(FILE *out, const char *z){
-  unsigned int c;
-  fputc('"', out);
-  while( (c = *(z++))!=0 ){
-    if( c=='\\' ){
-      fputc(c, out);
-      fputc(c, out);
-    }else if( c=='\t' ){
-      fputc('\\', out);
-      fputc('t', out);
-    }else if( c=='\n' ){
-      fputc('\\', out);
-      fputc('n', out);
-    }else if( c=='\r' ){
-      fputc('\\', out);
-      fputc('r', out);
-    }else if( !isprint(c) ){
-      fprintf(out, "\\%03o", c&0xff);
-    }else{
-      fputc(c, out);
-    }
-  }
-  fputc('"', out);
+static void
+output_c_string (FILE * out, const char *z)
+{
+    unsigned int c;
+    fputc ('"', out);
+    while ((c = *(z++)) != 0)
+      {
+	  if (c == '\\')
+	    {
+		fputc (c, out);
+		fputc (c, out);
+	    }
+	  else if (c == '\t')
+	    {
+		fputc ('\\', out);
+		fputc ('t', out);
+	    }
+	  else if (c == '\n')
+	    {
+		fputc ('\\', out);
+		fputc ('n', out);
+	    }
+	  else if (c == '\r')
+	    {
+		fputc ('\\', out);
+		fputc ('r', out);
+	    }
+	  else if (!isprint (c))
+	    {
+		fprintf (out, "\\%03o", c & 0xff);
+	    }
+	  else
+	    {
+		fputc (c, out);
+	    }
+      }
+    fputc ('"', out);
 }
 
 /*
 ** Output the given string with characters that are special to
 ** HTML escaped.
 */
-static void output_html_string(FILE *out, const char *z){
-  int i;
-  while( *z ){
-    for(i=0;   z[i] 
-            && z[i]!='<' 
-            && z[i]!='&' 
-            && z[i]!='>' 
-            && z[i]!='\"' 
-            && z[i]!='\'';
-        i++){}
-    if( i>0 ){
-      fprintf(out,"%.*s",i,z);
-    }
-    if( z[i]=='<' ){
-      fprintf(out,"&lt;");
-    }else if( z[i]=='&' ){
-      fprintf(out,"&amp;");
-    }else if( z[i]=='>' ){
-      fprintf(out,"&gt;");
-    }else if( z[i]=='\"' ){
-      fprintf(out,"&quot;");
-    }else if( z[i]=='\'' ){
-      fprintf(out,"&#39;");
-    }else{
-      break;
-    }
-    z += i + 1;
-  }
+static void
+output_html_string (FILE * out, const char *z)
+{
+    int i;
+    while (*z)
+      {
+	  for (i = 0; z[i]
+	       && z[i] != '<'
+	       && z[i] != '&'
+	       && z[i] != '>' && z[i] != '\"' && z[i] != '\''; i++)
+	    {
+	    }
+	  if (i > 0)
+	    {
+		fprintf (out, "%.*s", i, z);
+	    }
+	  if (z[i] == '<')
+	    {
+		fprintf (out, "&lt;");
+	    }
+	  else if (z[i] == '&')
+	    {
+		fprintf (out, "&amp;");
+	    }
+	  else if (z[i] == '>')
+	    {
+		fprintf (out, "&gt;");
+	    }
+	  else if (z[i] == '\"')
+	    {
+		fprintf (out, "&quot;");
+	    }
+	  else if (z[i] == '\'')
+	    {
+		fprintf (out, "&#39;");
+	    }
+	  else
+	    {
+		break;
+	    }
+	  z += i + 1;
+      }
 }
 
 /*
@@ -1120,22 +1251,22 @@ static void output_html_string(FILE *out, const char *z){
 ** array, then the string must be quoted for CSV.
 */
 static const char needCsvQuote[] = {
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 0, 1, 0, 0, 0, 0, 1,   0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 0, 
-  0, 0, 0, 0, 0, 0, 0, 0,   0, 0, 0, 0, 0, 0, 0, 1, 
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
-  1, 1, 1, 1, 1, 1, 1, 1,   1, 1, 1, 1, 1, 1, 1, 1,   
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 };
 
 /*
@@ -1143,45 +1274,61 @@ static const char needCsvQuote[] = {
 ** the separator, which may or may not be a comma.  p->nullvalue is
 ** the null value.  Strings are quoted if necessary.
 */
-static void output_csv(struct callback_data *p, const char *z, int bSep){
-  FILE *out = p->out;
-  if( z==0 ){
-    fprintf(out,"%s",p->nullvalue);
-  }else{
-    int i;
-    int nSep = strlen30(p->separator);
-    for(i=0; z[i]; i++){
-      if( needCsvQuote[((unsigned char*)z)[i]] 
-         || (z[i]==p->separator[0] && 
-             (nSep==1 || memcmp(z, p->separator, nSep)==0)) ){
-        i = 0;
-        break;
+static void
+output_csv (struct callback_data *p, const char *z, int bSep)
+{
+    FILE *out = p->out;
+    if (z == 0)
+      {
+	  fprintf (out, "%s", p->nullvalue);
       }
-    }
-    if( i==0 ){
-      putc('"', out);
-      for(i=0; z[i]; i++){
-        if( z[i]=='"' ) putc('"', out);
-        putc(z[i], out);
+    else
+      {
+	  int i;
+	  int nSep = strlen30 (p->separator);
+	  for (i = 0; z[i]; i++)
+	    {
+		if (needCsvQuote[((unsigned char *) z)[i]]
+		    || (z[i] == p->separator[0] &&
+			(nSep == 1 || memcmp (z, p->separator, nSep) == 0)))
+		  {
+		      i = 0;
+		      break;
+		  }
+	    }
+	  if (i == 0)
+	    {
+		putc ('"', out);
+		for (i = 0; z[i]; i++)
+		  {
+		      if (z[i] == '"')
+			  putc ('"', out);
+		      putc (z[i], out);
+		  }
+		putc ('"', out);
+	    }
+	  else
+	    {
+		fprintf (out, "%s", z);
+	    }
       }
-      putc('"', out);
-    }else{
-      fprintf(out, "%s", z);
-    }
-  }
-  if( bSep ){
-    fprintf(p->out, "%s", p->separator);
-  }
+    if (bSep)
+      {
+	  fprintf (p->out, "%s", p->separator);
+      }
 }
 
 #ifdef SIGINT
 /*
 ** This routine runs when the user presses Ctrl-C
 */
-static void interrupt_handler(int NotUsed){
-  UNUSED_PARAMETER(NotUsed);
-  seenInterrupt = 1;
-  if( db ) sqlite3_interrupt(db);
+static void
+interrupt_handler (int NotUsed)
+{
+    UNUSED_PARAMETER (NotUsed);
+    seenInterrupt = 1;
+    if (db)
+	sqlite3_interrupt (db);
 }
 #endif
 
@@ -1189,246 +1336,309 @@ static void interrupt_handler(int NotUsed){
 ** This is the callback routine that the shell
 ** invokes for each row of a query result.
 */
-static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int *aiType){
-  int i;
+static int
+shell_callback (void *pArg, int nArg, char **azArg, char **azCol, int *aiType)
+{
+    int i;
 /* Sandro Furieri 11 July 2008 - supporting full UNICODE */
     char *buf = NULL;
     int len;
 /* end Sandro Furieri 11 July 2008 */
-  struct callback_data *p = (struct callback_data*)pArg;
+    struct callback_data *p = (struct callback_data *) pArg;
 
-  switch( p->mode ){
-    case MODE_Line: {
-      int w = 5;
-      if( azArg==0 ) break;
-      for(i=0; i<nArg; i++){
-        int len = strlen30(azCol[i] ? azCol[i] : "");
-        if( len>w ) w = len;
-      }
-      if( p->cnt++>0 ) fprintf(p->out,"\n");
-      for(i=0; i<nArg; i++){
+    switch (p->mode)
+      {
+      case MODE_Line:
+	  {
+	      int w = 5;
+	      if (azArg == 0)
+		  break;
+	      for (i = 0; i < nArg; i++)
+		{
+		    int len = strlen30 (azCol[i] ? azCol[i] : "");
+		    if (len > w)
+			w = len;
+		}
+	      if (p->cnt++ > 0)
+		  fprintf (p->out, "\n");
+	      for (i = 0; i < nArg; i++)
+		{
 /* Sandro Furieri 11 July 2008
         fprintf(p->out,"%*s = %s\n", w, azCol[i],
                 azArg[i] ? azArg[i] : p->nullvalue);
  */
-	    if (azArg[i] == 0)
-		fprintf (p->out, "%*s = %s\n", w, azCol[i],
-			 p->nullvalue);
-	    else
-	      {
-		  len = strlen (azArg[i]) + 1;
-		  if (buf)
-		      free (buf);
-		  buf = malloc (len * 4);
-		  strcpy (buf, azArg[i]);
-		  convert_from_utf8 (buf, len * 4);
-		  fprintf (p->out, "%*s = %s\n", w, azCol[i],
-			   azArg[i] ? buf : p->nullvalue);
-                  free(buf);
-                  buf = NULL;
-	      }
+		    if (azArg[i] == 0)
+			fprintf (p->out, "%*s = %s\n", w, azCol[i],
+				 p->nullvalue);
+		    else
+		      {
+			  len = strlen (azArg[i]) + 1;
+			  if (buf)
+			      free (buf);
+			  buf = malloc (len * 4);
+			  strcpy (buf, azArg[i]);
+			  convert_from_utf8 (buf, len * 4);
+			  fprintf (p->out, "%*s = %s\n", w, azCol[i],
+				   azArg[i] ? buf : p->nullvalue);
+			  free (buf);
+			  buf = NULL;
+		      }
 /* end Sandro Furieri 11 July 2008 */
-      }
-      break;
-    }
-    case MODE_Explain:
-    case MODE_Column: {
-      if( p->cnt++==0 ){
-        for(i=0; i<nArg; i++){
-          int w, n;
-          if( i<ArraySize(p->colWidth) ){
-            w = p->colWidth[i];
-          }else{
-            w = 0;
-          }
-          if( w<=0 ){
-            w = strlen30(azCol[i] ? azCol[i] : "");
-            if( w<10 ) w = 10;
-            n = strlen30(azArg && azArg[i] ? azArg[i] : p->nullvalue);
-            if( w<n ) w = n;
-          }
-          if( i<ArraySize(p->actualWidth) ){
-            p->actualWidth[i] = w;
-          }
-          if( p->showHeader ){
-            fprintf(p->out,"%-*.*s%s",w,w,azCol[i], i==nArg-1 ? "\n": "  ");
-          }
-        }
-        if( p->showHeader ){
-          for(i=0; i<nArg; i++){
-            int w;
-            if( i<ArraySize(p->actualWidth) ){
-               w = p->actualWidth[i];
-            }else{
-               w = 10;
-            }
-            fprintf(p->out,"%-*.*s%s",w,w,"-----------------------------------"
-                   "----------------------------------------------------------",
-                    i==nArg-1 ? "\n": "  ");
-          }
-        }
-      }
-      if( azArg==0 ) break;
-      for(i=0; i<nArg; i++){
-        int w;
-        if( i<ArraySize(p->actualWidth) ){
-           w = p->actualWidth[i];
-        }else{
-           w = 10;
-        }
-        if( p->mode==MODE_Explain && azArg[i] && 
-           strlen30(azArg[i])>w ){
-          w = strlen30(azArg[i]);
-        }
+		}
+	      break;
+	  }
+      case MODE_Explain:
+      case MODE_Column:
+	  {
+	      if (p->cnt++ == 0)
+		{
+		    for (i = 0; i < nArg; i++)
+		      {
+			  int w, n;
+			  if (i < ArraySize (p->colWidth))
+			    {
+				w = p->colWidth[i];
+			    }
+			  else
+			    {
+				w = 0;
+			    }
+			  if (w <= 0)
+			    {
+				w = strlen30 (azCol[i] ? azCol[i] : "");
+				if (w < 10)
+				    w = 10;
+				n = strlen30 (azArg
+					      && azArg[i] ? azArg[i] :
+					      p->nullvalue);
+				if (w < n)
+				    w = n;
+			    }
+			  if (i < ArraySize (p->actualWidth))
+			    {
+				p->actualWidth[i] = w;
+			    }
+			  if (p->showHeader)
+			    {
+				fprintf (p->out, "%-*.*s%s", w, w, azCol[i],
+					 i == nArg - 1 ? "\n" : "  ");
+			    }
+		      }
+		    if (p->showHeader)
+		      {
+			  for (i = 0; i < nArg; i++)
+			    {
+				int w;
+				if (i < ArraySize (p->actualWidth))
+				  {
+				      w = p->actualWidth[i];
+				  }
+				else
+				  {
+				      w = 10;
+				  }
+				fprintf (p->out, "%-*.*s%s", w, w,
+					 "-----------------------------------"
+					 "----------------------------------------------------------",
+					 i == nArg - 1 ? "\n" : "  ");
+			    }
+		      }
+		}
+	      if (azArg == 0)
+		  break;
+	      for (i = 0; i < nArg; i++)
+		{
+		    int w;
+		    if (i < ArraySize (p->actualWidth))
+		      {
+			  w = p->actualWidth[i];
+		      }
+		    else
+		      {
+			  w = 10;
+		      }
+		    if (p->mode == MODE_Explain && azArg[i] &&
+			strlen30 (azArg[i]) > w)
+		      {
+			  w = strlen30 (azArg[i]);
+		      }
 /* Sandro Furieri 11 July 2008
         fprintf(p->out,"%-*.*s%s",w,w,
             azArg[i] ? azArg[i] : p->nullvalue, i==nArg-1 ? "\n": "  ");
 */
-	    if (azArg[i] == 0)
-		fprintf (p->out, "%-*.*s%s", w, w, p->nullvalue,
-			 i == nArg - 1 ? "\n" : "  ");
-	    else
-	      {
-		  len = strlen (azArg[i]) + 1;
-		  if (buf)
-		      free (buf);
-		  buf = malloc (len * 4);
-		  strcpy (buf, azArg[i]);
-		  convert_from_utf8 (buf, len * 4);
-		  fprintf (p->out, "%-*.*s%s", w, w,
-			   azArg[i] ? buf : p->nullvalue,
-			   i == nArg - 1 ? "\n" : "  ");
-                  free(buf);
-                  buf = NULL;
-	      }
+		    if (azArg[i] == 0)
+			fprintf (p->out, "%-*.*s%s", w, w, p->nullvalue,
+				 i == nArg - 1 ? "\n" : "  ");
+		    else
+		      {
+			  len = strlen (azArg[i]) + 1;
+			  if (buf)
+			      free (buf);
+			  buf = malloc (len * 4);
+			  strcpy (buf, azArg[i]);
+			  convert_from_utf8 (buf, len * 4);
+			  fprintf (p->out, "%-*.*s%s", w, w,
+				   azArg[i] ? buf : p->nullvalue,
+				   i == nArg - 1 ? "\n" : "  ");
+			  free (buf);
+			  buf = NULL;
+		      }
 /* end Sandro Furieri 11 July 2008 */
-        fprintf(p->out,"%-*.*s%s",w,w,
-            azArg[i] ? azArg[i] : p->nullvalue, i==nArg-1 ? "\n": "  ");
-      }
-      break;
-    }
-    case MODE_Semi:
-    case MODE_List: {
-      if( p->cnt++==0 && p->showHeader ){
-        for(i=0; i<nArg; i++){
-          fprintf(p->out,"%s%s",azCol[i], i==nArg-1 ? "\n" : p->separator);
-        }
-      }
-      if( azArg==0 ) break;
-      for(i=0; i<nArg; i++){
+		    fprintf (p->out, "%-*.*s%s", w, w,
+			     azArg[i] ? azArg[i] : p->nullvalue,
+			     i == nArg - 1 ? "\n" : "  ");
+		}
+	      break;
+	  }
+      case MODE_Semi:
+      case MODE_List:
+	  {
+	      if (p->cnt++ == 0 && p->showHeader)
+		{
+		    for (i = 0; i < nArg; i++)
+		      {
+			  fprintf (p->out, "%s%s", azCol[i],
+				   i == nArg - 1 ? "\n" : p->separator);
+		      }
+		}
+	      if (azArg == 0)
+		  break;
+	      for (i = 0; i < nArg; i++)
+		{
 /* Sandro Furieri 11 July 2008
         char *z = azArg[i];
         if( z==0 ) z = p->nullvalue;
 */
-	    char *z;
-	    if (azArg[i] == 0)
-		z = p->nullvalue;
-	    else
-	      {
-		  len = strlen (azArg[i]) + 1;
-		  if (buf)
-		      free (buf);
-		  buf = malloc (len * 4);
-		  z = buf;
-		  strcpy (buf, azArg[i]);
-		  convert_from_utf8 (buf, len * 4);
-	      }
+		    char *z;
+		    if (azArg[i] == 0)
+			z = p->nullvalue;
+		    else
+		      {
+			  len = strlen (azArg[i]) + 1;
+			  if (buf)
+			      free (buf);
+			  buf = malloc (len * 4);
+			  z = buf;
+			  strcpy (buf, azArg[i]);
+			  convert_from_utf8 (buf, len * 4);
+		      }
 /* end Sandro Furieri 11 July 2008 */
-        fprintf(p->out, "%s", z);
-        if (buf)
-            free(buf);
-        buf = NULL;
-        if( i<nArg-1 ){
-          fprintf(p->out, "%s", p->separator);
-        }else if( p->mode==MODE_Semi ){
-          fprintf(p->out, ";\n");
-        }else{
-          fprintf(p->out, "\n");
-        }
-      }
-      break;
-    }
-    case MODE_Html: {
-      if( p->cnt++==0 && p->showHeader ){
-        fprintf(p->out,"<TR>");
-        for(i=0; i<nArg; i++){
-          fprintf(p->out,"<TH>");
-          output_html_string(p->out, azCol[i]);
-          fprintf(p->out,"</TH>\n");
-        }
-        fprintf(p->out,"</TR>\n");
-      }
-      if( azArg==0 ) break;
-      fprintf(p->out,"<TR>");
-      for(i=0; i<nArg; i++){
-        fprintf(p->out,"<TD>");
+		    fprintf (p->out, "%s", z);
+		    if (buf)
+			free (buf);
+		    buf = NULL;
+		    if (i < nArg - 1)
+		      {
+			  fprintf (p->out, "%s", p->separator);
+		      }
+		    else if (p->mode == MODE_Semi)
+		      {
+			  fprintf (p->out, ";\n");
+		      }
+		    else
+		      {
+			  fprintf (p->out, "\n");
+		      }
+		}
+	      break;
+	  }
+      case MODE_Html:
+	  {
+	      if (p->cnt++ == 0 && p->showHeader)
+		{
+		    fprintf (p->out, "<TR>");
+		    for (i = 0; i < nArg; i++)
+		      {
+			  fprintf (p->out, "<TH>");
+			  output_html_string (p->out, azCol[i]);
+			  fprintf (p->out, "</TH>\n");
+		      }
+		    fprintf (p->out, "</TR>\n");
+		}
+	      if (azArg == 0)
+		  break;
+	      fprintf (p->out, "<TR>");
+	      for (i = 0; i < nArg; i++)
+		{
+		    fprintf (p->out, "<TD>");
 /* Sandro Furieri 11 July 2008
         output_html_string(p->out, azArg[i] ? azArg[i] : p->nullvalue);
 */
-	    if (azArg[i] == 0)
-		output_html_string (p->out, p->nullvalue);
-	    else
-	      {
-		  len = strlen (azArg[i]) + 1;
-		  if (buf)
-		      free (buf);
-		  buf = malloc (len * 4);
-		  strcpy (buf, azArg[i]);
-		  convert_from_utf8 (buf, len * 4);
-		  output_html_string (p->out,
-				      azArg[i] ? buf : p->nullvalue);
-                  free(buf);
-                  buf = NULL;
-	      }
+		    if (azArg[i] == 0)
+			output_html_string (p->out, p->nullvalue);
+		    else
+		      {
+			  len = strlen (azArg[i]) + 1;
+			  if (buf)
+			      free (buf);
+			  buf = malloc (len * 4);
+			  strcpy (buf, azArg[i]);
+			  convert_from_utf8 (buf, len * 4);
+			  output_html_string (p->out,
+					      azArg[i] ? buf : p->nullvalue);
+			  free (buf);
+			  buf = NULL;
+		      }
 /* end Sandro Furieri 11 July 2008 */
-        fprintf(p->out,"</TD>\n");
-      }
-      fprintf(p->out,"</TR>\n");
-      break;
-    }
-    case MODE_Tcl: {
-      if( p->cnt++==0 && p->showHeader ){
-        for(i=0; i<nArg; i++){
-          output_c_string(p->out,azCol[i] ? azCol[i] : "");
-          fprintf(p->out, "%s", p->separator);
-        }
-        fprintf(p->out,"\n");
-      }
-      if( azArg==0 ) break;
-      for(i=0; i<nArg; i++){
+		    fprintf (p->out, "</TD>\n");
+		}
+	      fprintf (p->out, "</TR>\n");
+	      break;
+	  }
+      case MODE_Tcl:
+	  {
+	      if (p->cnt++ == 0 && p->showHeader)
+		{
+		    for (i = 0; i < nArg; i++)
+		      {
+			  output_c_string (p->out, azCol[i] ? azCol[i] : "");
+			  fprintf (p->out, "%s", p->separator);
+		      }
+		    fprintf (p->out, "\n");
+		}
+	      if (azArg == 0)
+		  break;
+	      for (i = 0; i < nArg; i++)
+		{
 /* Sandro Furieri 11 July 2008
         output_c_string(p->out, azArg[i] ? azArg[i] : p->nullvalue);
 */
-	    if (azArg[i] == 0)
-		output_c_string (p->out, p->nullvalue);
-	    else
-	      {
-		  len = strlen (azArg[i]) + 1;
-		  if (buf)
-		      free (buf);
-		  buf = malloc (len * 4);
-		  strcpy (buf, azArg[i]);
-		  convert_from_utf8 (buf, len * 4);
-		  output_c_string (p->out,
-				   azArg[i] ? buf : p->nullvalue);
-                  free(buf);
-                  buf = NULL;
-	      }
+		    if (azArg[i] == 0)
+			output_c_string (p->out, p->nullvalue);
+		    else
+		      {
+			  len = strlen (azArg[i]) + 1;
+			  if (buf)
+			      free (buf);
+			  buf = malloc (len * 4);
+			  strcpy (buf, azArg[i]);
+			  convert_from_utf8 (buf, len * 4);
+			  output_c_string (p->out,
+					   azArg[i] ? buf : p->nullvalue);
+			  free (buf);
+			  buf = NULL;
+		      }
 /* end Sandro Furieri 11 July 2008 */
-        fprintf(p->out, "%s", p->separator);
-      }
-      fprintf(p->out,"\n");
-      break;
-    }
-    case MODE_Csv: {
-      if( p->cnt++==0 && p->showHeader ){
-        for(i=0; i<nArg; i++){
-          output_csv(p, azCol[i] ? azCol[i] : "", i<nArg-1);
-        }
-        fprintf(p->out,"\n");
-      }
-      if( azArg==0 ) break;
-      for(i=0; i<nArg; i++){
+		    fprintf (p->out, "%s", p->separator);
+		}
+	      fprintf (p->out, "\n");
+	      break;
+	  }
+      case MODE_Csv:
+	  {
+	      if (p->cnt++ == 0 && p->showHeader)
+		{
+		    for (i = 0; i < nArg; i++)
+		      {
+			  output_csv (p, azCol[i] ? azCol[i] : "",
+				      i < nArg - 1);
+		      }
+		    fprintf (p->out, "\n");
+		}
+	      if (azArg == 0)
+		  break;
+	      for (i = 0; i < nArg; i++)
+		{
 /* Sandro Furieri 11 July 2008
         output_csv(p, azArg[i], i<nArg-1);
 */
@@ -1443,70 +1653,91 @@ static int shell_callback(void *pArg, int nArg, char **azArg, char **azCol, int 
 			  strcpy (buf, azArg[i]);
 			  convert_from_utf8 (buf, len * 4);
 			  output_csv (p, buf, i < nArg - 1);
-                          free(buf);
-                          buf = NULL;
+			  free (buf);
+			  buf = NULL;
 		      }
 /* end Sandro Furieri 11 July 2008 */
-      }
-      fprintf(p->out,"\n");
-      break;
-    }
-    case MODE_Insert: {
-      p->cnt++;
-      if( azArg==0 ) break;
-      fprintf(p->out,"INSERT INTO %s VALUES(",p->zDestTable);
-      for(i=0; i<nArg; i++){
-        char *zSep = i>0 ? ",": "";
-        if( (azArg[i]==0) || (aiType && aiType[i]==SQLITE_NULL) ){
-          fprintf(p->out,"%sNULL",zSep);
-        }else if( aiType && aiType[i]==SQLITE_TEXT ){
-          if( zSep[0] ) fprintf(p->out,"%s",zSep);
+		}
+	      fprintf (p->out, "\n");
+	      break;
+	  }
+      case MODE_Insert:
+	  {
+	      p->cnt++;
+	      if (azArg == 0)
+		  break;
+	      fprintf (p->out, "INSERT INTO %s VALUES(", p->zDestTable);
+	      for (i = 0; i < nArg; i++)
+		{
+		    char *zSep = i > 0 ? "," : "";
+		    if ((azArg[i] == 0) || (aiType && aiType[i] == SQLITE_NULL))
+		      {
+			  fprintf (p->out, "%sNULL", zSep);
+		      }
+		    else if (aiType && aiType[i] == SQLITE_TEXT)
+		      {
+			  if (zSep[0])
+			      fprintf (p->out, "%s", zSep);
 /* Sandro Furieri 11 July 2008
           output_quoted_string(p->out, azArg[i]);
 */
-		  if (azArg[i] == 0)
-		      output_quoted_string (p->out, azArg[i]);
-		  else
-		    {
-			len = strlen (azArg[i]) + 1;
-			if (buf)
-			    free (buf);
-			buf = malloc (len * 4);
-			strcpy (buf, azArg[i]);
-			convert_from_utf8 (buf, len * 4);
-			output_quoted_string (p->out, buf);
-                        free(buf);
-                        buf = NULL;
-		    }
+			  if (azArg[i] == 0)
+			      output_quoted_string (p->out, azArg[i]);
+			  else
+			    {
+				len = strlen (azArg[i]) + 1;
+				if (buf)
+				    free (buf);
+				buf = malloc (len * 4);
+				strcpy (buf, azArg[i]);
+				convert_from_utf8 (buf, len * 4);
+				output_quoted_string (p->out, buf);
+				free (buf);
+				buf = NULL;
+			    }
 /* end Sandro Furieri 11 July 2008 */
-        }else if( aiType && (aiType[i]==SQLITE_INTEGER || aiType[i]==SQLITE_FLOAT) ){
-          fprintf(p->out,"%s%s",zSep, azArg[i]);
-        }else if( aiType && aiType[i]==SQLITE_BLOB && p->pStmt ){
-          const void *pBlob = sqlite3_column_blob(p->pStmt, i);
-          int nBlob = sqlite3_column_bytes(p->pStmt, i);
-          if( zSep[0] ) fprintf(p->out,"%s",zSep);
-          output_hex_blob(p->out, pBlob, nBlob);
-        }else if( isNumber(azArg[i], 0) ){
-          fprintf(p->out,"%s%s",zSep, azArg[i]);
-        }else{
-          if( zSep[0] ) fprintf(p->out,"%s",zSep);
-          output_quoted_string(p->out, azArg[i]);
-        }
+		      }
+		    else if (aiType
+			     && (aiType[i] == SQLITE_INTEGER
+				 || aiType[i] == SQLITE_FLOAT))
+		      {
+			  fprintf (p->out, "%s%s", zSep, azArg[i]);
+		      }
+		    else if (aiType && aiType[i] == SQLITE_BLOB && p->pStmt)
+		      {
+			  const void *pBlob = sqlite3_column_blob (p->pStmt, i);
+			  int nBlob = sqlite3_column_bytes (p->pStmt, i);
+			  if (zSep[0])
+			      fprintf (p->out, "%s", zSep);
+			  output_hex_blob (p->out, pBlob, nBlob);
+		      }
+		    else if (isNumber (azArg[i], 0))
+		      {
+			  fprintf (p->out, "%s%s", zSep, azArg[i]);
+		      }
+		    else
+		      {
+			  if (zSep[0])
+			      fprintf (p->out, "%s", zSep);
+			  output_quoted_string (p->out, azArg[i]);
+		      }
+		}
+	      fprintf (p->out, ");\n");
+	      break;
+	  }
       }
-      fprintf(p->out,");\n");
-      break;
-    }
-  }
-  return 0;
+    return 0;
 }
 
 /*
 ** This is the callback routine that the SQLite library
 ** invokes for each row of a query result.
 */
-static int callback(void *pArg, int nArg, char **azArg, char **azCol){
-  /* since we don't have type info, call the shell_callback with a NULL value */
-  return shell_callback(pArg, nArg, azArg, azCol, NULL);
+static int
+callback (void *pArg, int nArg, char **azArg, char **azCol)
+{
+    /* since we don't have type info, call the shell_callback with a NULL value */
+    return shell_callback (pArg, nArg, azArg, azCol, NULL);
 }
 
 /*
@@ -1514,37 +1745,50 @@ static int callback(void *pArg, int nArg, char **azArg, char **azCol){
 ** the name of the table given.  Escape any quote characters in the
 ** table name.
 */
-static void set_table_name(struct callback_data *p, const char *zName){
-  int i, n;
-  int needQuote;
-  char *z;
+static void
+set_table_name (struct callback_data *p, const char *zName)
+{
+    int i, n;
+    int needQuote;
+    char *z;
 
-  if( p->zDestTable ){
-    free(p->zDestTable);
-    p->zDestTable = 0;
-  }
-  if( zName==0 ) return;
-  needQuote = !isalpha((unsigned char)*zName) && *zName!='_';
-  for(i=n=0; zName[i]; i++, n++){
-    if( !isalnum((unsigned char)zName[i]) && zName[i]!='_' ){
-      needQuote = 1;
-      if( zName[i]=='\'' ) n++;
-    }
-  }
-  if( needQuote ) n += 2;
-  z = p->zDestTable = malloc( n+1 );
-  if( z==0 ){
-    fprintf(stderr,"Error: out of memory\n");
-    exit(1);
-  }
-  n = 0;
-  if( needQuote ) z[n++] = '\'';
-  for(i=0; zName[i]; i++){
-    z[n++] = zName[i];
-    if( zName[i]=='\'' ) z[n++] = '\'';
-  }
-  if( needQuote ) z[n++] = '\'';
-  z[n] = 0;
+    if (p->zDestTable)
+      {
+	  free (p->zDestTable);
+	  p->zDestTable = 0;
+      }
+    if (zName == 0)
+	return;
+    needQuote = !isalpha ((unsigned char) *zName) && *zName != '_';
+    for (i = n = 0; zName[i]; i++, n++)
+      {
+	  if (!isalnum ((unsigned char) zName[i]) && zName[i] != '_')
+	    {
+		needQuote = 1;
+		if (zName[i] == '\'')
+		    n++;
+	    }
+      }
+    if (needQuote)
+	n += 2;
+    z = p->zDestTable = malloc (n + 1);
+    if (z == 0)
+      {
+	  fprintf (stderr, "Error: out of memory\n");
+	  exit (1);
+      }
+    n = 0;
+    if (needQuote)
+	z[n++] = '\'';
+    for (i = 0; zName[i]; i++)
+      {
+	  z[n++] = zName[i];
+	  if (zName[i] == '\'')
+	      z[n++] = '\'';
+      }
+    if (needQuote)
+	z[n++] = '\'';
+    z[n] = 0;
 }
 
 /* zIn is either a pointer to a NULL-terminated string in memory obtained
@@ -1555,41 +1799,52 @@ static void set_table_name(struct callback_data *p, const char *zName){
 ** If the third argument, quote, is not '\0', then it is used as a 
 ** quote character for zAppend.
 */
-static char *appendText(char *zIn, char const *zAppend, char quote){
-  int len;
-  int i;
-  int nAppend = strlen30(zAppend);
-  int nIn = (zIn?strlen30(zIn):0);
+static char *
+appendText (char *zIn, char const *zAppend, char quote)
+{
+    int len;
+    int i;
+    int nAppend = strlen30 (zAppend);
+    int nIn = (zIn ? strlen30 (zIn) : 0);
 
-  len = nAppend+nIn+1;
-  if( quote ){
-    len += 2;
-    for(i=0; i<nAppend; i++){
-      if( zAppend[i]==quote ) len++;
-    }
-  }
+    len = nAppend + nIn + 1;
+    if (quote)
+      {
+	  len += 2;
+	  for (i = 0; i < nAppend; i++)
+	    {
+		if (zAppend[i] == quote)
+		    len++;
+	    }
+      }
 
-  zIn = (char *)realloc(zIn, len);
-  if( !zIn ){
-    return 0;
-  }
+    zIn = (char *) realloc (zIn, len);
+    if (!zIn)
+      {
+	  return 0;
+      }
 
-  if( quote ){
-    char *zCsr = &zIn[nIn];
-    *zCsr++ = quote;
-    for(i=0; i<nAppend; i++){
-      *zCsr++ = zAppend[i];
-      if( zAppend[i]==quote ) *zCsr++ = quote;
-    }
-    *zCsr++ = quote;
-    *zCsr++ = '\0';
-    assert( (zCsr-zIn)==len );
-  }else{
-    memcpy(&zIn[nIn], zAppend, nAppend);
-    zIn[len-1] = '\0';
-  }
+    if (quote)
+      {
+	  char *zCsr = &zIn[nIn];
+	  *zCsr++ = quote;
+	  for (i = 0; i < nAppend; i++)
+	    {
+		*zCsr++ = zAppend[i];
+		if (zAppend[i] == quote)
+		    *zCsr++ = quote;
+	    }
+	  *zCsr++ = quote;
+	  *zCsr++ = '\0';
+	  assert ((zCsr - zIn) == len);
+      }
+    else
+      {
+	  memcpy (&zIn[nIn], zAppend, nAppend);
+	  zIn[len - 1] = '\0';
+      }
 
-  return zIn;
+    return zIn;
 }
 
 
@@ -1603,212 +1858,273 @@ static char *appendText(char *zIn, char const *zAppend, char quote){
 ** "--" comment occurs at the end of the statement, the comment
 ** won't consume the semicolon terminator.
 */
-static int run_table_dump_query(
-  struct callback_data *p, /* Query context */
-  const char *zSelect,     /* SELECT statement to extract content */
-  const char *zFirstRow    /* Print before first row, if not NULL */
-){
-  sqlite3_stmt *pSelect;
-  int rc;
-  int nResult;
-  int i;
-  const char *z;
-  rc = sqlite3_prepare(p->db, zSelect, -1, &pSelect, 0);
-  if( rc!=SQLITE_OK || !pSelect ){
-    fprintf(p->out, "/**** ERROR: (%d) %s *****/\n", rc, sqlite3_errmsg(p->db));
-    p->nErr++;
+static int
+run_table_dump_query (struct callback_data *p,	/* Query context */
+		      const char *zSelect,	/* SELECT statement to extract content */
+		      const char *zFirstRow	/* Print before first row, if not NULL */
+    )
+{
+    sqlite3_stmt *pSelect;
+    int rc;
+    int nResult;
+    int i;
+    const char *z;
+    rc = sqlite3_prepare (p->db, zSelect, -1, &pSelect, 0);
+    if (rc != SQLITE_OK || !pSelect)
+      {
+	  fprintf (p->out, "/**** ERROR: (%d) %s *****/\n", rc,
+		   sqlite3_errmsg (p->db));
+	  p->nErr++;
+	  return rc;
+      }
+    rc = sqlite3_step (pSelect);
+    nResult = sqlite3_column_count (pSelect);
+    while (rc == SQLITE_ROW)
+      {
+	  if (zFirstRow)
+	    {
+		fprintf (p->out, "%s", zFirstRow);
+		zFirstRow = 0;
+	    }
+	  z = (const char *) sqlite3_column_text (pSelect, 0);
+	  fprintf (p->out, "%s", z);
+	  for (i = 1; i < nResult; i++)
+	    {
+		fprintf (p->out, ",%s", sqlite3_column_text (pSelect, i));
+	    }
+	  if (z == 0)
+	      z = "";
+	  while (z[0] && (z[0] != '-' || z[1] != '-'))
+	      z++;
+	  if (z[0])
+	    {
+		fprintf (p->out, "\n;\n");
+	    }
+	  else
+	    {
+		fprintf (p->out, ";\n");
+	    }
+	  rc = sqlite3_step (pSelect);
+      }
+    rc = sqlite3_finalize (pSelect);
+    if (rc != SQLITE_OK)
+      {
+	  fprintf (p->out, "/**** ERROR: (%d) %s *****/\n", rc,
+		   sqlite3_errmsg (p->db));
+	  p->nErr++;
+      }
     return rc;
-  }
-  rc = sqlite3_step(pSelect);
-  nResult = sqlite3_column_count(pSelect);
-  while( rc==SQLITE_ROW ){
-    if( zFirstRow ){
-      fprintf(p->out, "%s", zFirstRow);
-      zFirstRow = 0;
-    }
-    z = (const char*)sqlite3_column_text(pSelect, 0);
-    fprintf(p->out, "%s", z);
-    for(i=1; i<nResult; i++){ 
-      fprintf(p->out, ",%s", sqlite3_column_text(pSelect, i));
-    }
-    if( z==0 ) z = "";
-    while( z[0] && (z[0]!='-' || z[1]!='-') ) z++;
-    if( z[0] ){
-      fprintf(p->out, "\n;\n");
-    }else{
-      fprintf(p->out, ";\n");
-    }    
-    rc = sqlite3_step(pSelect);
-  }
-  rc = sqlite3_finalize(pSelect);
-  if( rc!=SQLITE_OK ){
-    fprintf(p->out, "/**** ERROR: (%d) %s *****/\n", rc, sqlite3_errmsg(p->db));
-    p->nErr++;
-  }
-  return rc;
 }
 
 /*
 ** Allocate space and save off current error string.
 */
-static char *save_err_msg(
-  sqlite3 *db            /* Database to query */
-){
-  int nErrMsg = 1+strlen30(sqlite3_errmsg(db));
-  char *zErrMsg = sqlite3_malloc(nErrMsg);
-  if( zErrMsg ){
-    memcpy(zErrMsg, sqlite3_errmsg(db), nErrMsg);
-  }
-  return zErrMsg;
+static char *
+save_err_msg (sqlite3 * db	/* Database to query */
+    )
+{
+    int nErrMsg = 1 + strlen30 (sqlite3_errmsg (db));
+    char *zErrMsg = sqlite3_malloc (nErrMsg);
+    if (zErrMsg)
+      {
+	  memcpy (zErrMsg, sqlite3_errmsg (db), nErrMsg);
+      }
+    return zErrMsg;
 }
 
 /*
 ** Display memory stats.
 */
-static int display_stats(
-  sqlite3 *db,                /* Database to query */
-  struct callback_data *pArg, /* Pointer to struct callback_data */
-  int bReset                  /* True to reset the stats */
-){
-  int iCur;
-  int iHiwtr;
+static int
+display_stats (sqlite3 * db,	/* Database to query */
+	       struct callback_data *pArg,	/* Pointer to struct callback_data */
+	       int bReset	/* True to reset the stats */
+    )
+{
+    int iCur;
+    int iHiwtr;
 
-  if( pArg && pArg->out ){
-    
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_MEMORY_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Memory Used:                         %d (max %d) bytes\n", iCur, iHiwtr);
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_MALLOC_COUNT, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Number of Outstanding Allocations:   %d (max %d)\n", iCur, iHiwtr);
+    if (pArg && pArg->out)
+      {
+
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_MEMORY_USED, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out,
+		   "Memory Used:                         %d (max %d) bytes\n",
+		   iCur, iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_MALLOC_COUNT, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out,
+		   "Number of Outstanding Allocations:   %d (max %d)\n", iCur,
+		   iHiwtr);
 /*
 ** Not currently used by the CLI.
 **    iHiwtr = iCur = -1;
 **    sqlite3_status(SQLITE_STATUS_PAGECACHE_USED, &iCur, &iHiwtr, bReset);
 **    fprintf(pArg->out, "Number of Pcache Pages Used:         %d (max %d) pages\n", iCur, iHiwtr);
 */
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_PAGECACHE_OVERFLOW, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Number of Pcache Overflow Bytes:     %d (max %d) bytes\n", iCur, iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_PAGECACHE_OVERFLOW, &iCur, &iHiwtr,
+			  bReset);
+	  fprintf (pArg->out,
+		   "Number of Pcache Overflow Bytes:     %d (max %d) bytes\n",
+		   iCur, iHiwtr);
 /*
 ** Not currently used by the CLI.
 **    iHiwtr = iCur = -1;
 **    sqlite3_status(SQLITE_STATUS_SCRATCH_USED, &iCur, &iHiwtr, bReset);
 **    fprintf(pArg->out, "Number of Scratch Allocations Used:  %d (max %d)\n", iCur, iHiwtr);
 */
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_SCRATCH_OVERFLOW, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Number of Scratch Overflow Bytes:    %d (max %d) bytes\n", iCur, iHiwtr);
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_MALLOC_SIZE, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Largest Allocation:                  %d bytes\n", iHiwtr);
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_PAGECACHE_SIZE, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Largest Pcache Allocation:           %d bytes\n", iHiwtr);
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_SCRATCH_SIZE, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Largest Scratch Allocation:          %d bytes\n", iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_SCRATCH_OVERFLOW, &iCur, &iHiwtr,
+			  bReset);
+	  fprintf (pArg->out,
+		   "Number of Scratch Overflow Bytes:    %d (max %d) bytes\n",
+		   iCur, iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_MALLOC_SIZE, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out, "Largest Allocation:                  %d bytes\n",
+		   iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_PAGECACHE_SIZE, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out, "Largest Pcache Allocation:           %d bytes\n",
+		   iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_SCRATCH_SIZE, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out, "Largest Scratch Allocation:          %d bytes\n",
+		   iHiwtr);
 #ifdef YYTRACKMAXSTACKDEPTH
-    iHiwtr = iCur = -1;
-    sqlite3_status(SQLITE_STATUS_PARSER_STACK, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Deepest Parser Stack:                %d (max %d)\n", iCur, iHiwtr);
+	  iHiwtr = iCur = -1;
+	  sqlite3_status (SQLITE_STATUS_PARSER_STACK, &iCur, &iHiwtr, bReset);
+	  fprintf (pArg->out,
+		   "Deepest Parser Stack:                %d (max %d)\n", iCur,
+		   iHiwtr);
 #endif
-  }
+      }
 
 /* Sandro Furieri 1 November 2012 - depending on SQLite version */
-  if( pArg && pArg->out && db ){
-    iHiwtr = iCur = -1;
+    if (pArg && pArg->out && db)
+      {
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED
-    sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Lookaside Slots Used:                %d (max %d)\n", iCur, iHiwtr);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_LOOKASIDE_USED, &iCur, &iHiwtr,
+			     bReset);
+	  fprintf (pArg->out,
+		   "Lookaside Slots Used:                %d (max %d)\n", iCur,
+		   iHiwtr);
 #else
-    fprintf(pArg->out, "Lookaside Slots Used:                n.a.\n");
+	  fprintf (pArg->out, "Lookaside Slots Used:                n.a.\n");
 #endif
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_HIT
-    sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_HIT, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Successful lookaside attempts:       %d\n", iHiwtr);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_LOOKASIDE_HIT, &iCur, &iHiwtr,
+			     bReset);
+	  fprintf (pArg->out, "Successful lookaside attempts:       %d\n",
+		   iHiwtr);
 #else
-    fprintf(pArg->out, "Successful lookaside attempts:       n.a.\n");
+	  fprintf (pArg->out, "Successful lookaside attempts:       n.a.\n");
 #endif
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE
-    sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Lookaside failures due to size:      %d\n", iHiwtr);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_LOOKASIDE_MISS_SIZE, &iCur,
+			     &iHiwtr, bReset);
+	  fprintf (pArg->out, "Lookaside failures due to size:      %d\n",
+		   iHiwtr);
 #else
-    fprintf(pArg->out, "Lookaside failures due to size:      n.a.\n");
+	  fprintf (pArg->out, "Lookaside failures due to size:      n.a.\n");
 #endif
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL
-    sqlite3_db_status(db, SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Lookaside failures due to OOM:       %d\n", iHiwtr);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_LOOKASIDE_MISS_FULL, &iCur,
+			     &iHiwtr, bReset);
+	  fprintf (pArg->out, "Lookaside failures due to OOM:       %d\n",
+		   iHiwtr);
 #else
-    fprintf(pArg->out, "Lookaside failures due to OOM:       n.a.\n");
+	  fprintf (pArg->out, "Lookaside failures due to OOM:       n.a.\n");
 #endif
-    iHiwtr = iCur = -1;
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_USED
-    sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Pager Heap Usage:                    %d bytes\n", iCur);  
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_CACHE_USED, &iCur, &iHiwtr,
+			     bReset);
+	  fprintf (pArg->out, "Pager Heap Usage:                    %d bytes\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Pager Heap Usage:                    n.a.\n");  
-#endif  
-    iHiwtr = iCur = -1;
+	  fprintf (pArg->out, "Pager Heap Usage:                    n.a.\n");
+#endif
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_HIT
-    sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_HIT, &iCur, &iHiwtr, 1);
-    fprintf(pArg->out, "Page cache hits:                     %d\n", iCur);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_CACHE_HIT, &iCur, &iHiwtr, 1);
+	  fprintf (pArg->out, "Page cache hits:                     %d\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Page cache hits:                     n.a.\n");
+	  fprintf (pArg->out, "Page cache hits:                     n.a.\n");
 #endif
-    iHiwtr = iCur = -1;
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_MISS
-    sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_MISS, &iCur, &iHiwtr, 1);
-    fprintf(pArg->out, "Page cache misses:                   %d\n", iCur); 
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_CACHE_MISS, &iCur, &iHiwtr, 1);
+	  fprintf (pArg->out, "Page cache misses:                   %d\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Page cache misses:                   n.a.\n"); 
+	  fprintf (pArg->out, "Page cache misses:                   n.a.\n");
 #endif
-    iHiwtr = iCur = -1;
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_CACHE_WRITE
-    sqlite3_db_status(db, SQLITE_DBSTATUS_CACHE_WRITE, &iCur, &iHiwtr, 1);
-    fprintf(pArg->out, "Page cache writes:                   %d\n", iCur); 
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_CACHE_WRITE, &iCur, &iHiwtr,
+			     1);
+	  fprintf (pArg->out, "Page cache writes:                   %d\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Page cache writes:                   n.a.\n"); 
+	  fprintf (pArg->out, "Page cache writes:                   n.a.\n");
 #endif
-    iHiwtr = iCur = -1;
+	  iHiwtr = iCur = -1;
 #ifdef HAVE_DECL_SQLITE_DBSTATUS_SCHEMA_USED
-    sqlite3_db_status(db, SQLITE_DBSTATUS_SCHEMA_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Schema Heap Usage:                   %d bytes\n", iCur);
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_SCHEMA_USED, &iCur, &iHiwtr,
+			     bReset);
+	  fprintf (pArg->out, "Schema Heap Usage:                   %d bytes\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Schema Heap Usage:                   n.a.\n");
-#endif 
-    iHiwtr = iCur = -1;
-#ifdef HAVE_DECL_SQLITE_DBSTATUS_STMT_USED
-    sqlite3_db_status(db, SQLITE_DBSTATUS_STMT_USED, &iCur, &iHiwtr, bReset);
-    fprintf(pArg->out, "Statement Heap/Lookaside Usage:      %d bytes\n", iCur); 
-#else
-    fprintf(pArg->out, "Statement Heap/Lookaside Usage:      n.a.\n");
+	  fprintf (pArg->out, "Schema Heap Usage:                   n.a.\n");
 #endif
-  }
-
-  if( pArg && pArg->out && db && pArg->pStmt ){
-#ifdef HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP
-    iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_FULLSCAN_STEP, bReset);
-    fprintf(pArg->out, "Fullscan Steps:                      %d\n", iCur);
+	  iHiwtr = iCur = -1;
+#ifdef HAVE_DECL_SQLITE_DBSTATUS_STMT_USED
+	  sqlite3_db_status (db, SQLITE_DBSTATUS_STMT_USED, &iCur, &iHiwtr,
+			     bReset);
+	  fprintf (pArg->out, "Statement Heap/Lookaside Usage:      %d bytes\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Fullscan Steps:                      n.a.\n");
+	  fprintf (pArg->out, "Statement Heap/Lookaside Usage:      n.a.\n");
+#endif
+      }
+
+    if (pArg && pArg->out && db && pArg->pStmt)
+      {
+#ifdef HAVE_DECL_SQLITE_STMTSTATUS_FULLSCAN_STEP
+	  iCur =
+	      sqlite3_stmt_status (pArg->pStmt, SQLITE_STMTSTATUS_FULLSCAN_STEP,
+				   bReset);
+	  fprintf (pArg->out, "Fullscan Steps:                      %d\n",
+		   iCur);
+#else
+	  fprintf (pArg->out, "Fullscan Steps:                      n.a.\n");
 #endif
 #ifdef HAVE_DECL_SQLITE_STMTSTATUS_SORT
-    iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_SORT, bReset);
-    fprintf(pArg->out, "Sort Operations:                     %d\n", iCur);
+	  iCur =
+	      sqlite3_stmt_status (pArg->pStmt, SQLITE_STMTSTATUS_SORT, bReset);
+	  fprintf (pArg->out, "Sort Operations:                     %d\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Sort Operations:                     n.a.\n");
+	  fprintf (pArg->out, "Sort Operations:                     n.a.\n");
 #endif
 #ifdef HAVE_DECL_SQLITE_STMTSTATUS_AUTOINDEX
-    iCur = sqlite3_stmt_status(pArg->pStmt, SQLITE_STMTSTATUS_AUTOINDEX, bReset);
-    fprintf(pArg->out, "Autoindex Inserts:                   %d\n", iCur);
+	  iCur =
+	      sqlite3_stmt_status (pArg->pStmt, SQLITE_STMTSTATUS_AUTOINDEX,
+				   bReset);
+	  fprintf (pArg->out, "Autoindex Inserts:                   %d\n",
+		   iCur);
 #else
-    fprintf(pArg->out, "Autoindex Inserts:                   n.a.\n");
+	  fprintf (pArg->out, "Autoindex Inserts:                   n.a.\n");
 #endif
-  }
+      }
 /* end sandro 1 November 2012 */
 
-  return 0;
+    return 0;
 }
 
 /*
@@ -1820,142 +2136,194 @@ static int display_stats(
 ** function except it takes a slightly different callback 
 ** and callback data argument.
 */
-static int shell_exec(
-  sqlite3 *db,                                /* An open database */
-  const char *zSql,                           /* SQL to be evaluated */
-  int (*xCallback)(void*,int,char**,char**,int*),   /* Callback function */
-                                              /* (not the same as sqlite3_exec) */
-  struct callback_data *pArg,                 /* Pointer to struct callback_data */
-  char **pzErrMsg                             /* Error msg written here */
-){
-  sqlite3_stmt *pStmt = NULL;     /* Statement to execute. */
-  int rc = SQLITE_OK;             /* Return Code */
-  int rc2;
-  const char *zLeftover;          /* Tail of unprocessed SQL */
+static int
+shell_exec (sqlite3 * db,	/* An open database */
+	    const char *zSql,	/* SQL to be evaluated */
+	    int (*xCallback) (void *, int, char **, char **, int *),	/* Callback function */
+	    /* (not the same as sqlite3_exec) */
+	    struct callback_data *pArg,	/* Pointer to struct callback_data */
+	    char **pzErrMsg	/* Error msg written here */
+    )
+{
+    sqlite3_stmt *pStmt = NULL;	/* Statement to execute. */
+    int rc = SQLITE_OK;		/* Return Code */
+    int rc2;
+    const char *zLeftover;	/* Tail of unprocessed SQL */
 
-  if( pzErrMsg ){
-    *pzErrMsg = NULL;
-  }
-
-  while( zSql[0] && (SQLITE_OK == rc) ){
-    rc = sqlite3_prepare_v2(db, zSql, -1, &pStmt, &zLeftover);
-    if( SQLITE_OK != rc ){
-      if( pzErrMsg ){
-        *pzErrMsg = save_err_msg(db);
-      }
-    }else{
-      if( !pStmt ){
-        /* this happens for a comment or white-space */
-        zSql = zLeftover;
-        while( IsSpace(zSql[0]) ) zSql++;
-        continue;
+    if (pzErrMsg)
+      {
+	  *pzErrMsg = NULL;
       }
 
-      /* save off the prepared statment handle and reset row count */
-      if( pArg ){
-        pArg->pStmt = pStmt;
-        pArg->cnt = 0;
-      }
+    while (zSql[0] && (SQLITE_OK == rc))
+      {
+	  rc = sqlite3_prepare_v2 (db, zSql, -1, &pStmt, &zLeftover);
+	  if (SQLITE_OK != rc)
+	    {
+		if (pzErrMsg)
+		  {
+		      *pzErrMsg = save_err_msg (db);
+		  }
+	    }
+	  else
+	    {
+		if (!pStmt)
+		  {
+		      /* this happens for a comment or white-space */
+		      zSql = zLeftover;
+		      while (IsSpace (zSql[0]))
+			  zSql++;
+		      continue;
+		  }
 
-      /* echo the sql statement if echo on */
-      if( pArg && pArg->echoOn ){
-        const char *zStmtSql = sqlite3_sql(pStmt);
-        fprintf(pArg->out, "%s\n", zStmtSql ? zStmtSql : zSql);
-      }
+		/* save off the prepared statment handle and reset row count */
+		if (pArg)
+		  {
+		      pArg->pStmt = pStmt;
+		      pArg->cnt = 0;
+		  }
 
-      /* Output TESTCTRL_EXPLAIN text of requested */
-      if( pArg && pArg->mode==MODE_Explain ){
+		/* echo the sql statement if echo on */
+		if (pArg && pArg->echoOn)
+		  {
+		      const char *zStmtSql = sqlite3_sql (pStmt);
+		      fprintf (pArg->out, "%s\n", zStmtSql ? zStmtSql : zSql);
+		  }
+
+		/* Output TESTCTRL_EXPLAIN text of requested */
+		if (pArg && pArg->mode == MODE_Explain)
+		  {
 /* Sandro Furieri 1 November 2012 - depending on SQLite version */
 #ifdef HAVE_DECL_SQLITE_TESTCTRL_EXPLAIN_STMT
-        const char *zExplain = 0;
-        sqlite3_test_control(SQLITE_TESTCTRL_EXPLAIN_STMT, pStmt, &zExplain);
-        if( zExplain && zExplain[0] ){
-          fprintf(pArg->out, "%s", zExplain);
-        }
+		      const char *zExplain = 0;
+		      sqlite3_test_control (SQLITE_TESTCTRL_EXPLAIN_STMT, pStmt,
+					    &zExplain);
+		      if (zExplain && zExplain[0])
+			{
+			    fprintf (pArg->out, "%s", zExplain);
+			}
 #else
-          fprintf(pArg->out, "TESTCTRL_EXPLAIN: unsupported");
+		      fprintf (pArg->out, "TESTCTRL_EXPLAIN: unsupported");
 #endif
 /* end sandro 1 November 2012 */
-      }
+		  }
 
-      /* perform the first step.  this will tell us if we
-      ** have a result set or not and how wide it is.
-      */
-      rc = sqlite3_step(pStmt);
-      /* if we have a result set... */
-      if( SQLITE_ROW == rc ){
-        /* if we have a callback... */
-        if( xCallback ){
-          /* allocate space for col name ptr, value ptr, and type */
-          int nCol = sqlite3_column_count(pStmt);
-          void *pData = sqlite3_malloc(3*nCol*sizeof(const char*) + 1);
-          if( !pData ){
-            rc = SQLITE_NOMEM;
-          }else{
-            char **azCols = (char **)pData;      /* Names of result columns */
-            char **azVals = &azCols[nCol];       /* Results */
-            int *aiTypes = (int *)&azVals[nCol]; /* Result types */
-            int i;
-            assert(sizeof(int) <= sizeof(char *)); 
-            /* save off ptrs to column names */
-            for(i=0; i<nCol; i++){
-              azCols[i] = (char *)sqlite3_column_name(pStmt, i);
-            }
-            do{
-              /* extract the data and data types */
-              for(i=0; i<nCol; i++){
-                azVals[i] = (char *)sqlite3_column_text(pStmt, i);
-                aiTypes[i] = sqlite3_column_type(pStmt, i);
-                if( !azVals[i] && (aiTypes[i]!=SQLITE_NULL) ){
-                  rc = SQLITE_NOMEM;
-                  break; /* from for */
-                }
-              } /* end for */
+		/* perform the first step.  this will tell us if we
+		 ** have a result set or not and how wide it is.
+		 */
+		rc = sqlite3_step (pStmt);
+		/* if we have a result set... */
+		if (SQLITE_ROW == rc)
+		  {
+		      /* if we have a callback... */
+		      if (xCallback)
+			{
+			    /* allocate space for col name ptr, value ptr, and type */
+			    int nCol = sqlite3_column_count (pStmt);
+			    void *pData =
+				sqlite3_malloc (3 * nCol *
+						sizeof (const char *) + 1);
+			    if (!pData)
+			      {
+				  rc = SQLITE_NOMEM;
+			      }
+			    else
+			      {
+				  char **azCols = (char **) pData;	/* Names of result columns */
+				  char **azVals = &azCols[nCol];	/* Results */
+				  int *aiTypes = (int *) &azVals[nCol];	/* Result types */
+				  int i;
+				  assert (sizeof (int) <= sizeof (char *));
+				  /* save off ptrs to column names */
+				  for (i = 0; i < nCol; i++)
+				    {
+					azCols[i] =
+					    (char *) sqlite3_column_name (pStmt,
+									  i);
+				    }
+				  do
+				    {
+					/* extract the data and data types */
+					for (i = 0; i < nCol; i++)
+					  {
+					      azVals[i] =
+						  (char *)
+						  sqlite3_column_text (pStmt,
+								       i);
+					      aiTypes[i] =
+						  sqlite3_column_type (pStmt,
+								       i);
+					      if (!azVals[i]
+						  && (aiTypes[i] !=
+						      SQLITE_NULL))
+						{
+						    rc = SQLITE_NOMEM;
+						    break;	/* from for */
+						}
+					  }	/* end for */
 
-              /* if data and types extracted successfully... */
-              if( SQLITE_ROW == rc ){ 
-                /* call the supplied callback with the result row data */
-                if( xCallback(pArg, nCol, azVals, azCols, aiTypes) ){
-                  rc = SQLITE_ABORT;
-                }else{
-                  rc = sqlite3_step(pStmt);
-                }
-              }
-            } while( SQLITE_ROW == rc );
-            sqlite3_free(pData);
-          }
-        }else{
-          do{
-            rc = sqlite3_step(pStmt);
-          } while( rc == SQLITE_ROW );
-        }
-      }
+					/* if data and types extracted successfully... */
+					if (SQLITE_ROW == rc)
+					  {
+					      /* call the supplied callback with the result row data */
+					      if (xCallback
+						  (pArg, nCol, azVals, azCols,
+						   aiTypes))
+						{
+						    rc = SQLITE_ABORT;
+						}
+					      else
+						{
+						    rc = sqlite3_step (pStmt);
+						}
+					  }
+				    }
+				  while (SQLITE_ROW == rc);
+				  sqlite3_free (pData);
+			      }
+			}
+		      else
+			{
+			    do
+			      {
+				  rc = sqlite3_step (pStmt);
+			      }
+			    while (rc == SQLITE_ROW);
+			}
+		  }
 
-      /* print usage stats if stats on */
-      if( pArg && pArg->statsOn ){
-        display_stats(db, pArg, 0);
-      }
+		/* print usage stats if stats on */
+		if (pArg && pArg->statsOn)
+		  {
+		      display_stats (db, pArg, 0);
+		  }
 
-      /* Finalize the statement just executed. If this fails, save a 
-      ** copy of the error message. Otherwise, set zSql to point to the
-      ** next statement to execute. */
-      rc2 = sqlite3_finalize(pStmt);
-      if( rc!=SQLITE_NOMEM ) rc = rc2;
-      if( rc==SQLITE_OK ){
-        zSql = zLeftover;
-        while( IsSpace(zSql[0]) ) zSql++;
-      }else if( pzErrMsg ){
-        *pzErrMsg = save_err_msg(db);
-      }
+		/* Finalize the statement just executed. If this fails, save a 
+		 ** copy of the error message. Otherwise, set zSql to point to the
+		 ** next statement to execute. */
+		rc2 = sqlite3_finalize (pStmt);
+		if (rc != SQLITE_NOMEM)
+		    rc = rc2;
+		if (rc == SQLITE_OK)
+		  {
+		      zSql = zLeftover;
+		      while (IsSpace (zSql[0]))
+			  zSql++;
+		  }
+		else if (pzErrMsg)
+		  {
+		      *pzErrMsg = save_err_msg (db);
+		  }
 
-      /* clear saved stmt handle */
-      if( pArg ){
-        pArg->pStmt = NULL;
-      }
-    }
-  } /* end while */
+		/* clear saved stmt handle */
+		if (pArg)
+		  {
+		      pArg->pStmt = NULL;
+		  }
+	    }
+      }				/* end while */
 
-  return rc;
+    return rc;
 }
 
 
@@ -1965,98 +2333,121 @@ static int shell_exec(
 ** the table type ("index" or "table") and SQL to create the table.
 ** This routine should print text sufficient to recreate the table.
 */
-static int dump_callback(void *pArg, int nArg, char **azArg, char **azCol){
-  int rc;
-  const char *zTable;
-  const char *zType;
-  const char *zSql;
-  const char *zPrepStmt = 0;
-  struct callback_data *p = (struct callback_data *)pArg;
+static int
+dump_callback (void *pArg, int nArg, char **azArg, char **azCol)
+{
+    int rc;
+    const char *zTable;
+    const char *zType;
+    const char *zSql;
+    const char *zPrepStmt = 0;
+    struct callback_data *p = (struct callback_data *) pArg;
 
-  UNUSED_PARAMETER(azCol);
-  if( nArg!=3 ) return 1;
-  zTable = azArg[0];
-  zType = azArg[1];
-  zSql = azArg[2];
-  
-  if( strcmp(zTable, "sqlite_sequence")==0 ){
-    zPrepStmt = "DELETE FROM sqlite_sequence;\n";
-  }else if( strcmp(zTable, "sqlite_stat1")==0 ){
-    fprintf(p->out, "ANALYZE sqlite_master;\n");
-  }else if( strncmp(zTable, "sqlite_", 7)==0 ){
-    return 0;
-  }else if( strncmp(zSql, "CREATE VIRTUAL TABLE", 20)==0 ){
-    char *zIns;
-    if( !p->writableSchema ){
-      fprintf(p->out, "PRAGMA writable_schema=ON;\n");
-      p->writableSchema = 1;
-    }
-    zIns = sqlite3_mprintf(
-       "INSERT INTO sqlite_master(type,name,tbl_name,rootpage,sql)"
-       "VALUES('table','%q','%q',0,'%q');",
-       zTable, zTable, zSql);
-    fprintf(p->out, "%s\n", zIns);
-    sqlite3_free(zIns);
-    return 0;
-  }else{
-    fprintf(p->out, "%s;\n", zSql);
-  }
+    UNUSED_PARAMETER (azCol);
+    if (nArg != 3)
+	return 1;
+    zTable = azArg[0];
+    zType = azArg[1];
+    zSql = azArg[2];
 
-  if( strcmp(zType, "table")==0 ){
-    sqlite3_stmt *pTableInfo = 0;
-    char *zSelect = 0;
-    char *zTableInfo = 0;
-    char *zTmp = 0;
-    int nRow = 0;
-   
-    zTableInfo = appendText(zTableInfo, "PRAGMA table_info(", 0);
-    zTableInfo = appendText(zTableInfo, zTable, '"');
-    zTableInfo = appendText(zTableInfo, ");", 0);
-
-    rc = sqlite3_prepare(p->db, zTableInfo, -1, &pTableInfo, 0);
-    free(zTableInfo);
-    if( rc!=SQLITE_OK || !pTableInfo ){
-      return 1;
-    }
-
-    zSelect = appendText(zSelect, "SELECT 'INSERT INTO ' || ", 0);
-    /* Always quote the table name, even if it appears to be pure ascii,
-    ** in case it is a keyword. Ex:  INSERT INTO "table" ... */
-    zTmp = appendText(zTmp, zTable, '"');
-    if( zTmp ){
-      zSelect = appendText(zSelect, zTmp, '\'');
-      free(zTmp);
-    }
-    zSelect = appendText(zSelect, " || ' VALUES(' || ", 0);
-    rc = sqlite3_step(pTableInfo);
-    while( rc==SQLITE_ROW ){
-      const char *zText = (const char *)sqlite3_column_text(pTableInfo, 1);
-      zSelect = appendText(zSelect, "quote(", 0);
-      zSelect = appendText(zSelect, zText, '"');
-      rc = sqlite3_step(pTableInfo);
-      if( rc==SQLITE_ROW ){
-        zSelect = appendText(zSelect, "), ", 0);
-      }else{
-        zSelect = appendText(zSelect, ") ", 0);
+    if (strcmp (zTable, "sqlite_sequence") == 0)
+      {
+	  zPrepStmt = "DELETE FROM sqlite_sequence;\n";
       }
-      nRow++;
-    }
-    rc = sqlite3_finalize(pTableInfo);
-    if( rc!=SQLITE_OK || nRow==0 ){
-      free(zSelect);
-      return 1;
-    }
-    zSelect = appendText(zSelect, "|| ')' FROM  ", 0);
-    zSelect = appendText(zSelect, zTable, '"');
+    else if (strcmp (zTable, "sqlite_stat1") == 0)
+      {
+	  fprintf (p->out, "ANALYZE sqlite_master;\n");
+      }
+    else if (strncmp (zTable, "sqlite_", 7) == 0)
+      {
+	  return 0;
+      }
+    else if (strncmp (zSql, "CREATE VIRTUAL TABLE", 20) == 0)
+      {
+	  char *zIns;
+	  if (!p->writableSchema)
+	    {
+		fprintf (p->out, "PRAGMA writable_schema=ON;\n");
+		p->writableSchema = 1;
+	    }
+	  zIns =
+	      sqlite3_mprintf
+	      ("INSERT INTO sqlite_master(type,name,tbl_name,rootpage,sql)"
+	       "VALUES('table','%q','%q',0,'%q');", zTable, zTable, zSql);
+	  fprintf (p->out, "%s\n", zIns);
+	  sqlite3_free (zIns);
+	  return 0;
+      }
+    else
+      {
+	  fprintf (p->out, "%s;\n", zSql);
+      }
 
-    rc = run_table_dump_query(p, zSelect, zPrepStmt);
-    if( rc==SQLITE_CORRUPT ){
-      zSelect = appendText(zSelect, " ORDER BY rowid DESC", 0);
-      run_table_dump_query(p, zSelect, 0);
-    }
-    free(zSelect);
-  }
-  return 0;
+    if (strcmp (zType, "table") == 0)
+      {
+	  sqlite3_stmt *pTableInfo = 0;
+	  char *zSelect = 0;
+	  char *zTableInfo = 0;
+	  char *zTmp = 0;
+	  int nRow = 0;
+
+	  zTableInfo = appendText (zTableInfo, "PRAGMA table_info(", 0);
+	  zTableInfo = appendText (zTableInfo, zTable, '"');
+	  zTableInfo = appendText (zTableInfo, ");", 0);
+
+	  rc = sqlite3_prepare (p->db, zTableInfo, -1, &pTableInfo, 0);
+	  free (zTableInfo);
+	  if (rc != SQLITE_OK || !pTableInfo)
+	    {
+		return 1;
+	    }
+
+	  zSelect = appendText (zSelect, "SELECT 'INSERT INTO ' || ", 0);
+	  /* Always quote the table name, even if it appears to be pure ascii,
+	   ** in case it is a keyword. Ex:  INSERT INTO "table" ... */
+	  zTmp = appendText (zTmp, zTable, '"');
+	  if (zTmp)
+	    {
+		zSelect = appendText (zSelect, zTmp, '\'');
+		free (zTmp);
+	    }
+	  zSelect = appendText (zSelect, " || ' VALUES(' || ", 0);
+	  rc = sqlite3_step (pTableInfo);
+	  while (rc == SQLITE_ROW)
+	    {
+		const char *zText =
+		    (const char *) sqlite3_column_text (pTableInfo, 1);
+		zSelect = appendText (zSelect, "quote(", 0);
+		zSelect = appendText (zSelect, zText, '"');
+		rc = sqlite3_step (pTableInfo);
+		if (rc == SQLITE_ROW)
+		  {
+		      zSelect = appendText (zSelect, "), ", 0);
+		  }
+		else
+		  {
+		      zSelect = appendText (zSelect, ") ", 0);
+		  }
+		nRow++;
+	    }
+	  rc = sqlite3_finalize (pTableInfo);
+	  if (rc != SQLITE_OK || nRow == 0)
+	    {
+		free (zSelect);
+		return 1;
+	    }
+	  zSelect = appendText (zSelect, "|| ')' FROM  ", 0);
+	  zSelect = appendText (zSelect, zTable, '"');
+
+	  rc = run_table_dump_query (p, zSelect, zPrepStmt);
+	  if (rc == SQLITE_CORRUPT)
+	    {
+		zSelect = appendText (zSelect, " ORDER BY rowid DESC", 0);
+		run_table_dump_query (p, zSelect, 0);
+	    }
+	  free (zSelect);
+      }
+    return 0;
 }
 
 static void
@@ -2108,99 +2499,103 @@ spatialite_autocreate (sqlite3 * db)
 ** If we get a SQLITE_CORRUPT error, rerun the query after appending
 ** "ORDER BY rowid DESC" to the end.
 */
-static int run_schema_dump_query(
-  struct callback_data *p, 
-  const char *zQuery
-){
-  int rc;
-  char *zErr = 0;
-  rc = sqlite3_exec(p->db, zQuery, dump_callback, p, &zErr);
-  if( rc==SQLITE_CORRUPT ){
-    char *zQ2;
-    int len = strlen30(zQuery);
-    fprintf(p->out, "/****** CORRUPTION ERROR *******/\n");
-    if( zErr ){
-      fprintf(p->out, "/****** %s ******/\n", zErr);
-      sqlite3_free(zErr);
-      zErr = 0;
-    }
-    zQ2 = malloc( len+100 );
-    if( zQ2==0 ) return rc;
-    sqlite3_snprintf(len+100, zQ2, "%s ORDER BY rowid DESC", zQuery);
-    rc = sqlite3_exec(p->db, zQ2, dump_callback, p, &zErr);
-    if( rc ){
-      fprintf(p->out, "/****** ERROR: %s ******/\n", zErr);
-    }else{
-      rc = SQLITE_CORRUPT;
-    }
-    sqlite3_free(zErr);
-    free(zQ2);
-  }
-  return rc;
+static int
+run_schema_dump_query (struct callback_data *p, const char *zQuery)
+{
+    int rc;
+    char *zErr = 0;
+    rc = sqlite3_exec (p->db, zQuery, dump_callback, p, &zErr);
+    if (rc == SQLITE_CORRUPT)
+      {
+	  char *zQ2;
+	  int len = strlen30 (zQuery);
+	  fprintf (p->out, "/****** CORRUPTION ERROR *******/\n");
+	  if (zErr)
+	    {
+		fprintf (p->out, "/****** %s ******/\n", zErr);
+		sqlite3_free (zErr);
+		zErr = 0;
+	    }
+	  zQ2 = malloc (len + 100);
+	  if (zQ2 == 0)
+	      return rc;
+	  sqlite3_snprintf (len + 100, zQ2, "%s ORDER BY rowid DESC", zQuery);
+	  rc = sqlite3_exec (p->db, zQ2, dump_callback, p, &zErr);
+	  if (rc)
+	    {
+		fprintf (p->out, "/****** ERROR: %s ******/\n", zErr);
+	    }
+	  else
+	    {
+		rc = SQLITE_CORRUPT;
+	    }
+	  sqlite3_free (zErr);
+	  free (zQ2);
+      }
+    return rc;
 }
 
 /*
 ** Text of a help message
 */
 static char zHelp[] =
-  ".backup ?DB? FILE      Backup DB (default \"main\") to FILE\n"
-  ".bail ON|OFF           Stop after hitting an error.  Default OFF\n"
-  ".databases             List names and files of attached databases\n"
-  ".dump ?TABLE? ...      Dump the database in an SQL text format\n"
-  "                         If TABLE specified, only dump tables matching\n"
-  "                         LIKE pattern TABLE.\n"
-  ".echo ON|OFF           Turn command echo on or off\n"
-  ".exit                  Exit this program\n"
-  ".explain ?ON|OFF?      Turn output mode suitable for EXPLAIN on or off.\n"
-  "                         With no args, it turns EXPLAIN on.\n"
-  ".header(s) ON|OFF      Turn display of headers on or off\n"
-  ".help                  Show this message\n"
-  ".import FILE TABLE     Import data from FILE into TABLE\n"
-  ".indices ?TABLE?       Show names of all indices\n"
-  "                         If TABLE specified, only show indices for tables\n"
-  "                         matching LIKE pattern TABLE.\n"
+    ".backup ?DB? FILE      Backup DB (default \"main\") to FILE\n"
+    ".bail ON|OFF           Stop after hitting an error.  Default OFF\n"
+    ".databases             List names and files of attached databases\n"
+    ".dump ?TABLE? ...      Dump the database in an SQL text format\n"
+    "                         If TABLE specified, only dump tables matching\n"
+    "                         LIKE pattern TABLE.\n"
+    ".echo ON|OFF           Turn command echo on or off\n"
+    ".exit                  Exit this program\n"
+    ".explain ?ON|OFF?      Turn output mode suitable for EXPLAIN on or off.\n"
+    "                         With no args, it turns EXPLAIN on.\n"
+    ".header(s) ON|OFF      Turn display of headers on or off\n"
+    ".help                  Show this message\n"
+    ".import FILE TABLE     Import data from FILE into TABLE\n"
+    ".indices ?TABLE?       Show names of all indices\n"
+    "                         If TABLE specified, only show indices for tables\n"
+    "                         matching LIKE pattern TABLE.\n"
 #ifdef SQLITE_ENABLE_IOTRACE
-  ".iotrace FILE          Enable I/O diagnostic logging to FILE\n"
+    ".iotrace FILE          Enable I/O diagnostic logging to FILE\n"
 #endif
 #ifndef SQLITE_OMIT_LOAD_EXTENSION
-  ".load FILE ?ENTRY?     Load an extension library\n"
+    ".load FILE ?ENTRY?     Load an extension library\n"
 #endif
-  ".log FILE|off          Turn logging on or off.  FILE can be stderr/stdout\n"
-  ".mode MODE ?TABLE?     Set output mode where MODE is one of:\n"
-  "                         csv      Comma-separated values\n"
-  "                         column   Left-aligned columns.  (See .width)\n"
-  "                         html     HTML <table> code\n"
-  "                         insert   SQL insert statements for TABLE\n"
-  "                         line     One value per line\n"
-  "                         list     Values delimited by .separator string\n"
-  "                         tabs     Tab-separated values\n"
-  "                         tcl      TCL list elements\n"
-  ".nullvalue STRING      Print STRING in place of NULL values\n"
-  ".output FILENAME       Send output to FILENAME\n"
-  ".output stdout         Send output to the screen\n"
-  ".prompt MAIN CONTINUE  Replace the standard prompts\n"
-  ".quit                  Exit this program\n"
-  ".read FILENAME         Execute SQL in FILENAME\n"
-  ".restore ?DB? FILE     Restore content of DB (default \"main\") from FILE\n"
-  ".schema ?TABLE?        Show the CREATE statements\n"
-  "                         If TABLE specified, only show tables matching\n"
-  "                         LIKE pattern TABLE.\n"
-  ".separator STRING      Change separator used by output mode and .import\n"
-  ".shell CMD ARGS...     Run CMD ARGS... in a system shell\n"
-  ".show                  Show the current values for various settings\n"
-  ".stats ON|OFF          Turn stats on or off\n"
-  ".system CMD ARGS...    Run CMD ARGS... in a system shell\n"
-  ".tables ?TABLE?        List names of tables\n"
-  "                         If TABLE specified, only list tables matching\n"
-  "                         LIKE pattern TABLE.\n"
-  ".timeout MS            Try opening locked tables for MS milliseconds\n"
-  ".trace FILE|off        Output each SQL statement as it is run\n"
-  ".vfsname ?AUX?         Print the name of the VFS stack\n"
-  ".width NUM1 NUM2 ...   Set column widths for \"column\" mode\n"
-;
+    ".log FILE|off          Turn logging on or off.  FILE can be stderr/stdout\n"
+    ".mode MODE ?TABLE?     Set output mode where MODE is one of:\n"
+    "                         csv      Comma-separated values\n"
+    "                         column   Left-aligned columns.  (See .width)\n"
+    "                         html     HTML <table> code\n"
+    "                         insert   SQL insert statements for TABLE\n"
+    "                         line     One value per line\n"
+    "                         list     Values delimited by .separator string\n"
+    "                         tabs     Tab-separated values\n"
+    "                         tcl      TCL list elements\n"
+    ".nullvalue STRING      Print STRING in place of NULL values\n"
+    ".output FILENAME       Send output to FILENAME\n"
+    ".output stdout         Send output to the screen\n"
+    ".prompt MAIN CONTINUE  Replace the standard prompts\n"
+    ".quit                  Exit this program\n"
+    ".read FILENAME         Execute SQL in FILENAME\n"
+    ".restore ?DB? FILE     Restore content of DB (default \"main\") from FILE\n"
+    ".schema ?TABLE?        Show the CREATE statements\n"
+    "                         If TABLE specified, only show tables matching\n"
+    "                         LIKE pattern TABLE.\n"
+    ".separator STRING      Change separator used by output mode and .import\n"
+    ".shell CMD ARGS...     Run CMD ARGS... in a system shell\n"
+    ".show                  Show the current values for various settings\n"
+    ".stats ON|OFF          Turn stats on or off\n"
+    ".system CMD ARGS...    Run CMD ARGS... in a system shell\n"
+    ".tables ?TABLE?        List names of tables\n"
+    "                         If TABLE specified, only list tables matching\n"
+    "                         LIKE pattern TABLE.\n"
+    ".timeout MS            Try opening locked tables for MS milliseconds\n"
+    ".trace FILE|off        Output each SQL statement as it is run\n"
+    ".vfsname ?AUX?         Print the name of the VFS stack\n"
+    ".width NUM1 NUM2 ...   Set column widths for \"column\" mode\n";
 
 static char zTimerHelp[] =
-  ".timer ON|OFF          Turn the CPU timer measurement on or off\n"
+    ".timer ON|OFF          Turn the CPU timer measurement on or off\n"
 /* Sandro Furieri 2008-06-20 */
     "\n====================== SpatiaLite ========================================\n\n"
     ".charset          Report the current locale charset setting\n\n"
@@ -2266,32 +2661,38 @@ static char zTimerHelp[] =
     "                  append={Y|N} dims={AUTO|2D|3D} mode={DISTINCT|MIXED}\n"
     "                  rings={NONE|LINKED|UNLINKED}\n\n"
 /* end Sandro Furieri 2008-06-20 */
-;
+    ;
 
 /* Forward reference */
-static int process_input(struct callback_data *p, FILE *in, char *in_charset);
+static int process_input (struct callback_data *p, FILE * in, char *in_charset);
 
 /*
 ** Make sure the database is open.  If it is not, then open it.  If
 ** the database fails to open, print an error message and exit.
 */
-static void open_db(struct callback_data *p){
-  if( p->db==0 ){
-    sqlite3_initialize();
-    sqlite3_open(p->zDbFilename, &p->db);
-    db = p->db;
-    if( db && sqlite3_errcode(db)==SQLITE_OK ){
-      sqlite3_create_function(db, "shellstatic", 0, SQLITE_UTF8, 0,
-          shellstaticFunc, 0, 0);
-    }
-    if( db==0 || SQLITE_OK!=sqlite3_errcode(db) ){
-      fprintf(stderr,"Error: unable to open database \"%s\": %s\n", 
-          p->zDbFilename, sqlite3_errmsg(db));
-      exit(1);
-    }
-    spatialite_init_ex (p->db, splite_cache, (splite_silent == 0) ? 1 : 0);
+static void
+open_db (struct callback_data *p)
+{
+    if (p->db == 0)
+      {
+	  sqlite3_initialize ();
+	  sqlite3_open (p->zDbFilename, &p->db);
+	  db = p->db;
+	  if (db && sqlite3_errcode (db) == SQLITE_OK)
+	    {
+		sqlite3_create_function (db, "shellstatic", 0, SQLITE_UTF8, 0,
+					 shellstaticFunc, 0, 0);
+	    }
+	  if (db == 0 || SQLITE_OK != sqlite3_errcode (db))
+	    {
+		fprintf (stderr, "Error: unable to open database \"%s\": %s\n",
+			 p->zDbFilename, sqlite3_errmsg (db));
+		exit (1);
+	    }
+	  spatialite_init_ex (p->db, splite_cache,
+			      (splite_silent == 0) ? 1 : 0);
 #ifndef SQLITE_OMIT_LOAD_EXTENSION
-    sqlite3_enable_load_extension(p->db, 1);
+	  sqlite3_enable_load_extension (p->db, 1);
 #endif
 
 /* Sandro Furieri 2009-11-08 */
@@ -2300,7 +2701,7 @@ static void open_db(struct callback_data *p){
 /* Sandro Furieri 2010-08-07 */
 	  spatialite_autocreate (p->db);
 /* end Sandro Furieri 2010-08-07 */
-  }
+      }
 }
 
 /*
@@ -2312,57 +2713,79 @@ static void open_db(struct callback_data *p){
 **    \NNN  -> ascii character NNN in octal
 **    \\    -> backslash
 */
-static void resolve_backslashes(char *z){
-  int i, j;
-  char c;
-  for(i=j=0; (c = z[i])!=0; i++, j++){
-    if( c=='\\' ){
-      c = z[++i];
-      if( c=='n' ){
-        c = '\n';
-      }else if( c=='t' ){
-        c = '\t';
-      }else if( c=='r' ){
-        c = '\r';
-      }else if( c>='0' && c<='7' ){
-        c -= '0';
-        if( z[i+1]>='0' && z[i+1]<='7' ){
-          i++;
-          c = (c<<3) + z[i] - '0';
-          if( z[i+1]>='0' && z[i+1]<='7' ){
-            i++;
-            c = (c<<3) + z[i] - '0';
-          }
-        }
+static void
+resolve_backslashes (char *z)
+{
+    int i, j;
+    char c;
+    for (i = j = 0; (c = z[i]) != 0; i++, j++)
+      {
+	  if (c == '\\')
+	    {
+		c = z[++i];
+		if (c == 'n')
+		  {
+		      c = '\n';
+		  }
+		else if (c == 't')
+		  {
+		      c = '\t';
+		  }
+		else if (c == 'r')
+		  {
+		      c = '\r';
+		  }
+		else if (c >= '0' && c <= '7')
+		  {
+		      c -= '0';
+		      if (z[i + 1] >= '0' && z[i + 1] <= '7')
+			{
+			    i++;
+			    c = (c << 3) + z[i] - '0';
+			    if (z[i + 1] >= '0' && z[i + 1] <= '7')
+			      {
+				  i++;
+				  c = (c << 3) + z[i] - '0';
+			      }
+			}
+		  }
+	    }
+	  z[j] = c;
       }
-    }
-    z[j] = c;
-  }
-  z[j] = 0;
+    z[j] = 0;
 }
 
 /*
 ** Interpret zArg as a boolean value.  Return either 0 or 1.
 */
-static int booleanValue(char *zArg){
-  int val = atoi(zArg);
-  int j;
-  for(j=0; zArg[j]; j++){
-    zArg[j] = ToLower(zArg[j]);
-  }
-  if( strcmp(zArg,"on")==0 ){
-    val = 1;
-  }else if( strcmp(zArg,"yes")==0 ){
-    val = 1;
-  }
-  return val;
+static int
+booleanValue (char *zArg)
+{
+    int val = atoi (zArg);
+    int j;
+    for (j = 0; zArg[j]; j++)
+      {
+	  zArg[j] = ToLower (zArg[j]);
+      }
+    if (strcmp (zArg, "on") == 0)
+      {
+	  val = 1;
+      }
+    else if (strcmp (zArg, "yes") == 0)
+      {
+	  val = 1;
+      }
+    return val;
 }
 
 /*
 ** Close an output file, assuming it is not stderr or stdout
 */
-static void output_file_close(FILE *f){
-  if( f && f!=stdout && f!=stderr ) fclose(f);
+static void
+output_file_close (FILE * f)
+{
+    if (f && f != stdout && f != stderr)
+	fclose (f);
 }
 
 /*
@@ -2370,38 +2793,53 @@ static void output_file_close(FILE *f){
 ** recognized and do the right thing.  NULL is returned if the output 
 ** filename is "off".
 */
-static FILE *output_file_open(const char *zFile){
-  FILE *f;
-  if( strcmp(zFile,"stdout")==0 ){
-    f = stdout;
-  }else if( strcmp(zFile, "stderr")==0 ){
-    f = stderr;
-  }else if( strcmp(zFile, "off")==0 ){
-    f = 0;
-  }else{
-    f = fopen(zFile, "wb");
-    if( f==0 ){
-      fprintf(stderr, "Error: cannot open \"%s\"\n", zFile);
-    }
-  }
-  return f;
+static FILE *
+output_file_open (const char *zFile)
+{
+    FILE *f;
+    if (strcmp (zFile, "stdout") == 0)
+      {
+	  f = stdout;
+      }
+    else if (strcmp (zFile, "stderr") == 0)
+      {
+	  f = stderr;
+      }
+    else if (strcmp (zFile, "off") == 0)
+      {
+	  f = 0;
+      }
+    else
+      {
+	  f = fopen (zFile, "wb");
+	  if (f == 0)
+	    {
+		fprintf (stderr, "Error: cannot open \"%s\"\n", zFile);
+	    }
+      }
+    return f;
 }
 
 /*
 ** A routine for handling output from sqlite3_trace().
 */
-static void sql_trace_callback(void *pArg, const char *z){
-  FILE *f = (FILE*)pArg;
-  if( f ) fprintf(f, "%s\n", z);
+static void
+sql_trace_callback (void *pArg, const char *z)
+{
+    FILE *f = (FILE *) pArg;
+    if (f)
+	fprintf (f, "%s\n", z);
 }
 
 /*
 ** A no-op routine that runs with the ".breakpoint" doc-command.  This is
 ** a useful spot to set a debugger breakpoint.
 */
-static void test_breakpoint(void){
-  static int nCall = 0;
-  nCall++;
+static void
+test_breakpoint (void)
+{
+    static int nCall = 0;
+    nCall++;
 }
 
 /*
@@ -2410,58 +2848,82 @@ static void test_breakpoint(void){
 **
 ** Return 1 on error, 2 to exit, and 0 otherwise.
 */
-static int do_meta_command(char *zLine, struct callback_data *p){
-  int i = 1;
-  int nArg = 0;
-  int n, c;
-  int rc = 0;
-  char *azArg[50];
+static int
+do_meta_command (char *zLine, struct callback_data *p)
+{
+    int i = 1;
+    int nArg = 0;
+    int n, c;
+    int rc = 0;
+    char *azArg[50];
 
-  /* Parse the input line into tokens.
-  */
-  while( zLine[i] && nArg<ArraySize(azArg) ){
-    while( IsSpace(zLine[i]) ){ i++; }
-    if( zLine[i]==0 ) break;
-    if( zLine[i]=='\'' || zLine[i]=='"' ){
-      int delim = zLine[i++];
-      azArg[nArg++] = &zLine[i];
-      while( zLine[i] && zLine[i]!=delim ){ i++; }
-      if( zLine[i]==delim ){
-        zLine[i++] = 0;
+    /* Parse the input line into tokens.
+     */
+    while (zLine[i] && nArg < ArraySize (azArg))
+      {
+	  while (IsSpace (zLine[i]))
+	    {
+		i++;
+	    }
+	  if (zLine[i] == 0)
+	      break;
+	  if (zLine[i] == '\'' || zLine[i] == '"')
+	    {
+		int delim = zLine[i++];
+		azArg[nArg++] = &zLine[i];
+		while (zLine[i] && zLine[i] != delim)
+		  {
+		      i++;
+		  }
+		if (zLine[i] == delim)
+		  {
+		      zLine[i++] = 0;
+		  }
+		if (delim == '"')
+		    resolve_backslashes (azArg[nArg - 1]);
+	    }
+	  else
+	    {
+		azArg[nArg++] = &zLine[i];
+		while (zLine[i] && !IsSpace (zLine[i]))
+		  {
+		      i++;
+		  }
+		if (zLine[i])
+		    zLine[i++] = 0;
+		resolve_backslashes (azArg[nArg - 1]);
+	    }
       }
-      if( delim=='"' ) resolve_backslashes(azArg[nArg-1]);
-    }else{
-      azArg[nArg++] = &zLine[i];
-      while( zLine[i] && !IsSpace(zLine[i]) ){ i++; }
-      if( zLine[i] ) zLine[i++] = 0;
-      resolve_backslashes(azArg[nArg-1]);
-    }
-  }
 
-  /* Process the input line.
-  */
-  if( nArg==0 ) return 0; /* no tokens, no error */
-  n = strlen30(azArg[0]);
-  c = azArg[0][0];
+    /* Process the input line.
+     */
+    if (nArg == 0)
+	return 0;		/* no tokens, no error */
+    n = strlen30 (azArg[0]);
+    c = azArg[0][0];
 
 #ifndef SQLITE_OMIT_LOAD_EXTENSION
-  if( c=='l' && strncmp(azArg[0], "load", n)==0 && nArg>=2 ){
-    const char *zFile, *zProc;
-    char *zErrMsg = 0;
-    zFile = azArg[1];
-    zProc = nArg>=3 ? azArg[2] : 0;
-    open_db(p);
-    rc = sqlite3_load_extension(p->db, zFile, zProc, &zErrMsg);
-    if( rc!=SQLITE_OK ){
-      fprintf(stderr, "Error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-      rc = 1;
-    }
-  }else
+    if (c == 'l' && strncmp (azArg[0], "load", n) == 0 && nArg >= 2)
+      {
+	  const char *zFile, *zProc;
+	  char *zErrMsg = 0;
+	  zFile = azArg[1];
+	  zProc = nArg >= 3 ? azArg[2] : 0;
+	  open_db (p);
+	  rc = sqlite3_load_extension (p->db, zFile, zProc, &zErrMsg);
+	  if (rc != SQLITE_OK)
+	    {
+		fprintf (stderr, "Error: %s\n", zErrMsg);
+		sqlite3_free (zErrMsg);
+		rc = 1;
+	    }
+      }
+    else
 #endif
 
 /* Sandro Furieri 2008-06-20 */
-    if (c == 'c' && n > 1 && strncmp (azArg[0], "charset", n) == 0 && nArg == 1)
+    if (c == 'c' && n > 1 && strncmp (azArg[0], "charset", n) == 0
+	    && nArg == 1)
       {
 	  /* reporting the charset */
 	  if (*spatialite_charset == '\0')
@@ -2562,7 +3024,8 @@ static int do_meta_command(char *zLine, struct callback_data *p){
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadshp", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 ||
-		 nArg == 8 || nArg == 9 || nArg == 10 || nArg == 11 || nArg == 12))
+		 nArg == 8 || nArg == 9 || nArg == 10 || nArg == 11
+		 || nArg == 12 || nArg == 13))
       {
 	  char *shp_path = azArg[1];
 	  char *table = azArg[2];
@@ -2572,9 +3035,10 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 	  int compressed = 0;
 	  int with_spatial_index = 0;
 	  int text_dates = 0;
+	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
 	  char *column = NULL;
 	  char *gtype = NULL;
-          char *pk = NULL;
+	  char *pk = NULL;
 	  int rows;
 	  if (nArg >= 5)
 	      srid = atoi (azArg[4]);
@@ -2590,34 +3054,60 @@ static int do_meta_command(char *zLine, struct callback_data *p){
 		    coerce2d = 1;
 	    }
 	  if (nArg >= 10)
-	  {
+	    {
 		if (strcasecmp (azArg[9], "compressed") == 0)
 		    compressed = 1;
-	  }
+	    }
 	  if (nArg == 11)
 	      with_spatial_index = 1;
 	  if (nArg == 12)
-	      text_dates = atoi(azArg[11]);
+	      text_dates = atoi (azArg[11]);
+	  if (nArg == 13)
+	    {
+		const char *pColnameCase = azArg[12];
+		if (strcasecmp (pColnameCase, "UPPER") == 0
+		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
+		else if (strcasecmp (pColnameCase, "SAME") == 0
+			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	    }
 	  open_db (p);
-	  load_shapefile_ex2 (p->db, shp_path, table, inCS, srid, column, gtype, pk,
-			     coerce2d, compressed, 1, with_spatial_index, text_dates,
-			     &rows, NULL);
+	  load_shapefile_ex3 (p->db, shp_path, table, inCS, srid, column, gtype,
+			      pk, coerce2d, compressed, 1, with_spatial_index,
+			      text_dates, &rows, colname_case, NULL);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddbf", n) == 0
-	     && (nArg == 4 || nArg == 5 || nArg == 6))
+	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7))
       {
 	  char *dbf_path = azArg[1];
 	  char *table = azArg[2];
 	  char *inCS = azArg[3];
-      char *pk = NULL;
-      int text_dates = 0;
+	  char *pk = NULL;
+	  int text_dates = 0;
+	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
 	  int rows;
-      if (nArg == 5)
-          pk = azArg[4];
-      if (nArg == 6)
-          text_dates = atoi(azArg[5]);
+	  if (nArg == 5)
+	      pk = azArg[4];
+	  if (nArg == 6)
+	      text_dates = atoi (azArg[5]);
+	  if (nArg == 7)
+	    {
+		const char *pColnameCase = azArg[6];
+		if (strcasecmp (pColnameCase, "UPPER") == 0
+		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
+		else if (strcasecmp (pColnameCase, "SAME") == 0
+			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	    }
 	  open_db (p);
-	  load_dbf_ex2 (p->db, dbf_path, table, pk, inCS, 1, text_dates, &rows, NULL);
+	  load_dbf_ex3 (p->db, dbf_path, table, pk, inCS, 1, text_dates, &rows,
+			colname_case, NULL);
       }
 #ifndef OMIT_FREEXL		/* FREEXL is enabled */
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadxl", n) == 0
@@ -2642,117 +3132,121 @@ static int do_meta_command(char *zLine, struct callback_data *p){
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loadwfs", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7 || nArg == 8))
       {
-          char *path_or_url = azArg[1];
-          char *layer_name = azArg[2];
-          char *table = azArg[3];
-          int swap_axes = 0;
-          int with_spatial_index = 0;
-          int page_size = -1;
-          char *pk = NULL;
-          char *err_msg = NULL;
-          int rows;
+	  char *path_or_url = azArg[1];
+	  char *layer_name = azArg[2];
+	  char *table = azArg[3];
+	  int swap_axes = 0;
+	  int with_spatial_index = 0;
+	  int page_size = -1;
+	  char *pk = NULL;
+	  char *err_msg = NULL;
+	  int rows;
 	  if (nArg >= 5)
 	      pk = azArg[4];
 	  if (nArg >= 6)
-          {
-              if (strcasecmp(azArg[5], "swap") == 0 ||
-                  strcasecmp(azArg[5], "swap_axis") == 0 ||
-                  strcasecmp(azArg[5], "swap_axes") == 0)
-                  swap_axes = 1;
-          }
+	    {
+		if (strcasecmp (azArg[5], "swap") == 0 ||
+		    strcasecmp (azArg[5], "swap_axis") == 0 ||
+		    strcasecmp (azArg[5], "swap_axes") == 0)
+		    swap_axes = 1;
+	    }
 	  if (nArg >= 7)
-	      page_size = atoi(azArg[6]);
+	      page_size = atoi (azArg[6]);
 	  if (nArg == 8)
 	      with_spatial_index = 1;
 	  open_db (p);
-	  if (load_from_wfs_paged (p->db, path_or_url, NULL, layer_name, swap_axes, table, pk, with_spatial_index, 
-        page_size, &rows, &err_msg, wfs_page_done, NULL) == 0)
-		{
-			fprintf(stderr, "Unable to load data from WFS:\n");
-			fprintf(stderr, "%s\n\n", err_msg);
-		}
-		else
-			fprintf(stderr, "inserted %d rows from WFS into table \"%s\"\n\n", rows, table);
-		if (err_msg)
-			free(err_msg);
+	  if (load_from_wfs_paged
+	      (p->db, path_or_url, NULL, layer_name, swap_axes, table, pk,
+	       with_spatial_index, page_size, &rows, &err_msg, wfs_page_done,
+	       NULL) == 0)
+	    {
+		fprintf (stderr, "Unable to load data from WFS:\n");
+		fprintf (stderr, "%s\n\n", err_msg);
+	    }
+	  else
+	      fprintf (stderr,
+		       "inserted %d rows from WFS into table \"%s\"\n\n", rows,
+		       table);
+	  if (err_msg)
+	      free (err_msg);
       }
     else if (c == 'l' && n > 1 && strncmp (azArg[0], "loaddxf", n) == 0
 	     && (nArg == 2 || (nArg >= 3 && nArg <= 9)))
       {
 	  char *dxf_path = azArg[1];
 	  int srid = -1;
-  	  int append = 0;
-          int special_rings = GAIA_DXF_RING_NONE;
-          int mode = GAIA_DXF_IMPORT_BY_LAYER;
-          int force_dims = GAIA_DXF_AUTO_2D_3D;
-          char *prefix = NULL;
-          char *layer_name = NULL;
-          gaiaDxfParserPtr dxf = NULL;
+	  int append = 0;
+	  int special_rings = GAIA_DXF_RING_NONE;
+	  int mode = GAIA_DXF_IMPORT_BY_LAYER;
+	  int force_dims = GAIA_DXF_AUTO_2D_3D;
+	  char *prefix = NULL;
+	  char *layer_name = NULL;
+	  gaiaDxfParserPtr dxf = NULL;
 	  if (nArg >= 3)
-	      srid = atoi(azArg[2]);
+	      srid = atoi (azArg[2]);
 	  if (nArg >= 4)
-          {
-              if (strcasecmp(azArg[3], "y") == 0 ||
-                  strcasecmp(azArg[3], "yes") == 0)
-                  append = 1;
-          }
+	    {
+		if (strcasecmp (azArg[3], "y") == 0 ||
+		    strcasecmp (azArg[3], "yes") == 0)
+		    append = 1;
+	    }
 	  if (nArg >= 5)
-          {
-              if (strcasecmp(azArg[4], "2D") == 0)
-                  force_dims = GAIA_DXF_FORCE_2D;
-              if (strcasecmp(azArg[4], "3D") == 0)
-                  force_dims = GAIA_DXF_FORCE_3D;
-          }
+	    {
+		if (strcasecmp (azArg[4], "2D") == 0)
+		    force_dims = GAIA_DXF_FORCE_2D;
+		if (strcasecmp (azArg[4], "3D") == 0)
+		    force_dims = GAIA_DXF_FORCE_3D;
+	    }
 	  if (nArg >= 6)
-          {
-              if (strcasecmp(azArg[5], "mixed") == 0)
-                  mode = GAIA_DXF_IMPORT_MIXED;
-          }
+	    {
+		if (strcasecmp (azArg[5], "mixed") == 0)
+		    mode = GAIA_DXF_IMPORT_MIXED;
+	    }
 	  if (nArg >= 7)
-          {
-              if (strcasecmp(azArg[6], "linked") == 0)
-                  special_rings = GAIA_DXF_RING_LINKED;
-              if (strcasecmp(azArg[6], "unlinked") == 0)
-                  special_rings = GAIA_DXF_RING_UNLINKED;
-          }
-          if (nArg >= 8)
-          {
-              if (strlen(azArg[7]) > 0)
-                  prefix = azArg[7];
-          }
-          if (nArg == 9)
-          {
-              if (strlen(azArg[8]) > 0)
-                  layer_name = azArg[8];
-          }
+	    {
+		if (strcasecmp (azArg[6], "linked") == 0)
+		    special_rings = GAIA_DXF_RING_LINKED;
+		if (strcasecmp (azArg[6], "unlinked") == 0)
+		    special_rings = GAIA_DXF_RING_UNLINKED;
+	    }
+	  if (nArg >= 8)
+	    {
+		if (strlen (azArg[7]) > 0)
+		    prefix = azArg[7];
+	    }
+	  if (nArg == 9)
+	    {
+		if (strlen (azArg[8]) > 0)
+		    layer_name = azArg[8];
+	    }
 	  open_db (p);
-      /* creating a DXF parser */
-          dxf = gaiaCreateDxfParser (srid, force_dims, prefix, layer_name,
-                special_rings);
-          if (dxf == NULL)
-              goto stop_dxf;
-      /* attempting to parse the DXF input file */
-          if (gaiaParseDxfFile_r (splite_cache, dxf, dxf_path))
-          {
-      /* loading into the DB */
-              if (!gaiaLoadFromDxfParser (p->db, dxf, mode, append))
-                  fprintf (stderr, "DB error while loading: %s\n", dxf_path);
-          }
-          else
-              fprintf (stderr, "Unable to parse: %s\n", dxf_path);
-          fprintf(stderr, "\n*** DXF file successfully loaded\n"); 
-stop_dxf:
-      /* destroying the DXF parser */
-          gaiaDestroyDxfParser (dxf);
+	  /* creating a DXF parser */
+	  dxf = gaiaCreateDxfParser (srid, force_dims, prefix, layer_name,
+				     special_rings);
+	  if (dxf == NULL)
+	      goto stop_dxf;
+	  /* attempting to parse the DXF input file */
+	  if (gaiaParseDxfFile_r (splite_cache, dxf, dxf_path))
+	    {
+		/* loading into the DB */
+		if (!gaiaLoadFromDxfParser (p->db, dxf, mode, append))
+		    fprintf (stderr, "DB error while loading: %s\n", dxf_path);
+	    }
+	  else
+	      fprintf (stderr, "Unable to parse: %s\n", dxf_path);
+	  fprintf (stderr, "\n*** DXF file successfully loaded\n");
+	stop_dxf:
+	  /* destroying the DXF parser */
+	  gaiaDestroyDxfParser (dxf);
       }
     else if (c == 'r' && strncmp (azArg[0], "read", n) == 0)
       {
 	  FILE *alt;
 	  char *arg2 = NULL;
 	  if (nArg == 2)
-		;
+	      ;
 	  else if (nArg == 3)
-		arg2 = azArg[2];
+	      arg2 = azArg[2];
 	  else
 	    {
 		fprintf (stderr,
@@ -2790,13 +3284,14 @@ stop_dxf:
 	  char *report = azArg[3];
 	  char *err_msg = NULL;
 	  open_db (p);
-	  if (!check_geometry_column (p->db, table, geometry, report, NULL, NULL, &err_msg))
-          {
-              fprintf(stderr, "check_geometry_column error:\n");
-              fprintf(stderr, "%s\n\n", err_msg);
-          }
-          if (err_msg)
-              free(err_msg);
+	  if (!check_geometry_column
+	      (p->db, table, geometry, report, NULL, NULL, &err_msg))
+	    {
+		fprintf (stderr, "check_geometry_column error:\n");
+		fprintf (stderr, "%s\n\n", err_msg);
+	    }
+	  if (err_msg)
+	      free (err_msg);
       }
     else if (c == 'c' && strncmp (azArg[0], "checkgeom", n) == 0 && nArg == 2)
       {
@@ -2804,12 +3299,12 @@ stop_dxf:
 	  char *err_msg = NULL;
 	  open_db (p);
 	  if (!check_all_geometry_columns (p->db, output_dir, NULL, &err_msg))
-          {
-              fprintf(stderr, "check_all_geometry_columns error:\n");
-              fprintf(stderr, "%s\n\n", err_msg);
-          }
-          if (err_msg)
-              free(err_msg);
+	    {
+		fprintf (stderr, "check_all_geometry_columns error:\n");
+		fprintf (stderr, "%s\n\n", err_msg);
+	    }
+	  if (err_msg)
+	      free (err_msg);
       }
     else if (c == 's' && strncmp (azArg[0], "sanegeom", n) == 0 && nArg == 5)
       {
@@ -2819,13 +3314,15 @@ stop_dxf:
 	  char *report = azArg[4];
 	  char *err_msg = NULL;
 	  open_db (p);
-	  if (!sanitize_geometry_column (p->db, table, geometry, tmp_table, report, NULL, NULL, NULL, NULL, &err_msg))
-          {
-              fprintf(stderr, "sanitize_geometry_column error:\n");
-              fprintf(stderr, "%s\n\n", err_msg);
-          }
-          if (err_msg)
-              free(err_msg);
+	  if (!sanitize_geometry_column
+	      (p->db, table, geometry, tmp_table, report, NULL, NULL, NULL,
+	       NULL, &err_msg))
+	    {
+		fprintf (stderr, "sanitize_geometry_column error:\n");
+		fprintf (stderr, "%s\n\n", err_msg);
+	    }
+	  if (err_msg)
+	      free (err_msg);
       }
     else if (c == 's' && strncmp (azArg[0], "sanegeom", n) == 0 && nArg == 3)
       {
@@ -2833,13 +3330,14 @@ stop_dxf:
 	  char *output_dir = azArg[2];
 	  char *err_msg = NULL;
 	  open_db (p);
-	  if (!sanitize_all_geometry_columns (p->db, tmp_prefix, output_dir, NULL, &err_msg))
-          {
-              fprintf(stderr, "sanitize_all_geometry_columns error:\n");
-              fprintf(stderr, "%s\n\n", err_msg);
-          }
-          if (err_msg)
-              free(err_msg);
+	  if (!sanitize_all_geometry_columns
+	      (p->db, tmp_prefix, output_dir, NULL, &err_msg))
+	    {
+		fprintf (stderr, "sanitize_all_geometry_columns error:\n");
+		fprintf (stderr, "%s\n\n", err_msg);
+	    }
+	  if (err_msg)
+	      free (err_msg);
       }
     else if (c == 'e' && strncmp (azArg[0], "elemgeo", n) == 0 && nArg == 6)
       {
@@ -2857,973 +3355,1238 @@ stop_dxf:
       }
     else if (c == 'd' && strncmp (azArg[0], "dropgeo", n) == 0 && nArg > 1)
       {
-          char *prefix;
-          char *table;
-          int ret;
-          int cnt0 = sqlite3_total_changes(p->db);
-          split_drop_name(azArg[1], &prefix, &table);
-          if (prefix != NULL && table != NULL)
-              ret = gaiaDropTableEx (p->db, prefix, table);
-          else
+	  char *prefix;
+	  char *table;
+	  int ret;
+	  int cnt0 = sqlite3_total_changes (p->db);
+	  split_drop_name (azArg[1], &prefix, &table);
+	  if (prefix != NULL && table != NULL)
+	      ret = gaiaDropTableEx (p->db, prefix, table);
+	  else
 	      ret = gaiaDropTable (p->db, azArg[1]);
-          if (ret)
-          {
-              int cnt1 = sqlite3_total_changes(p->db);
-              if (cnt1 > cnt0)
-                  fprintf(stderr, "SpatialTable %s successfully removed\n", azArg[1]);
-              else
-                  fprintf(stderr, "SpatialTable %s seems not to exist\n", azArg[1]);
-          }
-          else
-              fprintf(stderr, "ERROR: unable to remove SpatialTable %s\n", azArg[1]);
-          if (prefix != NULL)
-              free(prefix);
-          if (table != NULL)
-              free(table);
-      } else
+	  if (ret)
+	    {
+		int cnt1 = sqlite3_total_changes (p->db);
+		if (cnt1 > cnt0)
+		    fprintf (stderr, "SpatialTable %s successfully removed\n",
+			     azArg[1]);
+		else
+		    fprintf (stderr, "SpatialTable %s seems not to exist\n",
+			     azArg[1]);
+	    }
+	  else
+	      fprintf (stderr, "ERROR: unable to remove SpatialTable %s\n",
+		       azArg[1]);
+	  if (prefix != NULL)
+	      free (prefix);
+	  if (table != NULL)
+	      free (table);
+      }
+    else
 /* end sandro 2008-06-20 */
-  if( c=='b' && n>=3 && strncmp(azArg[0], "backup", n)==0 && nArg>1 && nArg<4){
-    const char *zDestFile;
-    const char *zDb;
-    sqlite3 *pDest;
-    sqlite3_backup *pBackup;
-    if( nArg==2 ){
-      zDestFile = azArg[1];
-      zDb = "main";
-    }else{
-      zDestFile = azArg[2];
-      zDb = azArg[1];
-    }
-    rc = sqlite3_open(zDestFile, &pDest);
-    if( rc!=SQLITE_OK ){
-      fprintf(stderr, "Error: cannot open \"%s\"\n", zDestFile);
-      sqlite3_close(pDest);
-      return 1;
-    }
-    open_db(p);
-    pBackup = sqlite3_backup_init(pDest, "main", p->db, zDb);
-    if( pBackup==0 ){
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pDest));
-      sqlite3_close(pDest);
-      return 1;
-    }
-    while(  (rc = sqlite3_backup_step(pBackup,100))==SQLITE_OK ){}
-    sqlite3_backup_finish(pBackup);
-    if( rc==SQLITE_DONE ){
-      rc = 0;
-    }else{
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(pDest));
-      rc = 1;
-    }
-    sqlite3_close(pDest);
-  }else if( c=='b' && n>=3 && strncmp(azArg[0], "bail", n)==0 && nArg>1 && nArg<3 ){
-    bail_on_error = booleanValue(azArg[1]);
-  }else
-
-  /* The undocumented ".breakpoint" command causes a call to the no-op
-  ** routine named test_breakpoint().
-  */
-  if( c=='b' && n>=3 && strncmp(azArg[0], "breakpoint", n)==0 ){
-    test_breakpoint();
-  }else
-
-  if( c=='d' && n>1 && strncmp(azArg[0], "databases", n)==0 && nArg==1 ){
-    struct callback_data data;
-    char *zErrMsg = 0;
-    open_db(p);
-    memcpy(&data, p, sizeof(data));
-    data.showHeader = 1;
-    data.mode = MODE_Column;
-    data.colWidth[0] = 3;
-    data.colWidth[1] = 15;
-    data.colWidth[2] = 58;
-    data.cnt = 0;
-    sqlite3_exec(p->db, "PRAGMA database_list; ", callback, &data, &zErrMsg);
-    if( zErrMsg ){
-      fprintf(stderr,"Error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-      rc = 1;
-    }
-  }else
-
-  if( c=='d' && strncmp(azArg[0], "dump", n)==0 && nArg<3 ){
-    open_db(p);
-    /* When playing back a "dump", the content might appear in an order
-    ** which causes immediate foreign key constraints to be violated.
-    ** So disable foreign-key constraint enforcement to prevent problems. */
-    fprintf(p->out, "PRAGMA foreign_keys=OFF;\n");
-    fprintf(p->out, "BEGIN TRANSACTION;\n");
-    p->writableSchema = 0;
-    sqlite3_exec(p->db, "SAVEPOINT dump; PRAGMA writable_schema=ON", 0, 0, 0);
-    p->nErr = 0;
-    if( nArg==1 ){
-      run_schema_dump_query(p, 
-        "SELECT name, type, sql FROM sqlite_master "
-        "WHERE sql NOT NULL AND type=='table' AND name!='sqlite_sequence'"
-      );
-      run_schema_dump_query(p, 
-        "SELECT name, type, sql FROM sqlite_master "
-        "WHERE name=='sqlite_sequence'"
-      );
-      run_table_dump_query(p,
-        "SELECT sql FROM sqlite_master "
-        "WHERE sql NOT NULL AND type IN ('index','trigger','view')", 0
-      );
-    }else{
-      int i;
-      for(i=1; i<nArg; i++){
-        zShellStatic = azArg[i];
-        run_schema_dump_query(p,
-          "SELECT name, type, sql FROM sqlite_master "
-          "WHERE tbl_name LIKE shellstatic() AND type=='table'"
-          "  AND sql NOT NULL");
-        run_table_dump_query(p,
-          "SELECT sql FROM sqlite_master "
-          "WHERE sql NOT NULL"
-          "  AND type IN ('index','trigger','view')"
-          "  AND tbl_name LIKE shellstatic()", 0
-        );
-        zShellStatic = 0;
+    if (c == 'b' && n >= 3 && strncmp (azArg[0], "backup", n) == 0
+	    && nArg > 1 && nArg < 4)
+      {
+	  const char *zDestFile;
+	  const char *zDb;
+	  sqlite3 *pDest;
+	  sqlite3_backup *pBackup;
+	  if (nArg == 2)
+	    {
+		zDestFile = azArg[1];
+		zDb = "main";
+	    }
+	  else
+	    {
+		zDestFile = azArg[2];
+		zDb = azArg[1];
+	    }
+	  rc = sqlite3_open (zDestFile, &pDest);
+	  if (rc != SQLITE_OK)
+	    {
+		fprintf (stderr, "Error: cannot open \"%s\"\n", zDestFile);
+		sqlite3_close (pDest);
+		return 1;
+	    }
+	  open_db (p);
+	  pBackup = sqlite3_backup_init (pDest, "main", p->db, zDb);
+	  if (pBackup == 0)
+	    {
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (pDest));
+		sqlite3_close (pDest);
+		return 1;
+	    }
+	  while ((rc = sqlite3_backup_step (pBackup, 100)) == SQLITE_OK)
+	    {
+	    }
+	  sqlite3_backup_finish (pBackup);
+	  if (rc == SQLITE_DONE)
+	    {
+		rc = 0;
+	    }
+	  else
+	    {
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (pDest));
+		rc = 1;
+	    }
+	  sqlite3_close (pDest);
       }
-    }
-    if( p->writableSchema ){
-      fprintf(p->out, "PRAGMA writable_schema=OFF;\n");
-      p->writableSchema = 0;
-    }
-    sqlite3_exec(p->db, "PRAGMA writable_schema=OFF;", 0, 0, 0);
-    sqlite3_exec(p->db, "RELEASE dump;", 0, 0, 0);
-    fprintf(p->out, p->nErr ? "ROLLBACK; -- due to errors\n" : "COMMIT;\n");
-  }else
-
-  if( c=='e' && strncmp(azArg[0], "echo", n)==0 && nArg>1 && nArg<3 ){
-    p->echoOn = booleanValue(azArg[1]);
-  }else
-
-  if( c=='e' && strncmp(azArg[0], "exit", n)==0  && nArg==1 ){
-    rc = 2;
-  }else
-
-  if( c=='e' && strncmp(azArg[0], "explain", n)==0 && nArg<3 ){
-    int val = nArg>=2 ? booleanValue(azArg[1]) : 1;
-    if(val == 1) {
-      if(!p->explainPrev.valid) {
-        p->explainPrev.valid = 1;
-        p->explainPrev.mode = p->mode;
-        p->explainPrev.showHeader = p->showHeader;
-        memcpy(p->explainPrev.colWidth,p->colWidth,sizeof(p->colWidth));
+    else if (c == 'b' && n >= 3 && strncmp (azArg[0], "bail", n) == 0
+	     && nArg > 1 && nArg < 3)
+      {
+	  bail_on_error = booleanValue (azArg[1]);
       }
-      /* We could put this code under the !p->explainValid
-      ** condition so that it does not execute if we are already in
-      ** explain mode. However, always executing it allows us an easy
-      ** was to reset to explain mode in case the user previously
-      ** did an .explain followed by a .width, .mode or .header
-      ** command.
-      */
-      p->mode = MODE_Explain;
-      p->showHeader = 1;
-      memset(p->colWidth,0,ArraySize(p->colWidth));
-      p->colWidth[0] = 4;                  /* addr */
-      p->colWidth[1] = 13;                 /* opcode */
-      p->colWidth[2] = 4;                  /* P1 */
-      p->colWidth[3] = 4;                  /* P2 */
-      p->colWidth[4] = 4;                  /* P3 */
-      p->colWidth[5] = 13;                 /* P4 */
-      p->colWidth[6] = 2;                  /* P5 */
-      p->colWidth[7] = 13;                  /* Comment */
-    }else if (p->explainPrev.valid) {
-      p->explainPrev.valid = 0;
-      p->mode = p->explainPrev.mode;
-      p->showHeader = p->explainPrev.showHeader;
-      memcpy(p->colWidth,p->explainPrev.colWidth,sizeof(p->colWidth));
-    }
-  }else
-
-  if( c=='h' && (strncmp(azArg[0], "header", n)==0 ||
-                 strncmp(azArg[0], "headers", n)==0) && nArg>1 && nArg<3 ){
-    p->showHeader = booleanValue(azArg[1]);
-  }else
-
-  if( c=='h' && strncmp(azArg[0], "help", n)==0 ){
-    fprintf(stderr,"%s",zHelp);
-    if( HAS_TIMER ){
-      fprintf(stderr,"%s",zTimerHelp);
-    }
-  }else
-
-  if( c=='i' && strncmp(azArg[0], "import", n)==0 && nArg==3 ){
-    char *zTable = azArg[2];    /* Insert data into this table */
-    char *zFile = azArg[1];     /* The file from which to extract data */
-    sqlite3_stmt *pStmt = NULL; /* A statement */
-    int nCol;                   /* Number of columns in the table */
-    int nByte;                  /* Number of bytes in an SQL string */
-    int i, j;                   /* Loop counters */
-    int nSep;                   /* Number of bytes in p->separator[] */
-    char *zSql;                 /* An SQL statement */
-    char *zLine;                /* A single line of input from the file */
-    char **azCol;               /* zLine[] broken up into columns */
-    char *zCommit;              /* How to commit changes */   
-    FILE *in;                   /* The input file */
-    int lineno = 0;             /* Line number of input file */
-
-    open_db(p);
-    nSep = strlen30(p->separator);
-    if( nSep==0 ){
-      fprintf(stderr, "Error: non-null separator required for import\n");
-      return 1;
-    }
-    zSql = sqlite3_mprintf("SELECT * FROM %s", zTable);
-    if( zSql==0 ){
-      fprintf(stderr, "Error: out of memory\n");
-      return 1;
-    }
-    nByte = strlen30(zSql);
-    rc = sqlite3_prepare(p->db, zSql, -1, &pStmt, 0);
-    sqlite3_free(zSql);
-    if( rc ){
-      if (pStmt) sqlite3_finalize(pStmt);
-      fprintf(stderr,"Error: %s\n", sqlite3_errmsg(db));
-      return 1;
-    }
-    nCol = sqlite3_column_count(pStmt);
-    sqlite3_finalize(pStmt);
-    pStmt = 0;
-    if( nCol==0 ) return 0; /* no columns, no error */
-    zSql = malloc( nByte + 20 + nCol*2 );
-    if( zSql==0 ){
-      fprintf(stderr, "Error: out of memory\n");
-      return 1;
-    }
-    sqlite3_snprintf(nByte+20, zSql, "INSERT INTO %s VALUES(?", zTable);
-    j = strlen30(zSql);
-    for(i=1; i<nCol; i++){
-      zSql[j++] = ',';
-      zSql[j++] = '?';
-    }
-    zSql[j++] = ')';
-    zSql[j] = 0;
-    rc = sqlite3_prepare(p->db, zSql, -1, &pStmt, 0);
-    free(zSql);
-    if( rc ){
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
-      if (pStmt) sqlite3_finalize(pStmt);
-      return 1;
-    }
-    in = fopen(zFile, "rb");
-    if( in==0 ){
-      fprintf(stderr, "Error: cannot open \"%s\"\n", zFile);
-      sqlite3_finalize(pStmt);
-      return 1;
-    }
-    azCol = malloc( sizeof(azCol[0])*(nCol+1) );
-    if( azCol==0 ){
-      fprintf(stderr, "Error: out of memory\n");
-      fclose(in);
-      sqlite3_finalize(pStmt);
-      return 1;
-    }
-    sqlite3_exec(p->db, "BEGIN", 0, 0, 0);
-    zCommit = "COMMIT";
-    while( (zLine = local_getline(0, in, 1))!=0 ){
-      char *z, c;
-      int inQuote = 0;
-      lineno++;
-      azCol[0] = zLine;
-      for(i=0, z=zLine; (c = *z)!=0; z++){
-        if( c=='"' ) inQuote = !inQuote;
-        if( c=='\n' ) lineno++;
-        if( !inQuote && c==p->separator[0] && strncmp(z,p->separator,nSep)==0 ){
-          *z = 0;
-          i++;
-          if( i<nCol ){
-            azCol[i] = &z[nSep];
-            z += nSep-1;
-          }
-        }
-      } /* end for */
-      *z = 0;
-      if( i+1!=nCol ){
-        fprintf(stderr,
-                "Error: %s line %d: expected %d columns of data but found %d\n",
-                zFile, lineno, nCol, i+1);
-        zCommit = "ROLLBACK";
-        free(zLine);
-        rc = 1;
-        break; /* from while */
+    else
+	/* The undocumented ".breakpoint" command causes a call to the no-op
+	 ** routine named test_breakpoint().
+	 */
+    if (c == 'b' && n >= 3 && strncmp (azArg[0], "breakpoint", n) == 0)
+      {
+	  test_breakpoint ();
       }
-      for(i=0; i<nCol; i++){
-        if( azCol[i][0]=='"' ){
-          int k;
-          for(z=azCol[i], j=1, k=0; z[j]; j++){
-            if( z[j]=='"' ){ j++; if( z[j]==0 ) break; }
-            z[k++] = z[j];
-          }
-          z[k] = 0;
-        }
-        sqlite3_bind_text(pStmt, i+1, azCol[i], -1, SQLITE_STATIC);
+    else if (c == 'd' && n > 1 && strncmp (azArg[0], "databases", n) == 0
+	     && nArg == 1)
+      {
+	  struct callback_data data;
+	  char *zErrMsg = 0;
+	  open_db (p);
+	  memcpy (&data, p, sizeof (data));
+	  data.showHeader = 1;
+	  data.mode = MODE_Column;
+	  data.colWidth[0] = 3;
+	  data.colWidth[1] = 15;
+	  data.colWidth[2] = 58;
+	  data.cnt = 0;
+	  sqlite3_exec (p->db, "PRAGMA database_list; ", callback, &data,
+			&zErrMsg);
+	  if (zErrMsg)
+	    {
+		fprintf (stderr, "Error: %s\n", zErrMsg);
+		sqlite3_free (zErrMsg);
+		rc = 1;
+	    }
       }
-      sqlite3_step(pStmt);
-      rc = sqlite3_reset(pStmt);
-      free(zLine);
-      if( rc!=SQLITE_OK ){
-        fprintf(stderr,"Error: %s\n", sqlite3_errmsg(db));
-        zCommit = "ROLLBACK";
-        rc = 1;
-        break; /* from while */
+    else if (c == 'd' && strncmp (azArg[0], "dump", n) == 0 && nArg < 3)
+      {
+	  open_db (p);
+	  /* When playing back a "dump", the content might appear in an order
+	   ** which causes immediate foreign key constraints to be violated.
+	   ** So disable foreign-key constraint enforcement to prevent problems. */
+	  fprintf (p->out, "PRAGMA foreign_keys=OFF;\n");
+	  fprintf (p->out, "BEGIN TRANSACTION;\n");
+	  p->writableSchema = 0;
+	  sqlite3_exec (p->db, "SAVEPOINT dump; PRAGMA writable_schema=ON", 0,
+			0, 0);
+	  p->nErr = 0;
+	  if (nArg == 1)
+	    {
+		run_schema_dump_query (p,
+				       "SELECT name, type, sql FROM sqlite_master "
+				       "WHERE sql NOT NULL AND type=='table' AND name!='sqlite_sequence'");
+		run_schema_dump_query (p,
+				       "SELECT name, type, sql FROM sqlite_master "
+				       "WHERE name=='sqlite_sequence'");
+		run_table_dump_query (p,
+				      "SELECT sql FROM sqlite_master "
+				      "WHERE sql NOT NULL AND type IN ('index','trigger','view')",
+				      0);
+	    }
+	  else
+	    {
+		int i;
+		for (i = 1; i < nArg; i++)
+		  {
+		      zShellStatic = azArg[i];
+		      run_schema_dump_query (p,
+					     "SELECT name, type, sql FROM sqlite_master "
+					     "WHERE tbl_name LIKE shellstatic() AND type=='table'"
+					     "  AND sql NOT NULL");
+		      run_table_dump_query (p,
+					    "SELECT sql FROM sqlite_master "
+					    "WHERE sql NOT NULL"
+					    "  AND type IN ('index','trigger','view')"
+					    "  AND tbl_name LIKE shellstatic()",
+					    0);
+		      zShellStatic = 0;
+		  }
+	    }
+	  if (p->writableSchema)
+	    {
+		fprintf (p->out, "PRAGMA writable_schema=OFF;\n");
+		p->writableSchema = 0;
+	    }
+	  sqlite3_exec (p->db, "PRAGMA writable_schema=OFF;", 0, 0, 0);
+	  sqlite3_exec (p->db, "RELEASE dump;", 0, 0, 0);
+	  fprintf (p->out,
+		   p->nErr ? "ROLLBACK; -- due to errors\n" : "COMMIT;\n");
       }
-    } /* end while */
-    free(azCol);
-    fclose(in);
-    sqlite3_finalize(pStmt);
-    sqlite3_exec(p->db, zCommit, 0, 0, 0);
-  }else
+    else if (c == 'e' && strncmp (azArg[0], "echo", n) == 0 && nArg > 1
+	     && nArg < 3)
+      {
+	  p->echoOn = booleanValue (azArg[1]);
+      }
+    else if (c == 'e' && strncmp (azArg[0], "exit", n) == 0 && nArg == 1)
+      {
+	  rc = 2;
+      }
+    else if (c == 'e' && strncmp (azArg[0], "explain", n) == 0 && nArg < 3)
+      {
+	  int val = nArg >= 2 ? booleanValue (azArg[1]) : 1;
+	  if (val == 1)
+	    {
+		if (!p->explainPrev.valid)
+		  {
+		      p->explainPrev.valid = 1;
+		      p->explainPrev.mode = p->mode;
+		      p->explainPrev.showHeader = p->showHeader;
+		      memcpy (p->explainPrev.colWidth, p->colWidth,
+			      sizeof (p->colWidth));
+		  }
+		/* We could put this code under the !p->explainValid
+		 ** condition so that it does not execute if we are already in
+		 ** explain mode. However, always executing it allows us an easy
+		 ** was to reset to explain mode in case the user previously
+		 ** did an .explain followed by a .width, .mode or .header
+		 ** command.
+		 */
+		p->mode = MODE_Explain;
+		p->showHeader = 1;
+		memset (p->colWidth, 0, ArraySize (p->colWidth));
+		p->colWidth[0] = 4;	/* addr */
+		p->colWidth[1] = 13;	/* opcode */
+		p->colWidth[2] = 4;	/* P1 */
+		p->colWidth[3] = 4;	/* P2 */
+		p->colWidth[4] = 4;	/* P3 */
+		p->colWidth[5] = 13;	/* P4 */
+		p->colWidth[6] = 2;	/* P5 */
+		p->colWidth[7] = 13;	/* Comment */
+	    }
+	  else if (p->explainPrev.valid)
+	    {
+		p->explainPrev.valid = 0;
+		p->mode = p->explainPrev.mode;
+		p->showHeader = p->explainPrev.showHeader;
+		memcpy (p->colWidth, p->explainPrev.colWidth,
+			sizeof (p->colWidth));
+	    }
+      }
+    else if (c == 'h' && (strncmp (azArg[0], "header", n) == 0 ||
+			  strncmp (azArg[0], "headers", n) == 0) && nArg > 1
+	     && nArg < 3)
+      {
+	  p->showHeader = booleanValue (azArg[1]);
+      }
+    else if (c == 'h' && strncmp (azArg[0], "help", n) == 0)
+      {
+	  fprintf (stderr, "%s", zHelp);
+	  if (HAS_TIMER)
+	    {
+		fprintf (stderr, "%s", zTimerHelp);
+	    }
+      }
+    else if (c == 'i' && strncmp (azArg[0], "import", n) == 0 && nArg == 3)
+      {
+	  char *zTable = azArg[2];	/* Insert data into this table */
+	  char *zFile = azArg[1];	/* The file from which to extract data */
+	  sqlite3_stmt *pStmt = NULL;	/* A statement */
+	  int nCol;		/* Number of columns in the table */
+	  int nByte;		/* Number of bytes in an SQL string */
+	  int i, j;		/* Loop counters */
+	  int nSep;		/* Number of bytes in p->separator[] */
+	  char *zSql;		/* An SQL statement */
+	  char *zLine;		/* A single line of input from the file */
+	  char **azCol;		/* zLine[] broken up into columns */
+	  char *zCommit;	/* How to commit changes */
+	  FILE *in;		/* The input file */
+	  int lineno = 0;	/* Line number of input file */
 
-  if( c=='i' && strncmp(azArg[0], "indices", n)==0 && nArg<3 ){
-    struct callback_data data;
-    char *zErrMsg = 0;
-    open_db(p);
-    memcpy(&data, p, sizeof(data));
-    data.showHeader = 0;
-    data.mode = MODE_List;
-    if( nArg==1 ){
-      rc = sqlite3_exec(p->db,
-        "SELECT name FROM sqlite_master "
-        "WHERE type='index' AND name NOT LIKE 'sqlite_%' "
-        "UNION ALL "
-        "SELECT name FROM sqlite_temp_master "
-        "WHERE type='index' "
-        "ORDER BY 1",
-        callback, &data, &zErrMsg
-      );
-    }else{
-      zShellStatic = azArg[1];
-      rc = sqlite3_exec(p->db,
-        "SELECT name FROM sqlite_master "
-        "WHERE type='index' AND tbl_name LIKE shellstatic() "
-        "UNION ALL "
-        "SELECT name FROM sqlite_temp_master "
-        "WHERE type='index' AND tbl_name LIKE shellstatic() "
-        "ORDER BY 1",
-        callback, &data, &zErrMsg
-      );
-      zShellStatic = 0;
-    }
-    if( zErrMsg ){
-      fprintf(stderr,"Error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-      rc = 1;
-    }else if( rc != SQLITE_OK ){
-      fprintf(stderr,"Error: querying sqlite_master and sqlite_temp_master\n");
-      rc = 1;
-    }
-  }else
-
+	  open_db (p);
+	  nSep = strlen30 (p->separator);
+	  if (nSep == 0)
+	    {
+		fprintf (stderr,
+			 "Error: non-null separator required for import\n");
+		return 1;
+	    }
+	  zSql = sqlite3_mprintf ("SELECT * FROM %s", zTable);
+	  if (zSql == 0)
+	    {
+		fprintf (stderr, "Error: out of memory\n");
+		return 1;
+	    }
+	  nByte = strlen30 (zSql);
+	  rc = sqlite3_prepare (p->db, zSql, -1, &pStmt, 0);
+	  sqlite3_free (zSql);
+	  if (rc)
+	    {
+		if (pStmt)
+		    sqlite3_finalize (pStmt);
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (db));
+		return 1;
+	    }
+	  nCol = sqlite3_column_count (pStmt);
+	  sqlite3_finalize (pStmt);
+	  pStmt = 0;
+	  if (nCol == 0)
+	      return 0;		/* no columns, no error */
+	  zSql = malloc (nByte + 20 + nCol * 2);
+	  if (zSql == 0)
+	    {
+		fprintf (stderr, "Error: out of memory\n");
+		return 1;
+	    }
+	  sqlite3_snprintf (nByte + 20, zSql, "INSERT INTO %s VALUES(?",
+			    zTable);
+	  j = strlen30 (zSql);
+	  for (i = 1; i < nCol; i++)
+	    {
+		zSql[j++] = ',';
+		zSql[j++] = '?';
+	    }
+	  zSql[j++] = ')';
+	  zSql[j] = 0;
+	  rc = sqlite3_prepare (p->db, zSql, -1, &pStmt, 0);
+	  free (zSql);
+	  if (rc)
+	    {
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (db));
+		if (pStmt)
+		    sqlite3_finalize (pStmt);
+		return 1;
+	    }
+	  in = fopen (zFile, "rb");
+	  if (in == 0)
+	    {
+		fprintf (stderr, "Error: cannot open \"%s\"\n", zFile);
+		sqlite3_finalize (pStmt);
+		return 1;
+	    }
+	  azCol = malloc (sizeof (azCol[0]) * (nCol + 1));
+	  if (azCol == 0)
+	    {
+		fprintf (stderr, "Error: out of memory\n");
+		fclose (in);
+		sqlite3_finalize (pStmt);
+		return 1;
+	    }
+	  sqlite3_exec (p->db, "BEGIN", 0, 0, 0);
+	  zCommit = "COMMIT";
+	  while ((zLine = local_getline (0, in, 1)) != 0)
+	    {
+		char *z, c;
+		int inQuote = 0;
+		lineno++;
+		azCol[0] = zLine;
+		for (i = 0, z = zLine; (c = *z) != 0; z++)
+		  {
+		      if (c == '"')
+			  inQuote = !inQuote;
+		      if (c == '\n')
+			  lineno++;
+		      if (!inQuote && c == p->separator[0]
+			  && strncmp (z, p->separator, nSep) == 0)
+			{
+			    *z = 0;
+			    i++;
+			    if (i < nCol)
+			      {
+				  azCol[i] = &z[nSep];
+				  z += nSep - 1;
+			      }
+			}
+		  }		/* end for */
+		*z = 0;
+		if (i + 1 != nCol)
+		  {
+		      fprintf (stderr,
+			       "Error: %s line %d: expected %d columns of data but found %d\n",
+			       zFile, lineno, nCol, i + 1);
+		      zCommit = "ROLLBACK";
+		      free (zLine);
+		      rc = 1;
+		      break;	/* from while */
+		  }
+		for (i = 0; i < nCol; i++)
+		  {
+		      if (azCol[i][0] == '"')
+			{
+			    int k;
+			    for (z = azCol[i], j = 1, k = 0; z[j]; j++)
+			      {
+				  if (z[j] == '"')
+				    {
+					j++;
+					if (z[j] == 0)
+					    break;
+				    }
+				  z[k++] = z[j];
+			      }
+			    z[k] = 0;
+			}
+		      sqlite3_bind_text (pStmt, i + 1, azCol[i], -1,
+					 SQLITE_STATIC);
+		  }
+		sqlite3_step (pStmt);
+		rc = sqlite3_reset (pStmt);
+		free (zLine);
+		if (rc != SQLITE_OK)
+		  {
+		      fprintf (stderr, "Error: %s\n", sqlite3_errmsg (db));
+		      zCommit = "ROLLBACK";
+		      rc = 1;
+		      break;	/* from while */
+		  }
+	    }			/* end while */
+	  free (azCol);
+	  fclose (in);
+	  sqlite3_finalize (pStmt);
+	  sqlite3_exec (p->db, zCommit, 0, 0, 0);
+      }
+    else if (c == 'i' && strncmp (azArg[0], "indices", n) == 0 && nArg < 3)
+      {
+	  struct callback_data data;
+	  char *zErrMsg = 0;
+	  open_db (p);
+	  memcpy (&data, p, sizeof (data));
+	  data.showHeader = 0;
+	  data.mode = MODE_List;
+	  if (nArg == 1)
+	    {
+		rc = sqlite3_exec (p->db,
+				   "SELECT name FROM sqlite_master "
+				   "WHERE type='index' AND name NOT LIKE 'sqlite_%' "
+				   "UNION ALL "
+				   "SELECT name FROM sqlite_temp_master "
+				   "WHERE type='index' "
+				   "ORDER BY 1", callback, &data, &zErrMsg);
+	    }
+	  else
+	    {
+		zShellStatic = azArg[1];
+		rc = sqlite3_exec (p->db,
+				   "SELECT name FROM sqlite_master "
+				   "WHERE type='index' AND tbl_name LIKE shellstatic() "
+				   "UNION ALL "
+				   "SELECT name FROM sqlite_temp_master "
+				   "WHERE type='index' AND tbl_name LIKE shellstatic() "
+				   "ORDER BY 1", callback, &data, &zErrMsg);
+		zShellStatic = 0;
+	    }
+	  if (zErrMsg)
+	    {
+		fprintf (stderr, "Error: %s\n", zErrMsg);
+		sqlite3_free (zErrMsg);
+		rc = 1;
+	    }
+	  else if (rc != SQLITE_OK)
+	    {
+		fprintf (stderr,
+			 "Error: querying sqlite_master and sqlite_temp_master\n");
+		rc = 1;
+	    }
+      }
+    else
 #ifdef SQLITE_ENABLE_IOTRACE
-  if( c=='i' && strncmp(azArg[0], "iotrace", n)==0 ){
-    extern void (*sqlite3IoTrace)(const char*, ...);
-    if( iotrace && iotrace!=stdout ) fclose(iotrace);
-    iotrace = 0;
-    if( nArg<2 ){
-      sqlite3IoTrace = 0;
-    }else if( strcmp(azArg[1], "-")==0 ){
-      sqlite3IoTrace = iotracePrintf;
-      iotrace = stdout;
-    }else{
-      iotrace = fopen(azArg[1], "w");
-      if( iotrace==0 ){
-        fprintf(stderr, "Error: cannot open \"%s\"\n", azArg[1]);
-        sqlite3IoTrace = 0;
-        rc = 1;
-      }else{
-        sqlite3IoTrace = iotracePrintf;
+    if (c == 'i' && strncmp (azArg[0], "iotrace", n) == 0)
+      {
+	  extern void (*sqlite3IoTrace) (const char *, ...);
+	  if (iotrace && iotrace != stdout)
+	      fclose (iotrace);
+	  iotrace = 0;
+	  if (nArg < 2)
+	    {
+		sqlite3IoTrace = 0;
+	    }
+	  else if (strcmp (azArg[1], "-") == 0)
+	    {
+		sqlite3IoTrace = iotracePrintf;
+		iotrace = stdout;
+	    }
+	  else
+	    {
+		iotrace = fopen (azArg[1], "w");
+		if (iotrace == 0)
+		  {
+		      fprintf (stderr, "Error: cannot open \"%s\"\n", azArg[1]);
+		      sqlite3IoTrace = 0;
+		      rc = 1;
+		  }
+		else
+		  {
+		      sqlite3IoTrace = iotracePrintf;
+		  }
+	    }
       }
-    }
-  }else
+    else
 #endif
 
-  if( c=='l' && strncmp(azArg[0], "log", n)==0 && nArg>=2 ){
-    const char *zFile = azArg[1];
-    output_file_close(p->pLog);
-    p->pLog = output_file_open(zFile);
-  }else
-
-  if( c=='m' && strncmp(azArg[0], "mode", n)==0 && nArg==2 ){
-    int n2 = strlen30(azArg[1]);
-    if( (n2==4 && strncmp(azArg[1],"line",n2)==0)
-        ||
-        (n2==5 && strncmp(azArg[1],"lines",n2)==0) ){
-      p->mode = MODE_Line;
-    }else if( (n2==6 && strncmp(azArg[1],"column",n2)==0)
-              ||
-              (n2==7 && strncmp(azArg[1],"columns",n2)==0) ){
-      p->mode = MODE_Column;
-    }else if( n2==4 && strncmp(azArg[1],"list",n2)==0 ){
-      p->mode = MODE_List;
-    }else if( n2==4 && strncmp(azArg[1],"html",n2)==0 ){
-      p->mode = MODE_Html;
-    }else if( n2==3 && strncmp(azArg[1],"tcl",n2)==0 ){
-      p->mode = MODE_Tcl;
-    }else if( n2==3 && strncmp(azArg[1],"csv",n2)==0 ){
-      p->mode = MODE_Csv;
-      sqlite3_snprintf(sizeof(p->separator), p->separator, ",");
-    }else if( n2==4 && strncmp(azArg[1],"tabs",n2)==0 ){
-      p->mode = MODE_List;
-      sqlite3_snprintf(sizeof(p->separator), p->separator, "\t");
-    }else if( n2==6 && strncmp(azArg[1],"insert",n2)==0 ){
-      p->mode = MODE_Insert;
-      set_table_name(p, "table");
-    }else {
-      fprintf(stderr,"Error: mode should be one of: "
-         "column csv html insert line list tabs tcl\n");
-      rc = 1;
-    }
-  }else
-
-  if( c=='m' && strncmp(azArg[0], "mode", n)==0 && nArg==3 ){
-    int n2 = strlen30(azArg[1]);
-    if( n2==6 && strncmp(azArg[1],"insert",n2)==0 ){
-      p->mode = MODE_Insert;
-      set_table_name(p, azArg[2]);
-    }else {
-      fprintf(stderr, "Error: invalid arguments: "
-        " \"%s\". Enter \".help\" for help\n", azArg[2]);
-      rc = 1;
-    }
-  }else
-
-  if( c=='n' && strncmp(azArg[0], "nullvalue", n)==0 && nArg==2 ) {
-    sqlite3_snprintf(sizeof(p->nullvalue), p->nullvalue,
-                     "%.*s", (int)ArraySize(p->nullvalue)-1, azArg[1]);
-  }else
-
-  if( c=='o' && strncmp(azArg[0], "output", n)==0 && nArg==2 ){
-    if( p->outfile[0]=='|' ){
-      pclose(p->out);
-    }else{
-      output_file_close(p->out);
-    }
-    p->outfile[0] = 0;
-    if( azArg[1][0]=='|' ){
-      p->out = popen(&azArg[1][1], "w");
-      if( p->out==0 ){
-        fprintf(stderr,"Error: cannot open pipe \"%s\"\n", &azArg[1][1]);
-        p->out = stdout;
-        rc = 1;
-      }else{
-        sqlite3_snprintf(sizeof(p->outfile), p->outfile, "%s", azArg[1]);
+    if (c == 'l' && strncmp (azArg[0], "log", n) == 0 && nArg >= 2)
+      {
+	  const char *zFile = azArg[1];
+	  output_file_close (p->pLog);
+	  p->pLog = output_file_open (zFile);
       }
-    }else{
-      p->out = output_file_open(azArg[1]);
-      if( p->out==0 ){
-        if( strcmp(azArg[1],"off")!=0 ){
-          fprintf(stderr,"Error: cannot write to \"%s\"\n", azArg[1]);
-        }
-        p->out = stdout;
-        rc = 1;
-      } else {
-        sqlite3_snprintf(sizeof(p->outfile), p->outfile, "%s", azArg[1]);
+    else if (c == 'm' && strncmp (azArg[0], "mode", n) == 0 && nArg == 2)
+      {
+	  int n2 = strlen30 (azArg[1]);
+	  if ((n2 == 4 && strncmp (azArg[1], "line", n2) == 0)
+	      || (n2 == 5 && strncmp (azArg[1], "lines", n2) == 0))
+	    {
+		p->mode = MODE_Line;
+	    }
+	  else if ((n2 == 6 && strncmp (azArg[1], "column", n2) == 0)
+		   || (n2 == 7 && strncmp (azArg[1], "columns", n2) == 0))
+	    {
+		p->mode = MODE_Column;
+	    }
+	  else if (n2 == 4 && strncmp (azArg[1], "list", n2) == 0)
+	    {
+		p->mode = MODE_List;
+	    }
+	  else if (n2 == 4 && strncmp (azArg[1], "html", n2) == 0)
+	    {
+		p->mode = MODE_Html;
+	    }
+	  else if (n2 == 3 && strncmp (azArg[1], "tcl", n2) == 0)
+	    {
+		p->mode = MODE_Tcl;
+	    }
+	  else if (n2 == 3 && strncmp (azArg[1], "csv", n2) == 0)
+	    {
+		p->mode = MODE_Csv;
+		sqlite3_snprintf (sizeof (p->separator), p->separator, ",");
+	    }
+	  else if (n2 == 4 && strncmp (azArg[1], "tabs", n2) == 0)
+	    {
+		p->mode = MODE_List;
+		sqlite3_snprintf (sizeof (p->separator), p->separator, "\t");
+	    }
+	  else if (n2 == 6 && strncmp (azArg[1], "insert", n2) == 0)
+	    {
+		p->mode = MODE_Insert;
+		set_table_name (p, "table");
+	    }
+	  else
+	    {
+		fprintf (stderr, "Error: mode should be one of: "
+			 "column csv html insert line list tabs tcl\n");
+		rc = 1;
+	    }
       }
-    }
-  }else
-
-  if( c=='p' && strncmp(azArg[0], "prompt", n)==0 && (nArg==2 || nArg==3)){
-    if( nArg >= 2) {
-      strncpy(mainPrompt,azArg[1],(int)ArraySize(mainPrompt)-1);
-    }
-    if( nArg >= 3) {
-      strncpy(continuePrompt,azArg[2],(int)ArraySize(continuePrompt)-1);
-    }
-  }else
-
-  if( c=='q' && strncmp(azArg[0], "quit", n)==0 && nArg==1 ){
-    rc = 2;
-  }else
-
-  if( c=='r' && n>=3 && strncmp(azArg[0], "read", n)==0 && nArg > 0 ){
-    FILE *alt = fopen(azArg[1], "rb");
-    if( alt==0 ){
-      fprintf(stderr,"Error: cannot open \"%s\"\n", azArg[1]);
-      rc = 1;
-    }else{
-      rc = process_input(p, alt, 0);
-      fclose(alt);
-    }
-  }else
-
-  if( c=='r' && n>=3 && strncmp(azArg[0], "restore", n)==0 && nArg>1 && nArg<4){
-    const char *zSrcFile;
-    const char *zDb;
-    sqlite3 *pSrc;
-    sqlite3_backup *pBackup;
-    int nTimeout = 0;
-
-    if( nArg==2 ){
-      zSrcFile = azArg[1];
-      zDb = "main";
-    }else{
-      zSrcFile = azArg[2];
-      zDb = azArg[1];
-    }
-    rc = sqlite3_open(zSrcFile, &pSrc);
-    if( rc!=SQLITE_OK ){
-      fprintf(stderr, "Error: cannot open \"%s\"\n", zSrcFile);
-      sqlite3_close(pSrc);
-      return 1;
-    }
-    open_db(p);
-    pBackup = sqlite3_backup_init(p->db, zDb, pSrc, "main");
-    if( pBackup==0 ){
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(p->db));
-      sqlite3_close(pSrc);
-      return 1;
-    }
-    while( (rc = sqlite3_backup_step(pBackup,100))==SQLITE_OK
-          || rc==SQLITE_BUSY  ){
-      if( rc==SQLITE_BUSY ){
-        if( nTimeout++ >= 3 ) break;
-        sqlite3_sleep(100);
+    else if (c == 'm' && strncmp (azArg[0], "mode", n) == 0 && nArg == 3)
+      {
+	  int n2 = strlen30 (azArg[1]);
+	  if (n2 == 6 && strncmp (azArg[1], "insert", n2) == 0)
+	    {
+		p->mode = MODE_Insert;
+		set_table_name (p, azArg[2]);
+	    }
+	  else
+	    {
+		fprintf (stderr, "Error: invalid arguments: "
+			 " \"%s\". Enter \".help\" for help\n", azArg[2]);
+		rc = 1;
+	    }
       }
-    }
-    sqlite3_backup_finish(pBackup);
-    if( rc==SQLITE_DONE ){
-      rc = 0;
-    }else if( rc==SQLITE_BUSY || rc==SQLITE_LOCKED ){
-      fprintf(stderr, "Error: source database is busy\n");
-      rc = 1;
-    }else{
-      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(p->db));
-      rc = 1;
-    }
-    sqlite3_close(pSrc);
-  }else
-
-  if( c=='s' && strncmp(azArg[0], "schema", n)==0 && nArg<3 ){
-    struct callback_data data;
-    char *zErrMsg = 0;
-    open_db(p);
-    memcpy(&data, p, sizeof(data));
-    data.showHeader = 0;
-    data.mode = MODE_Semi;
-    if( nArg>1 ){
-      int i;
-      for(i=0; azArg[1][i]; i++) azArg[1][i] = ToLower(azArg[1][i]);
-      if( strcmp(azArg[1],"sqlite_master")==0 ){
-        char *new_argv[2], *new_colv[2];
-        new_argv[0] = "CREATE TABLE sqlite_master (\n"
-                      "  type text,\n"
-                      "  name text,\n"
-                      "  tbl_name text,\n"
-                      "  rootpage integer,\n"
-                      "  sql text\n"
-                      ")";
-        new_argv[1] = 0;
-        new_colv[0] = "sql";
-        new_colv[1] = 0;
-        callback(&data, 1, new_argv, new_colv);
-        rc = SQLITE_OK;
-      }else if( strcmp(azArg[1],"sqlite_temp_master")==0 ){
-        char *new_argv[2], *new_colv[2];
-        new_argv[0] = "CREATE TEMP TABLE sqlite_temp_master (\n"
-                      "  type text,\n"
-                      "  name text,\n"
-                      "  tbl_name text,\n"
-                      "  rootpage integer,\n"
-                      "  sql text\n"
-                      ")";
-        new_argv[1] = 0;
-        new_colv[0] = "sql";
-        new_colv[1] = 0;
-        callback(&data, 1, new_argv, new_colv);
-        rc = SQLITE_OK;
-      }else{
-        zShellStatic = azArg[1];
-        rc = sqlite3_exec(p->db,
-          "SELECT sql FROM "
-          "  (SELECT sql sql, type type, tbl_name tbl_name, name name, rowid x"
-          "     FROM sqlite_master UNION ALL"
-          "   SELECT sql, type, tbl_name, name, rowid FROM sqlite_temp_master) "
-          "WHERE lower(tbl_name) LIKE shellstatic()"
-          "  AND type!='meta' AND sql NOTNULL "
-          "ORDER BY substr(type,2,1), "
-                  " CASE type WHEN 'view' THEN rowid ELSE name END",
-          callback, &data, &zErrMsg);
-        zShellStatic = 0;
+    else if (c == 'n' && strncmp (azArg[0], "nullvalue", n) == 0 && nArg == 2)
+      {
+	  sqlite3_snprintf (sizeof (p->nullvalue), p->nullvalue,
+			    "%.*s", (int) ArraySize (p->nullvalue) - 1,
+			    azArg[1]);
       }
-    }else{
-      rc = sqlite3_exec(p->db,
-         "SELECT sql FROM "
-         "  (SELECT sql sql, type type, tbl_name tbl_name, name name, rowid x"
-         "     FROM sqlite_master UNION ALL"
-         "   SELECT sql, type, tbl_name, name, rowid FROM sqlite_temp_master) "
-         "WHERE type!='meta' AND sql NOTNULL AND name NOT LIKE 'sqlite_%'"
-         "ORDER BY substr(type,2,1),"
-                  " CASE type WHEN 'view' THEN rowid ELSE name END",
-         callback, &data, &zErrMsg
-      );
-    }
-    if( zErrMsg ){
-      fprintf(stderr,"Error: %s\n", zErrMsg);
-      sqlite3_free(zErrMsg);
-      rc = 1;
-    }else if( rc != SQLITE_OK ){
-      fprintf(stderr,"Error: querying schema information\n");
-      rc = 1;
-    }else{
-      rc = 0;
-    }
-  }else
-
-  if( c=='s' && strncmp(azArg[0], "separator", n)==0 && nArg==2 ){
-    sqlite3_snprintf(sizeof(p->separator), p->separator,
-                     "%.*s", (int)sizeof(p->separator)-1, azArg[1]);
-  }else
-
-  if( c=='s'
-   && (strncmp(azArg[0], "shell", n)==0 || strncmp(azArg[0],"system",n)==0)
-  ){
-    char *zCmd;
-    int i;
-    if( nArg<2 ){
-      fprintf(stderr, "Usage: .system COMMAND\n");
-      rc = 1;
-    }
-    else {
-      zCmd = sqlite3_mprintf(strchr(azArg[1],' ')==0?"%s":"\"%s\"", azArg[1]);
-      for(i=2; i<nArg; i++){
-        zCmd = sqlite3_mprintf(strchr(azArg[i],' ')==0?"%z %s":"%z \"%s\"",
-                               zCmd, azArg[i]);
+    else if (c == 'o' && strncmp (azArg[0], "output", n) == 0 && nArg == 2)
+      {
+	  if (p->outfile[0] == '|')
+	    {
+		pclose (p->out);
+	    }
+	  else
+	    {
+		output_file_close (p->out);
+	    }
+	  p->outfile[0] = 0;
+	  if (azArg[1][0] == '|')
+	    {
+		p->out = popen (&azArg[1][1], "w");
+		if (p->out == 0)
+		  {
+		      fprintf (stderr, "Error: cannot open pipe \"%s\"\n",
+			       &azArg[1][1]);
+		      p->out = stdout;
+		      rc = 1;
+		  }
+		else
+		  {
+		      sqlite3_snprintf (sizeof (p->outfile), p->outfile, "%s",
+					azArg[1]);
+		  }
+	    }
+	  else
+	    {
+		p->out = output_file_open (azArg[1]);
+		if (p->out == 0)
+		  {
+		      if (strcmp (azArg[1], "off") != 0)
+			{
+			    fprintf (stderr, "Error: cannot write to \"%s\"\n",
+				     azArg[1]);
+			}
+		      p->out = stdout;
+		      rc = 1;
+		  }
+		else
+		  {
+		      sqlite3_snprintf (sizeof (p->outfile), p->outfile, "%s",
+					azArg[1]);
+		  }
+	    }
       }
-      (void)system(zCmd);
-      sqlite3_free(zCmd);
-    }
-  }else
-
-
-  if( c=='s' && strncmp(azArg[0], "show", n)==0 && nArg==1 ){
-    int i;
-    fprintf(p->out,"%9.9s: %s\n","echo", p->echoOn ? "on" : "off");
-    fprintf(p->out,"%9.9s: %s\n","explain", p->explainPrev.valid ? "on" :"off");
-    fprintf(p->out,"%9.9s: %s\n","headers", p->showHeader ? "on" : "off");
-    fprintf(p->out,"%9.9s: %s\n","mode", modeDescr[p->mode]);
-    fprintf(p->out,"%9.9s: ", "nullvalue");
-      output_c_string(p->out, p->nullvalue);
-      fprintf(p->out, "\n");
-    fprintf(p->out,"%9.9s: %s\n","output",
-            strlen30(p->outfile) ? p->outfile : "stdout");
-    fprintf(p->out,"%9.9s: ", "separator");
-      output_c_string(p->out, p->separator);
-      fprintf(p->out, "\n");
-    fprintf(p->out,"%9.9s: %s\n","stats", p->statsOn ? "on" : "off");
-    fprintf(p->out,"%9.9s: ","width");
-    for (i=0;i<(int)ArraySize(p->colWidth) && p->colWidth[i] != 0;i++) {
-      fprintf(p->out,"%d ",p->colWidth[i]);
-    }
-    fprintf(p->out,"\n");
-  }else
-
-  if( c=='s' && strncmp(azArg[0], "stats", n)==0 && nArg>1 && nArg<3 ){
-    p->statsOn = booleanValue(azArg[1]);
-  }else
-
-  if( c=='t' && n>1 && strncmp(azArg[0], "tables", n)==0 && nArg<3 ){
-    sqlite3_stmt *pStmt;
-    char **azResult;
-    int nRow, nAlloc;
-    char *zSql = 0;
-    int ii;
-    open_db(p);
-    rc = sqlite3_prepare_v2(p->db, "PRAGMA database_list", -1, &pStmt, 0);
-    if( rc ) return rc;
-    zSql = sqlite3_mprintf(
-        "SELECT name FROM sqlite_master"
-        " WHERE type IN ('table','view')"
-        "   AND name NOT LIKE 'sqlite_%%'"
-        "   AND name LIKE ?1");
-    while( sqlite3_step(pStmt)==SQLITE_ROW ){
-      const char *zDbName = (const char*)sqlite3_column_text(pStmt, 1);
-      if( zDbName==0 || strcmp(zDbName,"main")==0 ) continue;
-      if( strcmp(zDbName,"temp")==0 ){
-        zSql = sqlite3_mprintf(
-                 "%z UNION ALL "
-                 "SELECT 'temp.' || name FROM sqlite_temp_master"
-                 " WHERE type IN ('table','view')"
-                 "   AND name NOT LIKE 'sqlite_%%'"
-                 "   AND name LIKE ?1", zSql);
-      }else{
-        zSql = sqlite3_mprintf(
-                 "%z UNION ALL "
-                 "SELECT '%q.' || name FROM \"%w\".sqlite_master"
-                 " WHERE type IN ('table','view')"
-                 "   AND name NOT LIKE 'sqlite_%%'"
-                 "   AND name LIKE ?1", zSql, zDbName, zDbName);
+    else if (c == 'p' && strncmp (azArg[0], "prompt", n) == 0
+	     && (nArg == 2 || nArg == 3))
+      {
+	  if (nArg >= 2)
+	    {
+		strncpy (mainPrompt, azArg[1],
+			 (int) ArraySize (mainPrompt) - 1);
+	    }
+	  if (nArg >= 3)
+	    {
+		strncpy (continuePrompt, azArg[2],
+			 (int) ArraySize (continuePrompt) - 1);
+	    }
       }
-    }
-    sqlite3_finalize(pStmt);
-    zSql = sqlite3_mprintf("%z ORDER BY 1", zSql);
-    rc = sqlite3_prepare_v2(p->db, zSql, -1, &pStmt, 0);
-    sqlite3_free(zSql);
-    if( rc ) return rc;
-    nRow = nAlloc = 0;
-    azResult = 0;
-    if( nArg>1 ){
-      sqlite3_bind_text(pStmt, 1, azArg[1], -1, SQLITE_TRANSIENT);
-    }else{
-      sqlite3_bind_text(pStmt, 1, "%", -1, SQLITE_STATIC);
-    }
-    while( sqlite3_step(pStmt)==SQLITE_ROW ){
-      if( nRow>=nAlloc ){
-        char **azNew;
-        int n = nAlloc*2 + 10;
-        azNew = sqlite3_realloc(azResult, sizeof(azResult[0])*n);
-        if( azNew==0 ){
-          fprintf(stderr, "Error: out of memory\n");
-          break;
-        }
-        nAlloc = n;
-        azResult = azNew;
+    else if (c == 'q' && strncmp (azArg[0], "quit", n) == 0 && nArg == 1)
+      {
+	  rc = 2;
       }
-      azResult[nRow] = sqlite3_mprintf("%s", sqlite3_column_text(pStmt, 0));
-      if( azResult[nRow] ) nRow++;
-    }
-    sqlite3_finalize(pStmt);        
-    if( nRow>0 ){
-      int len, maxlen = 0;
-      int i, j;
-      int nPrintCol, nPrintRow;
-      for(i=0; i<nRow; i++){
-        len = strlen30(azResult[i]);
-        if( len>maxlen ) maxlen = len;
+    else if (c == 'r' && n >= 3 && strncmp (azArg[0], "read", n) == 0
+	     && nArg > 0)
+      {
+	  FILE *alt = fopen (azArg[1], "rb");
+	  if (alt == 0)
+	    {
+		fprintf (stderr, "Error: cannot open \"%s\"\n", azArg[1]);
+		rc = 1;
+	    }
+	  else
+	    {
+		rc = process_input (p, alt, 0);
+		fclose (alt);
+	    }
       }
-      nPrintCol = 80/(maxlen+2);
-      if( nPrintCol<1 ) nPrintCol = 1;
-      nPrintRow = (nRow + nPrintCol - 1)/nPrintCol;
-      for(i=0; i<nPrintRow; i++){
-        for(j=i; j<nRow; j+=nPrintRow){
-          char *zSp = j<nPrintRow ? "" : "  ";
-          printf("%s%-*s", zSp, maxlen, azResult[j] ? azResult[j] : "");
-        }
-        printf("\n");
+    else if (c == 'r' && n >= 3 && strncmp (azArg[0], "restore", n) == 0
+	     && nArg > 1 && nArg < 4)
+      {
+	  const char *zSrcFile;
+	  const char *zDb;
+	  sqlite3 *pSrc;
+	  sqlite3_backup *pBackup;
+	  int nTimeout = 0;
+
+	  if (nArg == 2)
+	    {
+		zSrcFile = azArg[1];
+		zDb = "main";
+	    }
+	  else
+	    {
+		zSrcFile = azArg[2];
+		zDb = azArg[1];
+	    }
+	  rc = sqlite3_open (zSrcFile, &pSrc);
+	  if (rc != SQLITE_OK)
+	    {
+		fprintf (stderr, "Error: cannot open \"%s\"\n", zSrcFile);
+		sqlite3_close (pSrc);
+		return 1;
+	    }
+	  open_db (p);
+	  pBackup = sqlite3_backup_init (p->db, zDb, pSrc, "main");
+	  if (pBackup == 0)
+	    {
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (p->db));
+		sqlite3_close (pSrc);
+		return 1;
+	    }
+	  while ((rc = sqlite3_backup_step (pBackup, 100)) == SQLITE_OK
+		 || rc == SQLITE_BUSY)
+	    {
+		if (rc == SQLITE_BUSY)
+		  {
+		      if (nTimeout++ >= 3)
+			  break;
+		      sqlite3_sleep (100);
+		  }
+	    }
+	  sqlite3_backup_finish (pBackup);
+	  if (rc == SQLITE_DONE)
+	    {
+		rc = 0;
+	    }
+	  else if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
+	    {
+		fprintf (stderr, "Error: source database is busy\n");
+		rc = 1;
+	    }
+	  else
+	    {
+		fprintf (stderr, "Error: %s\n", sqlite3_errmsg (p->db));
+		rc = 1;
+	    }
+	  sqlite3_close (pSrc);
       }
-    }
-    for(ii=0; ii<nRow; ii++) sqlite3_free(azResult[ii]);
-    sqlite3_free(azResult);
-  }else
-
-  if( c=='t' && n>=8 && strncmp(azArg[0], "testctrl", n)==0 && nArg>=2 ){
-    static const struct {
-       const char *zCtrlName;   /* Name of a test-control option */
-       int ctrlCode;            /* Integer code for that option */
-    } aCtrl[] = {
-      { "prng_save",             SQLITE_TESTCTRL_PRNG_SAVE              },
-      { "prng_restore",          SQLITE_TESTCTRL_PRNG_RESTORE           },
-      { "prng_reset",            SQLITE_TESTCTRL_PRNG_RESET             },
-      { "bitvec_test",           SQLITE_TESTCTRL_BITVEC_TEST            },
-      { "fault_install",         SQLITE_TESTCTRL_FAULT_INSTALL          },
-      { "benign_malloc_hooks",   SQLITE_TESTCTRL_BENIGN_MALLOC_HOOKS    },
-      { "pending_byte",          SQLITE_TESTCTRL_PENDING_BYTE           },
-      { "assert",                SQLITE_TESTCTRL_ASSERT                 },
-      { "always",                SQLITE_TESTCTRL_ALWAYS                 },
-      { "reserve",               SQLITE_TESTCTRL_RESERVE                },
-      { "optimizations",         SQLITE_TESTCTRL_OPTIMIZATIONS          },
-      { "iskeyword",             SQLITE_TESTCTRL_ISKEYWORD              },
-      { "scratchmalloc",         SQLITE_TESTCTRL_SCRATCHMALLOC          },
-    };
-    int testctrl = -1;
-    int rc = 0;
-    int i, n;
-    open_db(p);
-
-    /* convert testctrl text option to value. allow any unique prefix
-    ** of the option name, or a numerical value. */
-    n = strlen30(azArg[1]);
-    for(i=0; i<(int)(sizeof(aCtrl)/sizeof(aCtrl[0])); i++){
-      if( strncmp(azArg[1], aCtrl[i].zCtrlName, n)==0 ){
-        if( testctrl<0 ){
-          testctrl = aCtrl[i].ctrlCode;
-        }else{
-          fprintf(stderr, "ambiguous option name: \"%s\"\n", azArg[1]);
-          testctrl = -1;
-          break;
-        }
+    else if (c == 's' && strncmp (azArg[0], "schema", n) == 0 && nArg < 3)
+      {
+	  struct callback_data data;
+	  char *zErrMsg = 0;
+	  open_db (p);
+	  memcpy (&data, p, sizeof (data));
+	  data.showHeader = 0;
+	  data.mode = MODE_Semi;
+	  if (nArg > 1)
+	    {
+		int i;
+		for (i = 0; azArg[1][i]; i++)
+		    azArg[1][i] = ToLower (azArg[1][i]);
+		if (strcmp (azArg[1], "sqlite_master") == 0)
+		  {
+		      char *new_argv[2], *new_colv[2];
+		      new_argv[0] = "CREATE TABLE sqlite_master (\n"
+			  "  type text,\n"
+			  "  name text,\n"
+			  "  tbl_name text,\n"
+			  "  rootpage integer,\n" "  sql text\n" ")";
+		      new_argv[1] = 0;
+		      new_colv[0] = "sql";
+		      new_colv[1] = 0;
+		      callback (&data, 1, new_argv, new_colv);
+		      rc = SQLITE_OK;
+		  }
+		else if (strcmp (azArg[1], "sqlite_temp_master") == 0)
+		  {
+		      char *new_argv[2], *new_colv[2];
+		      new_argv[0] = "CREATE TEMP TABLE sqlite_temp_master (\n"
+			  "  type text,\n"
+			  "  name text,\n"
+			  "  tbl_name text,\n"
+			  "  rootpage integer,\n" "  sql text\n" ")";
+		      new_argv[1] = 0;
+		      new_colv[0] = "sql";
+		      new_colv[1] = 0;
+		      callback (&data, 1, new_argv, new_colv);
+		      rc = SQLITE_OK;
+		  }
+		else
+		  {
+		      zShellStatic = azArg[1];
+		      rc = sqlite3_exec (p->db,
+					 "SELECT sql FROM "
+					 "  (SELECT sql sql, type type, tbl_name tbl_name, name name, rowid x"
+					 "     FROM sqlite_master UNION ALL"
+					 "   SELECT sql, type, tbl_name, name, rowid FROM sqlite_temp_master) "
+					 "WHERE lower(tbl_name) LIKE shellstatic()"
+					 "  AND type!='meta' AND sql NOTNULL "
+					 "ORDER BY substr(type,2,1), "
+					 " CASE type WHEN 'view' THEN rowid ELSE name END",
+					 callback, &data, &zErrMsg);
+		      zShellStatic = 0;
+		  }
+	    }
+	  else
+	    {
+		rc = sqlite3_exec (p->db,
+				   "SELECT sql FROM "
+				   "  (SELECT sql sql, type type, tbl_name tbl_name, name name, rowid x"
+				   "     FROM sqlite_master UNION ALL"
+				   "   SELECT sql, type, tbl_name, name, rowid FROM sqlite_temp_master) "
+				   "WHERE type!='meta' AND sql NOTNULL AND name NOT LIKE 'sqlite_%'"
+				   "ORDER BY substr(type,2,1),"
+				   " CASE type WHEN 'view' THEN rowid ELSE name END",
+				   callback, &data, &zErrMsg);
+	    }
+	  if (zErrMsg)
+	    {
+		fprintf (stderr, "Error: %s\n", zErrMsg);
+		sqlite3_free (zErrMsg);
+		rc = 1;
+	    }
+	  else if (rc != SQLITE_OK)
+	    {
+		fprintf (stderr, "Error: querying schema information\n");
+		rc = 1;
+	    }
+	  else
+	    {
+		rc = 0;
+	    }
       }
-    }
-    if( testctrl<0 ) testctrl = atoi(azArg[1]);
-    if( (testctrl<SQLITE_TESTCTRL_FIRST) || (testctrl>SQLITE_TESTCTRL_LAST) ){
-      fprintf(stderr,"Error: invalid testctrl option: %s\n", azArg[1]);
-    }else{
-      switch(testctrl){
+    else if (c == 's' && strncmp (azArg[0], "separator", n) == 0 && nArg == 2)
+      {
+	  sqlite3_snprintf (sizeof (p->separator), p->separator,
+			    "%.*s", (int) sizeof (p->separator) - 1, azArg[1]);
+      }
+    else if (c == 's'
+	     && (strncmp (azArg[0], "shell", n) == 0
+		 || strncmp (azArg[0], "system", n) == 0))
+      {
+	  char *zCmd;
+	  int i;
+	  if (nArg < 2)
+	    {
+		fprintf (stderr, "Usage: .system COMMAND\n");
+		rc = 1;
+	    }
+	  else
+	    {
+		zCmd =
+		    sqlite3_mprintf (strchr (azArg[1], ' ') ==
+				     0 ? "%s" : "\"%s\"", azArg[1]);
+		for (i = 2; i < nArg; i++)
+		  {
+		      zCmd =
+			  sqlite3_mprintf (strchr (azArg[i], ' ') ==
+					   0 ? "%z %s" : "%z \"%s\"", zCmd,
+					   azArg[i]);
+		  }
+		(void) system (zCmd);
+		sqlite3_free (zCmd);
+	    }
+      }
+    else if (c == 's' && strncmp (azArg[0], "show", n) == 0 && nArg == 1)
+      {
+	  int i;
+	  fprintf (p->out, "%9.9s: %s\n", "echo", p->echoOn ? "on" : "off");
+	  fprintf (p->out, "%9.9s: %s\n", "explain",
+		   p->explainPrev.valid ? "on" : "off");
+	  fprintf (p->out, "%9.9s: %s\n", "headers",
+		   p->showHeader ? "on" : "off");
+	  fprintf (p->out, "%9.9s: %s\n", "mode", modeDescr[p->mode]);
+	  fprintf (p->out, "%9.9s: ", "nullvalue");
+	  output_c_string (p->out, p->nullvalue);
+	  fprintf (p->out, "\n");
+	  fprintf (p->out, "%9.9s: %s\n", "output",
+		   strlen30 (p->outfile) ? p->outfile : "stdout");
+	  fprintf (p->out, "%9.9s: ", "separator");
+	  output_c_string (p->out, p->separator);
+	  fprintf (p->out, "\n");
+	  fprintf (p->out, "%9.9s: %s\n", "stats", p->statsOn ? "on" : "off");
+	  fprintf (p->out, "%9.9s: ", "width");
+	  for (i = 0; i < (int) ArraySize (p->colWidth) && p->colWidth[i] != 0;
+	       i++)
+	    {
+		fprintf (p->out, "%d ", p->colWidth[i]);
+	    }
+	  fprintf (p->out, "\n");
+      }
+    else if (c == 's' && strncmp (azArg[0], "stats", n) == 0 && nArg > 1
+	     && nArg < 3)
+      {
+	  p->statsOn = booleanValue (azArg[1]);
+      }
+    else if (c == 't' && n > 1 && strncmp (azArg[0], "tables", n) == 0
+	     && nArg < 3)
+      {
+	  sqlite3_stmt *pStmt;
+	  char **azResult;
+	  int nRow, nAlloc;
+	  char *zSql = 0;
+	  int ii;
+	  open_db (p);
+	  rc = sqlite3_prepare_v2 (p->db, "PRAGMA database_list", -1, &pStmt,
+				   0);
+	  if (rc)
+	      return rc;
+	  zSql = sqlite3_mprintf ("SELECT name FROM sqlite_master"
+				  " WHERE type IN ('table','view')"
+				  "   AND name NOT LIKE 'sqlite_%%'"
+				  "   AND name LIKE ?1");
+	  while (sqlite3_step (pStmt) == SQLITE_ROW)
+	    {
+		const char *zDbName =
+		    (const char *) sqlite3_column_text (pStmt, 1);
+		if (zDbName == 0 || strcmp (zDbName, "main") == 0)
+		    continue;
+		if (strcmp (zDbName, "temp") == 0)
+		  {
+		      zSql = sqlite3_mprintf ("%z UNION ALL "
+					      "SELECT 'temp.' || name FROM sqlite_temp_master"
+					      " WHERE type IN ('table','view')"
+					      "   AND name NOT LIKE 'sqlite_%%'"
+					      "   AND name LIKE ?1", zSql);
+		  }
+		else
+		  {
+		      zSql = sqlite3_mprintf ("%z UNION ALL "
+					      "SELECT '%q.' || name FROM \"%w\".sqlite_master"
+					      " WHERE type IN ('table','view')"
+					      "   AND name NOT LIKE 'sqlite_%%'"
+					      "   AND name LIKE ?1", zSql,
+					      zDbName, zDbName);
+		  }
+	    }
+	  sqlite3_finalize (pStmt);
+	  zSql = sqlite3_mprintf ("%z ORDER BY 1", zSql);
+	  rc = sqlite3_prepare_v2 (p->db, zSql, -1, &pStmt, 0);
+	  sqlite3_free (zSql);
+	  if (rc)
+	      return rc;
+	  nRow = nAlloc = 0;
+	  azResult = 0;
+	  if (nArg > 1)
+	    {
+		sqlite3_bind_text (pStmt, 1, azArg[1], -1, SQLITE_TRANSIENT);
+	    }
+	  else
+	    {
+		sqlite3_bind_text (pStmt, 1, "%", -1, SQLITE_STATIC);
+	    }
+	  while (sqlite3_step (pStmt) == SQLITE_ROW)
+	    {
+		if (nRow >= nAlloc)
+		  {
+		      char **azNew;
+		      int n = nAlloc * 2 + 10;
+		      azNew =
+			  sqlite3_realloc (azResult, sizeof (azResult[0]) * n);
+		      if (azNew == 0)
+			{
+			    fprintf (stderr, "Error: out of memory\n");
+			    break;
+			}
+		      nAlloc = n;
+		      azResult = azNew;
+		  }
+		azResult[nRow] =
+		    sqlite3_mprintf ("%s", sqlite3_column_text (pStmt, 0));
+		if (azResult[nRow])
+		    nRow++;
+	    }
+	  sqlite3_finalize (pStmt);
+	  if (nRow > 0)
+	    {
+		int len, maxlen = 0;
+		int i, j;
+		int nPrintCol, nPrintRow;
+		for (i = 0; i < nRow; i++)
+		  {
+		      len = strlen30 (azResult[i]);
+		      if (len > maxlen)
+			  maxlen = len;
+		  }
+		nPrintCol = 80 / (maxlen + 2);
+		if (nPrintCol < 1)
+		    nPrintCol = 1;
+		nPrintRow = (nRow + nPrintCol - 1) / nPrintCol;
+		for (i = 0; i < nPrintRow; i++)
+		  {
+		      for (j = i; j < nRow; j += nPrintRow)
+			{
+			    char *zSp = j < nPrintRow ? "" : "  ";
+			    printf ("%s%-*s", zSp, maxlen,
+				    azResult[j] ? azResult[j] : "");
+			}
+		      printf ("\n");
+		  }
+	    }
+	  for (ii = 0; ii < nRow; ii++)
+	      sqlite3_free (azResult[ii]);
+	  sqlite3_free (azResult);
+      }
+    else if (c == 't' && n >= 8 && strncmp (azArg[0], "testctrl", n) == 0
+	     && nArg >= 2)
+      {
+	  static const struct
+	  {
+	      const char *zCtrlName;	/* Name of a test-control option */
+	      int ctrlCode;	/* Integer code for that option */
+	  } aCtrl[] =
+	  {
+	      {
+	      "prng_save", SQLITE_TESTCTRL_PRNG_SAVE},
+	      {
+	      "prng_restore", SQLITE_TESTCTRL_PRNG_RESTORE},
+	      {
+	      "prng_reset", SQLITE_TESTCTRL_PRNG_RESET},
+	      {
+	      "bitvec_test", SQLITE_TESTCTRL_BITVEC_TEST},
+	      {
+	      "fault_install", SQLITE_TESTCTRL_FAULT_INSTALL},
+	      {
+	      "benign_malloc_hooks", SQLITE_TESTCTRL_BENIGN_MALLOC_HOOKS},
+	      {
+	      "pending_byte", SQLITE_TESTCTRL_PENDING_BYTE},
+	      {
+	      "assert", SQLITE_TESTCTRL_ASSERT},
+	      {
+	      "always", SQLITE_TESTCTRL_ALWAYS},
+	      {
+	      "reserve", SQLITE_TESTCTRL_RESERVE},
+	      {
+	      "optimizations", SQLITE_TESTCTRL_OPTIMIZATIONS},
+	      {
+	      "iskeyword", SQLITE_TESTCTRL_ISKEYWORD},
+	      {
+	  "scratchmalloc", SQLITE_TESTCTRL_SCRATCHMALLOC},};
+	  int testctrl = -1;
+	  int rc = 0;
+	  int i, n;
+	  open_db (p);
 
-        /* sqlite3_test_control(int, db, int) */
-        case SQLITE_TESTCTRL_OPTIMIZATIONS:
-        case SQLITE_TESTCTRL_RESERVE:             
-          if( nArg==3 ){
-            int opt = (int)strtol(azArg[2], 0, 0);        
-            rc = sqlite3_test_control(testctrl, p->db, opt);
-            printf("%d (0x%08x)\n", rc, rc);
-          } else {
-            fprintf(stderr,"Error: testctrl %s takes a single int option\n",
-                    azArg[1]);
-          }
-          break;
+	  /* convert testctrl text option to value. allow any unique prefix
+	   ** of the option name, or a numerical value. */
+	  n = strlen30 (azArg[1]);
+	  for (i = 0; i < (int) (sizeof (aCtrl) / sizeof (aCtrl[0])); i++)
+	    {
+		if (strncmp (azArg[1], aCtrl[i].zCtrlName, n) == 0)
+		  {
+		      if (testctrl < 0)
+			{
+			    testctrl = aCtrl[i].ctrlCode;
+			}
+		      else
+			{
+			    fprintf (stderr, "ambiguous option name: \"%s\"\n",
+				     azArg[1]);
+			    testctrl = -1;
+			    break;
+			}
+		  }
+	    }
+	  if (testctrl < 0)
+	      testctrl = atoi (azArg[1]);
+	  if ((testctrl < SQLITE_TESTCTRL_FIRST)
+	      || (testctrl > SQLITE_TESTCTRL_LAST))
+	    {
+		fprintf (stderr, "Error: invalid testctrl option: %s\n",
+			 azArg[1]);
+	    }
+	  else
+	    {
+		switch (testctrl)
+		  {
 
-        /* sqlite3_test_control(int) */
-        case SQLITE_TESTCTRL_PRNG_SAVE:           
-        case SQLITE_TESTCTRL_PRNG_RESTORE:        
-        case SQLITE_TESTCTRL_PRNG_RESET:
-          if( nArg==2 ){
-            rc = sqlite3_test_control(testctrl);
-            printf("%d (0x%08x)\n", rc, rc);
-          } else {
-            fprintf(stderr,"Error: testctrl %s takes no options\n", azArg[1]);
-          }
-          break;
+		      /* sqlite3_test_control(int, db, int) */
+		  case SQLITE_TESTCTRL_OPTIMIZATIONS:
+		  case SQLITE_TESTCTRL_RESERVE:
+		      if (nArg == 3)
+			{
+			    int opt = (int) strtol (azArg[2], 0, 0);
+			    rc = sqlite3_test_control (testctrl, p->db, opt);
+			    printf ("%d (0x%08x)\n", rc, rc);
+			}
+		      else
+			{
+			    fprintf (stderr,
+				     "Error: testctrl %s takes a single int option\n",
+				     azArg[1]);
+			}
+		      break;
 
-        /* sqlite3_test_control(int, uint) */
-        case SQLITE_TESTCTRL_PENDING_BYTE:        
-          if( nArg==3 ){
-            unsigned int opt = (unsigned int)atoi(azArg[2]);        
-            rc = sqlite3_test_control(testctrl, opt);
-            printf("%d (0x%08x)\n", rc, rc);
-          } else {
-            fprintf(stderr,"Error: testctrl %s takes a single unsigned"
-                           " int option\n", azArg[1]);
-          }
-          break;
-          
-        /* sqlite3_test_control(int, int) */
-        case SQLITE_TESTCTRL_ASSERT:              
-        case SQLITE_TESTCTRL_ALWAYS:              
-          if( nArg==3 ){
-            int opt = atoi(azArg[2]);        
-            rc = sqlite3_test_control(testctrl, opt);
-            printf("%d (0x%08x)\n", rc, rc);
-          } else {
-            fprintf(stderr,"Error: testctrl %s takes a single int option\n",
-                            azArg[1]);
-          }
-          break;
+		      /* sqlite3_test_control(int) */
+		  case SQLITE_TESTCTRL_PRNG_SAVE:
+		  case SQLITE_TESTCTRL_PRNG_RESTORE:
+		  case SQLITE_TESTCTRL_PRNG_RESET:
+		      if (nArg == 2)
+			{
+			    rc = sqlite3_test_control (testctrl);
+			    printf ("%d (0x%08x)\n", rc, rc);
+			}
+		      else
+			{
+			    fprintf (stderr,
+				     "Error: testctrl %s takes no options\n",
+				     azArg[1]);
+			}
+		      break;
 
-        /* sqlite3_test_control(int, char *) */
+		      /* sqlite3_test_control(int, uint) */
+		  case SQLITE_TESTCTRL_PENDING_BYTE:
+		      if (nArg == 3)
+			{
+			    unsigned int opt = (unsigned int) atoi (azArg[2]);
+			    rc = sqlite3_test_control (testctrl, opt);
+			    printf ("%d (0x%08x)\n", rc, rc);
+			}
+		      else
+			{
+			    fprintf (stderr,
+				     "Error: testctrl %s takes a single unsigned"
+				     " int option\n", azArg[1]);
+			}
+		      break;
+
+		      /* sqlite3_test_control(int, int) */
+		  case SQLITE_TESTCTRL_ASSERT:
+		  case SQLITE_TESTCTRL_ALWAYS:
+		      if (nArg == 3)
+			{
+			    int opt = atoi (azArg[2]);
+			    rc = sqlite3_test_control (testctrl, opt);
+			    printf ("%d (0x%08x)\n", rc, rc);
+			}
+		      else
+			{
+			    fprintf (stderr,
+				     "Error: testctrl %s takes a single int option\n",
+				     azArg[1]);
+			}
+		      break;
+
+		      /* sqlite3_test_control(int, char *) */
 #ifdef SQLITE_N_KEYWORD
-        case SQLITE_TESTCTRL_ISKEYWORD:           
-          if( nArg==3 ){
-            const char *opt = azArg[2];        
-            rc = sqlite3_test_control(testctrl, opt);
-            printf("%d (0x%08x)\n", rc, rc);
-          } else {
-            fprintf(stderr,"Error: testctrl %s takes a single char * option\n",
-                            azArg[1]);
-          }
-          break;
+		  case SQLITE_TESTCTRL_ISKEYWORD:
+		      if (nArg == 3)
+			{
+			    const char *opt = azArg[2];
+			    rc = sqlite3_test_control (testctrl, opt);
+			    printf ("%d (0x%08x)\n", rc, rc);
+			}
+		      else
+			{
+			    fprintf (stderr,
+				     "Error: testctrl %s takes a single char * option\n",
+				     azArg[1]);
+			}
+		      break;
 #endif
 
-        case SQLITE_TESTCTRL_BITVEC_TEST:         
-        case SQLITE_TESTCTRL_FAULT_INSTALL:       
-        case SQLITE_TESTCTRL_BENIGN_MALLOC_HOOKS: 
-        case SQLITE_TESTCTRL_SCRATCHMALLOC:       
-        default:
-          fprintf(stderr,"Error: CLI support for testctrl %s not implemented\n",
-                  azArg[1]);
-          break;
+		  case SQLITE_TESTCTRL_BITVEC_TEST:
+		  case SQLITE_TESTCTRL_FAULT_INSTALL:
+		  case SQLITE_TESTCTRL_BENIGN_MALLOC_HOOKS:
+		  case SQLITE_TESTCTRL_SCRATCHMALLOC:
+		  default:
+		      fprintf (stderr,
+			       "Error: CLI support for testctrl %s not implemented\n",
+			       azArg[1]);
+		      break;
+		  }
+	    }
       }
-    }
-  }else
-
-  if( c=='t' && n>4 && strncmp(azArg[0], "timeout", n)==0 && nArg==2 ){
-    open_db(p);
-    sqlite3_busy_timeout(p->db, atoi(azArg[1]));
-  }else
-    
-  if( HAS_TIMER && c=='t' && n>=5 && strncmp(azArg[0], "timer", n)==0
-   && nArg==2
-  ){
-    enableTimer = booleanValue(azArg[1]);
-  }else
-  
-  if( c=='t' && strncmp(azArg[0], "trace", n)==0 && nArg>1 ){
-    open_db(p);
-    output_file_close(p->traceOut);
-    p->traceOut = output_file_open(azArg[1]);
+    else if (c == 't' && n > 4 && strncmp (azArg[0], "timeout", n) == 0
+	     && nArg == 2)
+      {
+	  open_db (p);
+	  sqlite3_busy_timeout (p->db, atoi (azArg[1]));
+      }
+    else if (HAS_TIMER && c == 't' && n >= 5
+	     && strncmp (azArg[0], "timer", n) == 0 && nArg == 2)
+      {
+	  enableTimer = booleanValue (azArg[1]);
+      }
+    else if (c == 't' && strncmp (azArg[0], "trace", n) == 0 && nArg > 1)
+      {
+	  open_db (p);
+	  output_file_close (p->traceOut);
+	  p->traceOut = output_file_open (azArg[1]);
 #if !defined(SQLITE_OMIT_TRACE) && !defined(SQLITE_OMIT_FLOATING_POINT)
-    if( p->traceOut==0 ){
-      sqlite3_trace(p->db, 0, 0);
-    }else{
-      sqlite3_trace(p->db, sql_trace_callback, p->traceOut);
-    }
+	  if (p->traceOut == 0)
+	    {
+		sqlite3_trace (p->db, 0, 0);
+	    }
+	  else
+	    {
+		sqlite3_trace (p->db, sql_trace_callback, p->traceOut);
+	    }
 #endif
-  }else
-
-  if( c=='v' && strncmp(azArg[0], "version", n)==0 ){
-    printf("SQLite %s %s\n" /*extra-version-info*/,
-        sqlite3_libversion(), sqlite3_sourceid());
-  }else
-
-  if( c=='v' && strncmp(azArg[0], "vfsname", n)==0 ){
-    const char *zDbName = nArg==2 ? azArg[1] : "main";
-    char *zVfsName = 0;
-    if( p->db ){
+      }
+    else if (c == 'v' && strncmp (azArg[0], "version", n) == 0)
+      {
+	  printf ("SQLite %s %s\n" /*extra-version-info */ ,
+		  sqlite3_libversion (), sqlite3_sourceid ());
+      }
+    else if (c == 'v' && strncmp (azArg[0], "vfsname", n) == 0)
+      {
+	  const char *zDbName = nArg == 2 ? azArg[1] : "main";
+	  char *zVfsName = 0;
+	  if (p->db)
+	    {
 /* Sandro Furieri 1 November 2012 - depending on SQLite version */
 #ifdef HAVE_DECL_SQLITE_FCNTL_VFSNAME
-      sqlite3_file_control(p->db, zDbName, SQLITE_FCNTL_VFSNAME, &zVfsName);
-      if( zVfsName ){
-        printf("%s\n", zVfsName);
-        sqlite3_free(zVfsName);
-      }
+		sqlite3_file_control (p->db, zDbName, SQLITE_FCNTL_VFSNAME,
+				      &zVfsName);
+		if (zVfsName)
+		  {
+		      printf ("%s\n", zVfsName);
+		      sqlite3_free (zVfsName);
+		  }
 #else
-        printf("FCNTL_VFSNAME: unsupported\n");
+		printf ("FCNTL_VFSNAME: unsupported\n");
 #endif
 /* end sandro 1 November 2012 */
-    }
-  }else
+	    }
+      }
+    else if (c == 'w' && strncmp (azArg[0], "width", n) == 0 && nArg > 1)
+      {
+	  int j;
+	  assert (nArg <= ArraySize (azArg));
+	  for (j = 1; j < nArg && j < ArraySize (p->colWidth); j++)
+	    {
+		p->colWidth[j - 1] = atoi (azArg[j]);
+	    }
+      }
+    else
 
-  if( c=='w' && strncmp(azArg[0], "width", n)==0 && nArg>1 ){
-    int j;
-    assert( nArg<=ArraySize(azArg) );
-    for(j=1; j<nArg && j<ArraySize(p->colWidth); j++){
-      p->colWidth[j-1] = atoi(azArg[j]);
-    }
-  }else
+      {
+	  fprintf (stderr, "Error: unknown command or invalid arguments: "
+		   " \"%s\". Enter \".help\" for help\n", azArg[0]);
+	  rc = 1;
+      }
 
-  {
-    fprintf(stderr, "Error: unknown command or invalid arguments: "
-      " \"%s\". Enter \".help\" for help\n", azArg[0]);
-    rc = 1;
-  }
-
-  return rc;
+    return rc;
 }
 
 /*
 ** Return TRUE if a semicolon occurs anywhere in the first N characters
 ** of string z[].
 */
-static int _contains_semicolon(const char *z, int N){
-  int i;
-  for(i=0; i<N; i++){  if( z[i]==';' ) return 1; }
-  return 0;
+static int
+_contains_semicolon (const char *z, int N)
+{
+    int i;
+    for (i = 0; i < N; i++)
+      {
+	  if (z[i] == ';')
+	      return 1;
+      }
+    return 0;
 }
 
 /*
 ** Test to see if a line consists entirely of whitespace.
 */
-static int _all_whitespace(const char *z){
-  for(; *z; z++){
-    if( IsSpace(z[0]) ) continue;
-    if( *z=='/' && z[1]=='*' ){
-      z += 2;
-      while( *z && (*z!='*' || z[1]!='/') ){ z++; }
-      if( *z==0 ) return 0;
-      z++;
-      continue;
-    }
-    if( *z=='-' && z[1]=='-' ){
-      z += 2;
-      while( *z && *z!='\n' ){ z++; }
-      if( *z==0 ) return 1;
-      continue;
-    }
-    return 0;
-  }
-  return 1;
+static int
+_all_whitespace (const char *z)
+{
+    for (; *z; z++)
+      {
+	  if (IsSpace (z[0]))
+	      continue;
+	  if (*z == '/' && z[1] == '*')
+	    {
+		z += 2;
+		while (*z && (*z != '*' || z[1] != '/'))
+		  {
+		      z++;
+		  }
+		if (*z == 0)
+		    return 0;
+		z++;
+		continue;
+	    }
+	  if (*z == '-' && z[1] == '-')
+	    {
+		z += 2;
+		while (*z && *z != '\n')
+		  {
+		      z++;
+		  }
+		if (*z == 0)
+		    return 1;
+		continue;
+	    }
+	  return 0;
+      }
+    return 1;
 }
 
 /*
@@ -3831,30 +4594,40 @@ static int _all_whitespace(const char *z){
 ** than a semi-colon.  The SQL Server style "go" command is understood
 ** as is the Oracle "/".
 */
-static int _is_command_terminator(const char *zLine){
-  while( IsSpace(zLine[0]) ){ zLine++; };
-  if( zLine[0]=='/' && _all_whitespace(&zLine[1]) ){
-    return 1;  /* Oracle */
-  }
-  if( ToLower(zLine[0])=='g' && ToLower(zLine[1])=='o'
-         && _all_whitespace(&zLine[2]) ){
-    return 1;  /* SQL Server */
-  }
-  return 0;
+static int
+_is_command_terminator (const char *zLine)
+{
+    while (IsSpace (zLine[0]))
+      {
+	  zLine++;
+      };
+    if (zLine[0] == '/' && _all_whitespace (&zLine[1]))
+      {
+	  return 1;		/* Oracle */
+      }
+    if (ToLower (zLine[0]) == 'g' && ToLower (zLine[1]) == 'o'
+	&& _all_whitespace (&zLine[2]))
+      {
+	  return 1;		/* SQL Server */
+      }
+    return 0;
 }
 
 /*
 ** Return true if zSql is a complete SQL statement.  Return false if it
 ** ends in the middle of a string literal or C-style comment.
 */
-static int _is_complete(char *zSql, int nSql){
-  int rc;
-  if( zSql==0 ) return 1;
-  zSql[nSql] = ';';
-  zSql[nSql+1] = 0;
-  rc = sqlite3_complete(zSql);
-  zSql[nSql] = 0;
-  return rc;
+static int
+_is_complete (char *zSql, int nSql)
+{
+    int rc;
+    if (zSql == 0)
+	return 1;
+    zSql[nSql] = ';';
+    zSql[nSql + 1] = 0;
+    rc = sqlite3_complete (zSql);
+    zSql[nSql] = 0;
+    return rc;
 }
 
 /*
@@ -3866,222 +4639,270 @@ static int _is_complete(char *zSql, int nSql){
 **
 ** Return the number of errors.
 */
-static int process_input(struct callback_data *p, FILE *in, char *in_charset){
-  char *zLine = 0;
-  char *zSql = 0;
+static int
+process_input (struct callback_data *p, FILE * in, char *in_charset)
+{
+    char *zLine = 0;
+    char *zSql = 0;
 /* Sandro Furieri - 11 July 2008 - supporting UNICODE */
-  int utf8len;
-  char *utf8Sql = 0;
+    int utf8len;
+    char *utf8Sql = 0;
 /* End Sandro Furieri - 11 July 2008 */
 /* Sandro Furieri - 3 September 2012 - supporting SqlLog */
-  sqlite3_int64 sqllog_pk;
+    sqlite3_int64 sqllog_pk;
 /* End Sandro Furieri - 3 September 2012 - supporting SqlLog */
-  int nSql = 0;
-  int nSqlPrior = 0;
-  char *zErrMsg;
-  int rc;
-  int errCnt = 0;
-  int lineno = 0;
-  int startline = 0;
+    int nSql = 0;
+    int nSqlPrior = 0;
+    char *zErrMsg;
+    int rc;
+    int errCnt = 0;
+    int lineno = 0;
+    int startline = 0;
 
 /* Sandro Furieri - 11 July 2008 - supporting UNICODE */
-  if (in_charset)
-    create_input_utf8_converter (in_charset);
+    if (in_charset)
+	create_input_utf8_converter (in_charset);
 /* End Sandro Furieri - 11 July 2008 */
 
-  while( errCnt==0 || !bail_on_error || (in==0 && stdin_is_interactive) ){
-    fflush(p->out);
-    free(zLine);
-    zLine = one_input_line(zSql, in);
-    if( zLine==0 ){
-      /* End of input */
-      if( stdin_is_interactive ) printf("\n");
-      break;
-    }
-    if( seenInterrupt ){
-      if( in!=0 ) break;
-      seenInterrupt = 0;
-    }
-    lineno++;
-    if( (zSql==0 || zSql[0]==0) && _all_whitespace(zLine) ) continue;
-    if( zLine && zLine[0]=='.' && nSql==0 ){
-      if( p->echoOn ) printf("%s\n", zLine);
-      rc = do_meta_command(zLine, p);
-      if( rc==2 ){ /* exit requested */
-        break;
-      }else if( rc ){
-        errCnt++;
-      }
-      continue;
-    }
-    if( _is_command_terminator(zLine) && _is_complete(zSql, nSql) ){
-      memcpy(zLine,";",2);
-    }
-    nSqlPrior = nSql;
-    if( zSql==0 ){
-      int i;
-      for(i=0; zLine[i] && IsSpace(zLine[i]); i++){}
-      if( zLine[i]!=0 ){
-        nSql = strlen30(zLine);
-        zSql = malloc( nSql+3 );
-        if( zSql==0 ){
-          fprintf(stderr, "Error: out of memory\n");
-          exit(1);
-        }
-        memcpy(zSql, zLine, nSql+1);
-        startline = lineno;
-      }
-    }else{
-      int len = strlen30(zLine);
-      zSql = realloc( zSql, nSql + len + 4 );
-      if( zSql==0 ){
-        fprintf(stderr,"Error: out of memory\n");
-        exit(1);
-      }
-      zSql[nSql++] = '\n';
-      memcpy(&zSql[nSql], zLine, len+1);
-      nSql += len;
-    }
-    if( zSql && _contains_semicolon(&zSql[nSqlPrior], nSql-nSqlPrior)
-                && sqlite3_complete(zSql) ){
-      p->cnt = 0;
-      open_db(p);
+    while (errCnt == 0 || !bail_on_error || (in == 0 && stdin_is_interactive))
+      {
+	  fflush (p->out);
+	  free (zLine);
+	  zLine = one_input_line (zSql, in);
+	  if (zLine == 0)
+	    {
+		/* End of input */
+		if (stdin_is_interactive)
+		    printf ("\n");
+		break;
+	    }
+	  if (seenInterrupt)
+	    {
+		if (in != 0)
+		    break;
+		seenInterrupt = 0;
+	    }
+	  lineno++;
+	  if ((zSql == 0 || zSql[0] == 0) && _all_whitespace (zLine))
+	      continue;
+	  if (zLine && zLine[0] == '.' && nSql == 0)
+	    {
+		if (p->echoOn)
+		    printf ("%s\n", zLine);
+		rc = do_meta_command (zLine, p);
+		if (rc == 2)
+		  {		/* exit requested */
+		      break;
+		  }
+		else if (rc)
+		  {
+		      errCnt++;
+		  }
+		continue;
+	    }
+	  if (_is_command_terminator (zLine) && _is_complete (zSql, nSql))
+	    {
+		memcpy (zLine, ";", 2);
+	    }
+	  nSqlPrior = nSql;
+	  if (zSql == 0)
+	    {
+		int i;
+		for (i = 0; zLine[i] && IsSpace (zLine[i]); i++)
+		  {
+		  }
+		if (zLine[i] != 0)
+		  {
+		      nSql = strlen30 (zLine);
+		      zSql = malloc (nSql + 3);
+		      if (zSql == 0)
+			{
+			    fprintf (stderr, "Error: out of memory\n");
+			    exit (1);
+			}
+		      memcpy (zSql, zLine, nSql + 1);
+		      startline = lineno;
+		  }
+	    }
+	  else
+	    {
+		int len = strlen30 (zLine);
+		zSql = realloc (zSql, nSql + len + 4);
+		if (zSql == 0)
+		  {
+		      fprintf (stderr, "Error: out of memory\n");
+		      exit (1);
+		  }
+		zSql[nSql++] = '\n';
+		memcpy (&zSql[nSql], zLine, len + 1);
+		nSql += len;
+	    }
+	  if (zSql && _contains_semicolon (&zSql[nSqlPrior], nSql - nSqlPrior)
+	      && sqlite3_complete (zSql))
+	    {
+		p->cnt = 0;
+		open_db (p);
 /* Sandro Furieri - 11 July 2008
       BEGIN_TIMER;
       rc = shell_exec(p->db, zSql, shell_callback, p, &zErrMsg);
       END_TIMER;
 */
-      utf8len = strlen (zSql) * 4;
-      utf8Sql = malloc (utf8len);
-      if (utf8Sql == 0)
-      {
-          fprintf (stderr, "%s: out of memory!\n", Argv0);
-          exit (1);
-      }
-      strncpy (utf8Sql, zSql, utf8len - 1);
-      utf8Sql[utf8len - 1] = '\0';
-      if (!in_charset)
-      {	
-      /* assuming input is locale_charset encoded */
-          convert_to_utf8 (utf8Sql, utf8len);
-      }
-      else
-      {
-      /* input has an explicit charset */
-          convert_input_to_utf8 (utf8Sql, utf8len);
-      }
-      if (sql_log_enabled)
-          gaiaInsertIntoSqlLog(p->db, "spatialite CLI", utf8Sql, &sqllog_pk);
-      BEGIN_TIMER;
-      rc = sqlite3_exec (p->db, utf8Sql, callback, p, &zErrMsg);
-      END_TIMER;
-      if (sql_log_enabled)
-          gaiaUpdateSqlLog(p->db, sqllog_pk, (rc == SQLITE_OK) ? 1 : 0, zErrMsg); 
-      free (utf8Sql);
+		utf8len = strlen (zSql) * 4;
+		utf8Sql = malloc (utf8len);
+		if (utf8Sql == 0)
+		  {
+		      fprintf (stderr, "%s: out of memory!\n", Argv0);
+		      exit (1);
+		  }
+		strncpy (utf8Sql, zSql, utf8len - 1);
+		utf8Sql[utf8len - 1] = '\0';
+		if (!in_charset)
+		  {
+		      /* assuming input is locale_charset encoded */
+		      convert_to_utf8 (utf8Sql, utf8len);
+		  }
+		else
+		  {
+		      /* input has an explicit charset */
+		      convert_input_to_utf8 (utf8Sql, utf8len);
+		  }
+		if (sql_log_enabled)
+		    gaiaInsertIntoSqlLog (p->db, "spatialite CLI", utf8Sql,
+					  &sqllog_pk);
+		BEGIN_TIMER;
+		rc = sqlite3_exec (p->db, utf8Sql, callback, p, &zErrMsg);
+		END_TIMER;
+		if (sql_log_enabled)
+		    gaiaUpdateSqlLog (p->db, sqllog_pk,
+				      (rc == SQLITE_OK) ? 1 : 0, zErrMsg);
+		free (utf8Sql);
 /* End Sandro Furieri - 11 July 2008 */
-      if( rc || zErrMsg ){
-        char zPrefix[100];
-        if( in!=0 || !stdin_is_interactive ){
-          sqlite3_snprintf(sizeof(zPrefix), zPrefix, 
-                           "Error: near line %d:", startline);
-        }else{
-          sqlite3_snprintf(sizeof(zPrefix), zPrefix, "Error:");
-        }
-        if( zErrMsg!=0 ){
-          fprintf(stderr, "%s %s\n", zPrefix, zErrMsg);
-          sqlite3_free(zErrMsg);
-          zErrMsg = 0;
-        }else{
-          fprintf(stderr, "%s %s\n", zPrefix, sqlite3_errmsg(p->db));
-        }
-        errCnt++;
+		if (rc || zErrMsg)
+		  {
+		      char zPrefix[100];
+		      if (in != 0 || !stdin_is_interactive)
+			{
+			    sqlite3_snprintf (sizeof (zPrefix), zPrefix,
+					      "Error: near line %d:",
+					      startline);
+			}
+		      else
+			{
+			    sqlite3_snprintf (sizeof (zPrefix), zPrefix,
+					      "Error:");
+			}
+		      if (zErrMsg != 0)
+			{
+			    fprintf (stderr, "%s %s\n", zPrefix, zErrMsg);
+			    sqlite3_free (zErrMsg);
+			    zErrMsg = 0;
+			}
+		      else
+			{
+			    fprintf (stderr, "%s %s\n", zPrefix,
+				     sqlite3_errmsg (p->db));
+			}
+		      errCnt++;
+		  }
+		free (zSql);
+		zSql = 0;
+		nSql = 0;
+	    }
       }
-      free(zSql);
-      zSql = 0;
-      nSql = 0;
-    }
-  }
-  if( zSql ){
-    if( !_all_whitespace(zSql) ){
-      fprintf(stderr, "Error: incomplete SQL: %s\n", zSql);
-    }
-    free(zSql);
-  }
-  free(zLine);
+    if (zSql)
+      {
+	  if (!_all_whitespace (zSql))
+	    {
+		fprintf (stderr, "Error: incomplete SQL: %s\n", zSql);
+	    }
+	  free (zSql);
+      }
+    free (zLine);
 
 /* Sandro Furieri - 11 July 2008 */
-  if (in_charset_to_utf8)
-  {
-  /* destroying input converter, if exists */
-      iconv_close (in_charset_to_utf8);
-      in_charset_to_utf8 = NULL;	
-   }	
+    if (in_charset_to_utf8)
+      {
+	  /* destroying input converter, if exists */
+	  iconv_close (in_charset_to_utf8);
+	  in_charset_to_utf8 = NULL;
+      }
 /* End Sandro Furieri - 11 July 2008 */
 
-  return errCnt;
+    return errCnt;
 }
 
 /*
 ** Return a pathname which is the user's home directory.  A
 ** 0 return indicates an error of some kind.
 */
-static char *find_home_dir(void){
-  static char *home_dir = NULL;
-  if( home_dir ) return home_dir;
+static char *
+find_home_dir (void)
+{
+    static char *home_dir = NULL;
+    if (home_dir)
+	return home_dir;
 
 #if !defined(_WIN32) && !defined(WIN32) && !defined(_WIN32_WCE) && !defined(__RTP__) && !defined(_WRS_KERNEL)
-  {
-    struct passwd *pwent;
-    uid_t uid = getuid();
-    if( (pwent=getpwuid(uid)) != NULL) {
-      home_dir = pwent->pw_dir;
+    {
+	struct passwd *pwent;
+	uid_t uid = getuid ();
+	if ((pwent = getpwuid (uid)) != NULL)
+	  {
+	      home_dir = pwent->pw_dir;
+	  }
     }
-  }
 #endif
 
 #if defined(_WIN32_WCE)
-  /* Windows CE (arm-wince-mingw32ce-gcc) does not provide getenv()
-   */
-  home_dir = "/";
+    /* Windows CE (arm-wince-mingw32ce-gcc) does not provide getenv()
+     */
+    home_dir = "/";
 #else
 
 #if defined(_WIN32) || defined(WIN32)
-  if (!home_dir) {
-    home_dir = getenv("USERPROFILE");
-  }
+    if (!home_dir)
+      {
+	  home_dir = getenv ("USERPROFILE");
+      }
 #endif
 
-  if (!home_dir) {
-    home_dir = getenv("HOME");
-  }
+    if (!home_dir)
+      {
+	  home_dir = getenv ("HOME");
+      }
 
 #if defined(_WIN32) || defined(WIN32)
-  if (!home_dir) {
-    char *zDrive, *zPath;
-    int n;
-    zDrive = getenv("HOMEDRIVE");
-    zPath = getenv("HOMEPATH");
-    if( zDrive && zPath ){
-      n = strlen30(zDrive) + strlen30(zPath) + 1;
-      home_dir = malloc( n );
-      if( home_dir==0 ) return 0;
-      sqlite3_snprintf(n, home_dir, "%s%s", zDrive, zPath);
-      return home_dir;
-    }
-    home_dir = "c:\\";
-  }
+    if (!home_dir)
+      {
+	  char *zDrive, *zPath;
+	  int n;
+	  zDrive = getenv ("HOMEDRIVE");
+	  zPath = getenv ("HOMEPATH");
+	  if (zDrive && zPath)
+	    {
+		n = strlen30 (zDrive) + strlen30 (zPath) + 1;
+		home_dir = malloc (n);
+		if (home_dir == 0)
+		    return 0;
+		sqlite3_snprintf (n, home_dir, "%s%s", zDrive, zPath);
+		return home_dir;
+	    }
+	  home_dir = "c:\\";
+      }
 #endif
 
 #endif /* !_WIN32_WCE */
 
-  if( home_dir ){
-    int n = strlen30(home_dir) + 1;
-    char *z = malloc( n );
-    if( z ) memcpy(z, home_dir, n);
-    home_dir = z;
-  }
+    if (home_dir)
+      {
+	  int n = strlen30 (home_dir) + 1;
+	  char *z = malloc (n);
+	  if (z)
+	      memcpy (z, home_dir, n);
+	  home_dir = z;
+      }
 
-  return home_dir;
+    return home_dir;
 }
 
 /*
@@ -4090,112 +4911,128 @@ static char *find_home_dir(void){
 **
 ** Returns the number of errors.
 */
-static int process_sqliterc(
-  struct callback_data *p,        /* Configuration data */
-  const char *sqliterc_override   /* Name of config file. NULL to use default */
-){
-  char *home_dir = NULL;
-  const char *sqliterc = sqliterc_override;
-  char *zBuf = 0;
-  FILE *in = NULL;
-  int rc = 0;
+static int
+process_sqliterc (struct callback_data *p,	/* Configuration data */
+		  const char *sqliterc_override	/* Name of config file. NULL to use default */
+    )
+{
+    char *home_dir = NULL;
+    const char *sqliterc = sqliterc_override;
+    char *zBuf = 0;
+    FILE *in = NULL;
+    int rc = 0;
 
-  if (sqliterc == NULL) {
-    home_dir = find_home_dir();
-    if( home_dir==0 ){
+    if (sqliterc == NULL)
+      {
+	  home_dir = find_home_dir ();
+	  if (home_dir == 0)
+	    {
 #if !defined(__RTP__) && !defined(_WRS_KERNEL)
-      fprintf(stderr,"%s: Error: cannot locate your home directory\n", Argv0);
+		fprintf (stderr,
+			 "%s: Error: cannot locate your home directory\n",
+			 Argv0);
 #endif
-      return 1;
-    }
-    sqlite3_initialize();
-    zBuf = sqlite3_mprintf("%s/.sqliterc",home_dir);
-    sqliterc = zBuf;
-  }
-  in = fopen(sqliterc,"rb");
-  if( in ){
-    if( stdin_is_interactive ){
-      fprintf(stderr,"-- Loading resources from %s\n",sqliterc);
-    }
-    rc = process_input(p,in, 0);
-    fclose(in);
-  }
-  sqlite3_free(zBuf);
-  return rc;
+		return 1;
+	    }
+	  sqlite3_initialize ();
+	  zBuf = sqlite3_mprintf ("%s/.sqliterc", home_dir);
+	  sqliterc = zBuf;
+      }
+    in = fopen (sqliterc, "rb");
+    if (in)
+      {
+	  if (stdin_is_interactive)
+	    {
+		fprintf (stderr, "-- Loading resources from %s\n", sqliterc);
+	    }
+	  rc = process_input (p, in, 0);
+	  fclose (in);
+      }
+    sqlite3_free (zBuf);
+    return rc;
 }
 
 /*
 ** Show available command line options
 */
-static const char zOptions[] = 
-  "   -bail                stop after hitting an error\n"
-  "   -batch               force batch I/O\n"
-  "   -column              set output mode to 'column'\n"
-  "   -cmd command         run \"command\" before reading stdin\n"
-  "   -csv                 set output mode to 'csv'\n"
-  "   -echo                print commands before execution\n"
-  "   -init filename       read/process named file\n"
-  "   -[no]header          turn headers on or off\n"
-  "   -help                show this message\n"
-  "   -html                set output mode to HTML\n"
-  "   -interactive         force interactive I/O\n"
-  "   -line                set output mode to 'line'\n"
-  "   -list                set output mode to 'list'\n"
-  "   -silent              suppress the welcome message\n"
+static const char zOptions[] =
+    "   -bail                stop after hitting an error\n"
+    "   -batch               force batch I/O\n"
+    "   -column              set output mode to 'column'\n"
+    "   -cmd command         run \"command\" before reading stdin\n"
+    "   -csv                 set output mode to 'csv'\n"
+    "   -echo                print commands before execution\n"
+    "   -init filename       read/process named file\n"
+    "   -[no]header          turn headers on or off\n"
+    "   -help                show this message\n"
+    "   -html                set output mode to HTML\n"
+    "   -interactive         force interactive I/O\n"
+    "   -line                set output mode to 'line'\n"
+    "   -list                set output mode to 'list'\n"
+    "   -silent              suppress the welcome message\n"
 #ifdef SQLITE_ENABLE_MULTIPLEX
-  "   -multiplex           enable the multiplexor VFS\n"
+    "   -multiplex           enable the multiplexor VFS\n"
 #endif
-  "   -nullvalue 'text'    set text string for NULL values\n"
-  "   -separator 'x'       set output field separator (|)\n"
-  "   -stats               print memory stats before each finalize\n"
-  "   -version             show SQLite version\n"
-  "   -vfs NAME            use NAME as the default VFS\n"
+    "   -nullvalue 'text'    set text string for NULL values\n"
+    "   -separator 'x'       set output field separator (|)\n"
+    "   -stats               print memory stats before each finalize\n"
+    "   -version             show SQLite version\n"
+    "   -vfs NAME            use NAME as the default VFS\n"
 #ifdef SQLITE_ENABLE_VFSTRACE
-  "   -vfstrace            enable tracing of all VFS calls\n"
+    "   -vfstrace            enable tracing of all VFS calls\n"
 #endif
-;
-static void usage(int showDetail){
-  fprintf(stderr,
-      "Usage: %s [OPTIONS] FILENAME [SQL]\n"  
-      "FILENAME is the name of an SQLite database. A new database is created\n"
-      "if the file does not previously exist.\n", Argv0);
-  if( showDetail ){
-    fprintf(stderr, "OPTIONS include:\n%s", zOptions);
-  }else{
-    fprintf(stderr, "Use the -help option for additional information\n");
-  }
-  exit(1);
+    ;
+static void
+usage (int showDetail)
+{
+    fprintf (stderr,
+	     "Usage: %s [OPTIONS] FILENAME [SQL]\n"
+	     "FILENAME is the name of an SQLite database. A new database is created\n"
+	     "if the file does not previously exist.\n", Argv0);
+    if (showDetail)
+      {
+	  fprintf (stderr, "OPTIONS include:\n%s", zOptions);
+      }
+    else
+      {
+	  fprintf (stderr, "Use the -help option for additional information\n");
+      }
+    exit (1);
 }
 
 /*
 ** Initialize the state information in data
 */
-static void main_init(struct callback_data *data) {
-  memset(data, 0, sizeof(*data));
-  data->mode = MODE_List;
-  memcpy(data->separator,"|", 2);
-  data->showHeader = 0;
+static void
+main_init (struct callback_data *data)
+{
+    memset (data, 0, sizeof (*data));
+    data->mode = MODE_List;
+    memcpy (data->separator, "|", 2);
+    data->showHeader = 0;
 /* Sandro Furieri 1 November 2012 - depending on SQLite version */
 #ifdef HAVE_DECL_SQLITE_CONFIG_URI
-  sqlite3_config(SQLITE_CONFIG_URI, 1);
+    sqlite3_config (SQLITE_CONFIG_URI, 1);
 #endif
 /* end sandro 1 November 2012 */
-  sqlite3_config(SQLITE_CONFIG_LOG, shellLog, data);
-  sqlite3_snprintf(sizeof(mainPrompt), mainPrompt,"spatialite> ");
-  sqlite3_snprintf(sizeof(continuePrompt), continuePrompt,"   ...> ");
-  sqlite3_config(SQLITE_CONFIG_SINGLETHREAD);
+    sqlite3_config (SQLITE_CONFIG_LOG, shellLog, data);
+    sqlite3_snprintf (sizeof (mainPrompt), mainPrompt, "spatialite> ");
+    sqlite3_snprintf (sizeof (continuePrompt), continuePrompt, "   ...> ");
+    sqlite3_config (SQLITE_CONFIG_SINGLETHREAD);
 }
 
-int main(int argc, char **argv){
-  char *zErrMsg = 0;
-  struct callback_data data;
-  const char *zInitFile = 0;
-  char *zFirstCmd = 0;
-  int i;
-  int rc = 0;
-  
+int
+main (int argc, char **argv)
+{
+    char *zErrMsg = 0;
+    struct callback_data data;
+    const char *zInitFile = 0;
+    char *zFirstCmd = 0;
+    int i;
+    int rc = 0;
+
 /* initializing the SpatiaLite's internal cache */
-  splite_cache = spatialite_alloc_connection ();
+    splite_cache = spatialite_alloc_connection ();
 
 /*
  * sandro: 2015-06-26
@@ -4208,264 +5045,395 @@ int main(int argc, char **argv){
     exit(1);
   }
 */
- 
-  Argv0 = argv[0];
-  main_init(&data);
+
+    Argv0 = argv[0];
+    main_init (&data);
 /*
 Sandro Furieri 30 May 2008
 ===========================
 registering the SpatiaLite extension
 2013-08-30: supporting "silent mode"
 */
-  for(i=1; i<argc && argv[i][0]=='-'; i++){
-    char *z = argv[i];
-    if( z[1]=='-' ){ z++; }
-    if( strcmp(z,"-silent")==0 ){ splite_silent = 1;}
-	}
+    for (i = 1; i < argc && argv[i][0] == '-'; i++)
+      {
+	  char *z = argv[i];
+	  if (z[1] == '-')
+	    {
+		z++;
+	    }
+	  if (strcmp (z, "-silent") == 0)
+	    {
+		splite_silent = 1;
+	    }
+      }
 
-  stdin_is_interactive = isatty(0);
+    stdin_is_interactive = isatty (0);
 
-  /* Make sure we have a valid signal handler early, before anything
-  ** else is done.
-  */
+    /* Make sure we have a valid signal handler early, before anything
+     ** else is done.
+     */
 #ifdef SIGINT
-  signal(SIGINT, interrupt_handler);
+    signal (SIGINT, interrupt_handler);
 #endif
 
-  /* Do an initial pass through the command-line argument to locate
-  ** the name of the database file, the name of the initialization file,
-  ** the size of the alternative malloc heap,
-  ** and the first command to execute.
-  */
-  for(i=1; i<argc-1; i++){
-    char *z;
-    if( argv[i][0]!='-' ) break;
-    z = argv[i];
-    if( z[1]=='-' ) z++;
-    if( strcmp(z,"-separator")==0
-     || strcmp(z,"-nullvalue")==0
-     || strcmp(z,"-cmd")==0
-    ){
-      i++;
-    }else if( strcmp(z,"-init")==0 ){
-      i++;
-      zInitFile = argv[i];
-    /* Need to check for batch mode here to so we can avoid printing
-    ** informational messages (like from process_sqliterc) before 
-    ** we do the actual processing of arguments later in a second pass.
-    */
-    }else if( strcmp(z,"-batch")==0 ){
-      stdin_is_interactive = 0;
-    }else if( strcmp(z,"-heap")==0 ){
+    /* Do an initial pass through the command-line argument to locate
+     ** the name of the database file, the name of the initialization file,
+     ** the size of the alternative malloc heap,
+     ** and the first command to execute.
+     */
+    for (i = 1; i < argc - 1; i++)
+      {
+	  char *z;
+	  if (argv[i][0] != '-')
+	      break;
+	  z = argv[i];
+	  if (z[1] == '-')
+	      z++;
+	  if (strcmp (z, "-separator") == 0
+	      || strcmp (z, "-nullvalue") == 0 || strcmp (z, "-cmd") == 0)
+	    {
+		i++;
+	    }
+	  else if (strcmp (z, "-init") == 0)
+	    {
+		i++;
+		zInitFile = argv[i];
+		/* Need to check for batch mode here to so we can avoid printing
+		 ** informational messages (like from process_sqliterc) before 
+		 ** we do the actual processing of arguments later in a second pass.
+		 */
+	    }
+	  else if (strcmp (z, "-batch") == 0)
+	    {
+		stdin_is_interactive = 0;
+	    }
+	  else if (strcmp (z, "-heap") == 0)
+	    {
 #if defined(SQLITE_ENABLE_MEMSYS3) || defined(SQLITE_ENABLE_MEMSYS5)
-      int j, c;
-      const char *zSize;
-      sqlite3_int64 szHeap;
+		int j, c;
+		const char *zSize;
+		sqlite3_int64 szHeap;
 
-      zSize = argv[++i];
-      szHeap = atoi(zSize);
-      for(j=0; (c = zSize[j])!=0; j++){
-        if( c=='M' ){ szHeap *= 1000000; break; }
-        if( c=='K' ){ szHeap *= 1000; break; }
-        if( c=='G' ){ szHeap *= 1000000000; break; }
-      }
-      if( szHeap>0x7fff0000 ) szHeap = 0x7fff0000;
-      sqlite3_config(SQLITE_CONFIG_HEAP, malloc((int)szHeap), (int)szHeap, 64);
+		zSize = argv[++i];
+		szHeap = atoi (zSize);
+		for (j = 0; (c = zSize[j]) != 0; j++)
+		  {
+		      if (c == 'M')
+			{
+			    szHeap *= 1000000;
+			    break;
+			}
+		      if (c == 'K')
+			{
+			    szHeap *= 1000;
+			    break;
+			}
+		      if (c == 'G')
+			{
+			    szHeap *= 1000000000;
+			    break;
+			}
+		  }
+		if (szHeap > 0x7fff0000)
+		    szHeap = 0x7fff0000;
+		sqlite3_config (SQLITE_CONFIG_HEAP, malloc ((int) szHeap),
+				(int) szHeap, 64);
 #endif
 #ifdef SQLITE_ENABLE_VFSTRACE
-    }else if( strcmp(z,"-vfstrace")==0 ){
-      extern int vfstrace_register(
-         const char *zTraceName,
-         const char *zOldVfsName,
-         int (*xOut)(const char*,void*),
-         void *pOutArg,
-         int makeDefault
-      );
-      vfstrace_register("trace",0,(int(*)(const char*,void*))fputs,stderr,1);
+	    }
+	  else if (strcmp (z, "-vfstrace") == 0)
+	    {
+		extern int vfstrace_register (const char *zTraceName,
+					      const char *zOldVfsName,
+					      int (*xOut) (const char *,
+							   void *),
+					      void *pOutArg, int makeDefault);
+		vfstrace_register ("trace", 0,
+				   (int (*)(const char *, void *)) fputs,
+				   stderr, 1);
 #endif
 #ifdef SQLITE_ENABLE_MULTIPLEX
-    }else if( strcmp(z,"-multiplex")==0 ){
-      extern int sqlite3_multiple_initialize(const char*,int);
-      sqlite3_multiplex_initialize(0, 1);
+	    }
+	  else if (strcmp (z, "-multiplex") == 0)
+	    {
+		extern int sqlite3_multiple_initialize (const char *, int);
+		sqlite3_multiplex_initialize (0, 1);
 #endif
-    }else if( strcmp(z,"-vfs")==0 ){
-      sqlite3_vfs *pVfs = sqlite3_vfs_find(argv[++i]);
-      if( pVfs ){
-        sqlite3_vfs_register(pVfs, 1);
-      }else{
-        fprintf(stderr, "no such VFS: \"%s\"\n", argv[i]);
-        exit(1);
+	    }
+	  else if (strcmp (z, "-vfs") == 0)
+	    {
+		sqlite3_vfs *pVfs = sqlite3_vfs_find (argv[++i]);
+		if (pVfs)
+		  {
+		      sqlite3_vfs_register (pVfs, 1);
+		  }
+		else
+		  {
+		      fprintf (stderr, "no such VFS: \"%s\"\n", argv[i]);
+		      exit (1);
+		  }
+	    }
       }
-    }
-  }
-  if( i<argc ){
-    data.zDbFilename = argv[i++];
-  }else{
+    if (i < argc)
+      {
+	  data.zDbFilename = argv[i++];
+      }
+    else
+      {
 #ifndef SQLITE_OMIT_MEMORYDB
-    data.zDbFilename = ":memory:";
+	  data.zDbFilename = ":memory:";
 #else
-    data.zDbFilename = 0;
+	  data.zDbFilename = 0;
 #endif
-  }
-  if( i<argc ){
-    zFirstCmd = argv[i++];
-  }
-  if( i<argc ){
-    fprintf(stderr,"%s: Error: too many options: \"%s\"\n", Argv0, argv[i]);
-    fprintf(stderr,"Use -help for a list of options.\n");
-    return 1;
-  }
-  data.out = stdout;
+      }
+    if (i < argc)
+      {
+	  zFirstCmd = argv[i++];
+      }
+    if (i < argc)
+      {
+	  fprintf (stderr, "%s: Error: too many options: \"%s\"\n", Argv0,
+		   argv[i]);
+	  fprintf (stderr, "Use -help for a list of options.\n");
+	  return 1;
+      }
+    data.out = stdout;
 
 #ifdef SQLITE_OMIT_MEMORYDB
-  if( data.zDbFilename==0 ){
-    fprintf(stderr,"%s: Error: no database filename specified\n", Argv0);
-    return 1;
-  }
+    if (data.zDbFilename == 0)
+      {
+	  fprintf (stderr, "%s: Error: no database filename specified\n",
+		   Argv0);
+	  return 1;
+      }
 #endif
 
-  /* Go ahead and open the database file if it already exists.  If the
-  ** file does not exist, delay opening it.  This prevents empty database
-  ** files from being created if a user mistypes the database name argument
-  ** to the sqlite command-line tool.
-  */
-  if( access(data.zDbFilename, 0)==0 ){
-    open_db(&data);
-  }
-
-  /* Process the initialization file if there is one.  If no -init option
-  ** is given on the command line, look for a file named ~/.sqliterc and
-  ** try to process it.
-  */
-  rc = process_sqliterc(&data,zInitFile);
-  if( rc>0 ){
-    return rc;
-  }
-
-  /* Make a second pass through the command-line argument and set
-  ** options.  This second pass is delayed until after the initialization
-  ** file is processed so that the command-line arguments will override
-  ** settings in the initialization file.
-  */
-  for(i=1; i<argc && argv[i][0]=='-'; i++){
-    char *z = argv[i];
-    if( z[1]=='-' ){ z++; }
-    if( strcmp(z,"-init")==0 ){
-      i++;
-    }else if( strcmp(z,"-html")==0 ){
-      data.mode = MODE_Html;
-    }else if( strcmp(z,"-list")==0 ){
-      data.mode = MODE_List;
-    }else if( strcmp(z,"-line")==0 ){
-      data.mode = MODE_Line;
-    }else if( strcmp(z,"-column")==0 ){
-      data.mode = MODE_Column;
-    }else if( strcmp(z,"-csv")==0 ){
-      data.mode = MODE_Csv;
-      memcpy(data.separator,",",2);
-    }else if( strcmp(z,"-separator")==0 ){
-      i++;
-      if(i>=argc){
-        fprintf(stderr,"%s: Error: missing argument for option: %s\n",
-                        Argv0, z);
-        fprintf(stderr,"Use -help for a list of options.\n");
-        return 1;
+    /* Go ahead and open the database file if it already exists.  If the
+     ** file does not exist, delay opening it.  This prevents empty database
+     ** files from being created if a user mistypes the database name argument
+     ** to the sqlite command-line tool.
+     */
+    if (access (data.zDbFilename, 0) == 0)
+      {
+	  open_db (&data);
       }
-      sqlite3_snprintf(sizeof(data.separator), data.separator,
-                       "%.*s",(int)sizeof(data.separator)-1,argv[i]);
-    }else if( strcmp(z,"-nullvalue")==0 ){
-      i++;
-      if(i>=argc){
-        fprintf(stderr,"%s: Error: missing argument for option: %s\n",
-                        Argv0, z);
-        fprintf(stderr,"Use -help for a list of options.\n");
-        return 1;
+
+    /* Process the initialization file if there is one.  If no -init option
+     ** is given on the command line, look for a file named ~/.sqliterc and
+     ** try to process it.
+     */
+    rc = process_sqliterc (&data, zInitFile);
+    if (rc > 0)
+      {
+	  return rc;
       }
-      sqlite3_snprintf(sizeof(data.nullvalue), data.nullvalue,
-                       "%.*s",(int)sizeof(data.nullvalue)-1,argv[i]);
-    }else if( strcmp(z,"-header")==0 ){
-      data.showHeader = 1;
-    }else if( strcmp(z,"-noheader")==0 ){
-      data.showHeader = 0;
-    }else if( strcmp(z,"-echo")==0 ){
-      data.echoOn = 1;
-    }else if( strcmp(z,"-stats")==0 ){
-      data.statsOn = 1;
-    }else if( strcmp(z,"-bail")==0 ){
-      bail_on_error = 1;
-    }else if( strcmp(z,"-silent")==0 ){
+
+    /* Make a second pass through the command-line argument and set
+     ** options.  This second pass is delayed until after the initialization
+     ** file is processed so that the command-line arguments will override
+     ** settings in the initialization file.
+     */
+    for (i = 1; i < argc && argv[i][0] == '-'; i++)
+      {
+	  char *z = argv[i];
+	  if (z[1] == '-')
+	    {
+		z++;
+	    }
+	  if (strcmp (z, "-init") == 0)
+	    {
+		i++;
+	    }
+	  else if (strcmp (z, "-html") == 0)
+	    {
+		data.mode = MODE_Html;
+	    }
+	  else if (strcmp (z, "-list") == 0)
+	    {
+		data.mode = MODE_List;
+	    }
+	  else if (strcmp (z, "-line") == 0)
+	    {
+		data.mode = MODE_Line;
+	    }
+	  else if (strcmp (z, "-column") == 0)
+	    {
+		data.mode = MODE_Column;
+	    }
+	  else if (strcmp (z, "-csv") == 0)
+	    {
+		data.mode = MODE_Csv;
+		memcpy (data.separator, ",", 2);
+	    }
+	  else if (strcmp (z, "-separator") == 0)
+	    {
+		i++;
+		if (i >= argc)
+		  {
+		      fprintf (stderr,
+			       "%s: Error: missing argument for option: %s\n",
+			       Argv0, z);
+		      fprintf (stderr, "Use -help for a list of options.\n");
+		      return 1;
+		  }
+		sqlite3_snprintf (sizeof (data.separator), data.separator,
+				  "%.*s", (int) sizeof (data.separator) - 1,
+				  argv[i]);
+	    }
+	  else if (strcmp (z, "-nullvalue") == 0)
+	    {
+		i++;
+		if (i >= argc)
+		  {
+		      fprintf (stderr,
+			       "%s: Error: missing argument for option: %s\n",
+			       Argv0, z);
+		      fprintf (stderr, "Use -help for a list of options.\n");
+		      return 1;
+		  }
+		sqlite3_snprintf (sizeof (data.nullvalue), data.nullvalue,
+				  "%.*s", (int) sizeof (data.nullvalue) - 1,
+				  argv[i]);
+	    }
+	  else if (strcmp (z, "-header") == 0)
+	    {
+		data.showHeader = 1;
+	    }
+	  else if (strcmp (z, "-noheader") == 0)
+	    {
+		data.showHeader = 0;
+	    }
+	  else if (strcmp (z, "-echo") == 0)
+	    {
+		data.echoOn = 1;
+	    }
+	  else if (strcmp (z, "-stats") == 0)
+	    {
+		data.statsOn = 1;
+	    }
+	  else if (strcmp (z, "-bail") == 0)
+	    {
+		bail_on_error = 1;
+	    }
+	  else if (strcmp (z, "-silent") == 0)
+	    {
 /* sandro 2013-08-30 */
-      splite_silent = 1;
+		splite_silent = 1;
 /* end sandro */
-    }else if( strcmp(z,"-version")==0 ){
-      printf("%s %s\n", sqlite3_libversion(), sqlite3_sourceid());
-      return 0;
-    }else if( strcmp(z,"-interactive")==0 ){
-      stdin_is_interactive = 1;
-    }else if( strcmp(z,"-batch")==0 ){
-      stdin_is_interactive = 0;
-    }else if( strcmp(z,"-heap")==0 ){
-      i++;
-    }else if( strcmp(z,"-vfs")==0 ){
-      i++;
+	    }
+	  else if (strcmp (z, "-version") == 0)
+	    {
+		printf ("%s %s\n", sqlite3_libversion (), sqlite3_sourceid ());
+		return 0;
+	    }
+	  else if (strcmp (z, "-interactive") == 0)
+	    {
+		stdin_is_interactive = 1;
+	    }
+	  else if (strcmp (z, "-batch") == 0)
+	    {
+		stdin_is_interactive = 0;
+	    }
+	  else if (strcmp (z, "-heap") == 0)
+	    {
+		i++;
+	    }
+	  else if (strcmp (z, "-vfs") == 0)
+	    {
+		i++;
 #ifdef SQLITE_ENABLE_VFSTRACE
-    }else if( strcmp(z,"-vfstrace")==0 ){
-      i++;
+	    }
+	  else if (strcmp (z, "-vfstrace") == 0)
+	    {
+		i++;
 #endif
 #ifdef SQLITE_ENABLE_MULTIPLEX
-    }else if( strcmp(z,"-multiplex")==0 ){
-      i++;
+	    }
+	  else if (strcmp (z, "-multiplex") == 0)
+	    {
+		i++;
 #endif
-    }else if( strcmp(z,"-help")==0 ){
-      usage(1);
-    }else if( strcmp(z,"-cmd")==0 ){
-      if( i==argc-1 ) break;
-      i++;
-      z = argv[i];
-      if( z[0]=='.' ){
-        rc = do_meta_command(z, &data);
-        if( rc && bail_on_error ) return rc;
-      }else{
-        open_db(&data);
-        rc = shell_exec(data.db, z, shell_callback, &data, &zErrMsg);
-        if( zErrMsg!=0 ){
-          fprintf(stderr,"Error: %s\n", zErrMsg);
-          if( bail_on_error ) return rc!=0 ? rc : 1;
-        }else if( rc!=0 ){
-          fprintf(stderr,"Error: unable to process SQL \"%s\"\n", z);
-          if( bail_on_error ) return rc;
-        }
+	    }
+	  else if (strcmp (z, "-help") == 0)
+	    {
+		usage (1);
+	    }
+	  else if (strcmp (z, "-cmd") == 0)
+	    {
+		if (i == argc - 1)
+		    break;
+		i++;
+		z = argv[i];
+		if (z[0] == '.')
+		  {
+		      rc = do_meta_command (z, &data);
+		      if (rc && bail_on_error)
+			  return rc;
+		  }
+		else
+		  {
+		      open_db (&data);
+		      rc = shell_exec (data.db, z, shell_callback, &data,
+				       &zErrMsg);
+		      if (zErrMsg != 0)
+			{
+			    fprintf (stderr, "Error: %s\n", zErrMsg);
+			    if (bail_on_error)
+				return rc != 0 ? rc : 1;
+			}
+		      else if (rc != 0)
+			{
+			    fprintf (stderr,
+				     "Error: unable to process SQL \"%s\"\n",
+				     z);
+			    if (bail_on_error)
+				return rc;
+			}
+		  }
+	    }
+	  else
+	    {
+		fprintf (stderr, "%s: Error: unknown option: %s\n", Argv0, z);
+		fprintf (stderr, "Use -help for a list of options.\n");
+		return 1;
+	    }
       }
-    }else{
-      fprintf(stderr,"%s: Error: unknown option: %s\n", Argv0, z);
-      fprintf(stderr,"Use -help for a list of options.\n");
-      return 1;
-    }
-  }
 
-  if( zFirstCmd ){
-    /* Run just the command that follows the database name
-    */
-    if( zFirstCmd[0]=='.' ){
-      rc = do_meta_command(zFirstCmd, &data);
-    }else{
-      open_db(&data);
-      rc = shell_exec(data.db, zFirstCmd, shell_callback, &data, &zErrMsg);
-      if( zErrMsg!=0 ){
-        fprintf(stderr,"Error: %s\n", zErrMsg);
-        return rc!=0 ? rc : 1;
-      }else if( rc!=0 ){
-        fprintf(stderr,"Error: unable to process SQL \"%s\"\n", zFirstCmd);
-        return rc;
+    if (zFirstCmd)
+      {
+	  /* Run just the command that follows the database name
+	   */
+	  if (zFirstCmd[0] == '.')
+	    {
+		rc = do_meta_command (zFirstCmd, &data);
+	    }
+	  else
+	    {
+		open_db (&data);
+		rc = shell_exec (data.db, zFirstCmd, shell_callback, &data,
+				 &zErrMsg);
+		if (zErrMsg != 0)
+		  {
+		      fprintf (stderr, "Error: %s\n", zErrMsg);
+		      return rc != 0 ? rc : 1;
+		  }
+		else if (rc != 0)
+		  {
+		      fprintf (stderr, "Error: unable to process SQL \"%s\"\n",
+			       zFirstCmd);
+		      return rc;
+		  }
+	    }
       }
-    }
-  }else{
-    /* Run commands received from standard input
-    */
-    if( stdin_is_interactive ){
-      char *zHome;
-      char *zHistory = 0;
-      int nHistory;
+    else
+      {
+	  /* Run commands received from standard input
+	   */
+	  if (stdin_is_interactive)
+	    {
+		char *zHome;
+		char *zHistory = 0;
+		int nHistory;
 /* Sandro Furieri 2008-11-20
       printf(
         "SQLite version %s %.19s\n" 
@@ -4474,41 +5442,46 @@ registering the SpatiaLite extension
         sqlite3_libversion(), sqlite3_sourceid()
       );
 */
-     open_db(&data);
-     if (isatty (1))
-          printf ("SQLite version ......: %s\n",
-     sqlite3_libversion ());
-     auto_fdo_start (data.db);
-     if (isatty (1))
-         printf ("Enter \".help\" for instructions\n");
+		open_db (&data);
+		if (isatty (1))
+		    printf ("SQLite version ......: %s\n",
+			    sqlite3_libversion ());
+		auto_fdo_start (data.db);
+		if (isatty (1))
+		    printf ("Enter \".help\" for instructions\n");
 /* end Sandro Furieri 2008-11-20 */
-      printf(
-        "SQLite version %s %.19s\n" /*extra-version-info*/
-        "Enter \".help\" for instructions\n"
-        "Enter SQL statements terminated with a \";\"\n",
-        sqlite3_libversion(), sqlite3_sourceid()
-      );
-      zHome = find_home_dir();
-      if( zHome ){
-        nHistory = strlen30(zHome) + 20;
-        if( (zHistory = malloc(nHistory))!=0 ){
-          sqlite3_snprintf(nHistory, zHistory,"%s/.sqlite_history", zHome);
-        }
-      }
+		printf ("SQLite version %s %.19s\n"	/*extra-version-info */
+			"Enter \".help\" for instructions\n"
+			"Enter SQL statements terminated with a \";\"\n",
+			sqlite3_libversion (), sqlite3_sourceid ());
+		zHome = find_home_dir ();
+		if (zHome)
+		  {
+		      nHistory = strlen30 (zHome) + 20;
+		      if ((zHistory = malloc (nHistory)) != 0)
+			{
+			    sqlite3_snprintf (nHistory, zHistory,
+					      "%s/.sqlite_history", zHome);
+			}
+		  }
 #if defined(HAVE_READLINE) && HAVE_READLINE==1
-      if( zHistory ) read_history(zHistory);
+		if (zHistory)
+		    read_history (zHistory);
 #endif
-      rc = process_input(&data, 0, 0);
-      if( zHistory ){
-        stifle_history(100);
-        write_history(zHistory);
-        free(zHistory);
+		rc = process_input (&data, 0, 0);
+		if (zHistory)
+		  {
+		      stifle_history (100);
+		      write_history (zHistory);
+		      free (zHistory);
+		  }
+	    }
+	  else
+	    {
+		rc = process_input (&data, stdin, 0);
+	    }
       }
-    }else{
-      rc = process_input(&data, stdin, 0);
-    }
-  }
-  set_table_name(&data, 0);
+    set_table_name (&data, 0);
     if (data.db)
       {
 /* Sandro Furieri 2008-11-20 */
@@ -4516,7 +5489,7 @@ registering the SpatiaLite extension
 /* end Sandro Furieri 2008-11-20 */
 
 /* Sandro Furieri 2015-09-14 */
-    spatialite_finalize_topologies (splite_cache);
+	  spatialite_finalize_topologies (splite_cache);
 /* end Sandro Furieri 2015-09-14 */
 
 	  if (sqlite3_close (data.db) != SQLITE_OK)
@@ -4532,9 +5505,9 @@ Sandro Furieri 30 May 2008
 ===========================
 memory cleanup for SpatiaLite extension
 */
-    
-  spatialite_cleanup_ex (splite_cache);
-  spatialite_shutdown ();
 
-  return rc;
+    spatialite_cleanup_ex (splite_cache);
+    spatialite_shutdown ();
+
+    return rc;
 }

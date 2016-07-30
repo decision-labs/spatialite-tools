@@ -3,6 +3,9 @@
 /* Should be defined in order to enable LIBXML2 support. */
 #undef ENABLE_LIBXML2
 
+/* Should be defined in order to enable RTTOPO support. */
+#undef ENABLE_RTTOPO
+
 /* depending on SQLite library version. */
 #undef HAVE_DECL_SQLITE_CONFIG_URI
 

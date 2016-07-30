@@ -46,6 +46,12 @@ Regione Toscana - Settore Sistema Informativo Territoriale ed Ambientale
 #include <sqlite3.h>
 #include <spatialite.h>
 
+#if defined(_WIN32) && !defined(__MINGW32__)
+#include "config-msvc.h"
+#else
+#include "config.h"
+#endif
+
 #define ARG_NONE	0
 #define ARG_DB_PATH	1
 #define ARG_CACHE_SIZE 2

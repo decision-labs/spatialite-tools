@@ -3837,6 +3837,8 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 				is_invalid = 1;
 			}
 
+
+#ifdef ENABLE_RTTOPO		/* only if RTTOPO is enabled */
 		      if (is_invalid)
 			{
 			    /* attempting to repair an invalid Geometry */
@@ -3882,6 +3884,7 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 			    gaiaFreeGeomColl (geom);
 			    geom = result;
 			}
+#endif /* end RTTOPO conditional */
 
 		      if (!do_export_geometry
 			  (geom, &bufshp, &buflen, shp_in->Shape,
@@ -3893,7 +3896,7 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 			}
 		      gaiaFreeGeomColl (geom);
 		  }
-		  else
+		else
 		  {
 		      if (!do_export_geometry
 			  (geom, &bufshp, &buflen, shp_in->Shape,
@@ -4266,6 +4269,16 @@ main (int argc, char *argv[])
 	  do_help ();
 	  return -1;
       }
+
+#ifndef ENABLE_RTTOPO		/* only if RTTOPO is disabled */
+    if (validate)
+      {
+	  validate = 0;
+	  fprintf (stderr,
+		   "the --validate-geoms option will be ignored because\n"
+		   "this copy of \"shp_sanitize\" was built by disabling RTTOPO support.\n\n");
+      }
+#endif /* end RTTOPO conditional */
 
     if (out_dir != NULL)
       {

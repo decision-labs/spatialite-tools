@@ -1617,6 +1617,6 @@ main (int argc, char *argv[])
 	fprintf (stderr,
 		 "\n\n***   %d EXIF photo%s successfully inserted into the DB\n",
 		 cnt, (cnt > 1) ? "s where" : " was");
-spatialite_shutdown();
+    spatialite_shutdown ();
     return 0;
 }

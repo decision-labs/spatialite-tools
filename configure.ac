@@ -19,6 +19,8 @@ AH_TEMPLATE([OMIT_READOSM],
             [Should be defined in order to disable ReadOSM support.])
 AH_TEMPLATE([ENABLE_LIBXML2],
             [Should be defined in order to enable LIBXML2 support.])
+AH_TEMPLATE([ENABLE_RTTOPO],
+            [Should be defined in order to enable RTTOPO support.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_CONFIG_URI],
             [depending on SQLite library version.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED],
@@ -215,6 +217,19 @@ if test x"$enable_libxml2" != "xno"; then
   AC_SUBST(LIBXML2_CFLAGS)
   AC_SUBST(LIBXML2_LIBS)
   AC_DEFINE(ENABLE_LIBXML2)
+fi
+
+#-----------------------------------------------------------------------
+#   --enable-rttopo
+#
+AC_ARG_ENABLE(rttopo, [AS_HELP_STRING(
+  [--enable-rttopo], [enables librttopo inclusion [default=yes]])],
+  [], [enable_rttopo=yes])
+if test x"$enable_rttopo" != "xno"; then
+  PKG_CHECK_MODULES([RTTOPO], [rttopo], , AC_MSG_ERROR(['librttopo' is required but it doesn't seem to be installed on this system.]))
+  AC_SUBST(RTTOPO_CFLAGS)
+  AC_SUBST(RTTOPO_LIBS)
+  AC_DEFINE(ENABLE_RTTOPO)
 fi
 
 # checks for SQLite version-depending constants

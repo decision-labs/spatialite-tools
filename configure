@@ -634,6 +634,8 @@ ac_includes_default="\
 ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
+RTTOPO_LIBS
+RTTOPO_CFLAGS
 LIBXML2_LIBS
 LIBXML2_CFLAGS
 NO_READOSM_FALSE
@@ -793,6 +795,7 @@ with_geosconfig
 enable_freexl
 enable_readosm
 enable_libxml2
+enable_rttopo
 '
       ac_precious_vars='build_alias
 host_alias
@@ -817,7 +820,9 @@ LIBFREEXL_LIBS
 LIBREADOSM_CFLAGS
 LIBREADOSM_LIBS
 LIBXML2_CFLAGS
-LIBXML2_LIBS'
+LIBXML2_LIBS
+RTTOPO_CFLAGS
+RTTOPO_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1455,6 +1460,7 @@ Optional Features:
   --enable-freexl         enables FreeXL inclusion [default=yes]
   --enable-readosm        enables ReadOSM inclusion [default=yes]
   --enable-libxml2        enables libxml2 inclusion [default=yes]
+  --enable-rttopo         enables librttopo inclusion [default=yes]
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1499,6 +1505,9 @@ Some influential environment variables:
               C compiler flags for LIBXML2, overriding pkg-config
   LIBXML2_LIBS
               linker flags for LIBXML2, overriding pkg-config
+  RTTOPO_CFLAGS
+              C compiler flags for RTTOPO, overriding pkg-config
+  RTTOPO_LIBS linker flags for RTTOPO, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -3147,6 +3156,7 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 # supporting SPATIALITE_AMALGAMATION
+
 
 
 
@@ -18209,6 +18219,94 @@ fi
 
 
   $as_echo "#define ENABLE_LIBXML2 1" >>confdefs.h
+
+fi
+
+#-----------------------------------------------------------------------
+#   --enable-rttopo
+#
+# Check whether --enable-rttopo was given.
+if test "${enable_rttopo+set}" = set; then :
+  enableval=$enable_rttopo;
+else
+  enable_rttopo=yes
+fi
+
+if test x"$enable_rttopo" != "xno"; then
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for RTTOPO" >&5
+$as_echo_n "checking for RTTOPO... " >&6; }
+
+if test -n "$RTTOPO_CFLAGS"; then
+    pkg_cv_RTTOPO_CFLAGS="$RTTOPO_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"rttopo\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "rttopo") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_RTTOPO_CFLAGS=`$PKG_CONFIG --cflags "rttopo" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$RTTOPO_LIBS"; then
+    pkg_cv_RTTOPO_LIBS="$RTTOPO_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"rttopo\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "rttopo") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_RTTOPO_LIBS=`$PKG_CONFIG --libs "rttopo" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        RTTOPO_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "rttopo" 2>&1`
+        else
+	        RTTOPO_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "rttopo" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$RTTOPO_PKG_ERRORS" >&5
+
+	as_fn_error $? "'librttopo' is required but it doesn't seem to be installed on this system." "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "'librttopo' is required but it doesn't seem to be installed on this system." "$LINENO" 5
+else
+	RTTOPO_CFLAGS=$pkg_cv_RTTOPO_CFLAGS
+	RTTOPO_LIBS=$pkg_cv_RTTOPO_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
+
+  $as_echo "#define ENABLE_RTTOPO 1" >>confdefs.h
 
 fi
 
