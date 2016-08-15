@@ -2498,7 +2498,7 @@ gaiaSaneClockwise (gaiaPolygonPtr polyg)
 
 static int
 do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
-		    int xshape, int recno, int rowno, int eff_dims)
+		    int xshape, int rowno, int eff_dims)
 {
 /* attempting to encode a Geometry */
     unsigned char *buf;
@@ -2522,11 +2522,9 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
     if (geom == NULL)
       {
 	  /* exporting a NULL Shape */
-	  *buflen = 12;
-	  buf = malloc (12);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, 2, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_NULL, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = NULL */
+	  *buflen = 4;
+	  buf = malloc (4);
+	  gaiaExport32 (buf + 0, GAIA_SHP_NULL, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = NULL */
 	  *bufshp = buf;
 	  return 1;
       }
@@ -2538,18 +2536,17 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		   rowno);
 	  return 0;
       }
+    gaiaMbrGeometry (geom);
 
     if (xshape == GAIA_SHP_POINT)
       {
 	  /* this one is expected to be a POINT */
 	  gaiaPointPtr pt = geom->FirstPoint;
-	  *buflen = 28;
-	  buf = malloc (28);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, 10, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POINT, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT */
-	  gaiaExport64 (buf + 12, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
-	  gaiaExport64 (buf + 20, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
+	  *buflen = 20;
+	  buf = malloc (20);
+	  gaiaExport32 (buf + 0, GAIA_SHP_POINT, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT */
+	  gaiaExport64 (buf + 4, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
+	  gaiaExport64 (buf + 12, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
 	  *bufshp = buf;
 	  return 1;
       }
@@ -2557,15 +2554,13 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
       {
 	  /* this one is expected to be a POINT Z */
 	  gaiaPointPtr pt = geom->FirstPoint;
-	  *buflen = 42;
-	  buf = malloc (42);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, 18, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POINTZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT Z */
-	  gaiaExport64 (buf + 12, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
-	  gaiaExport64 (buf + 20, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
-	  gaiaExport64 (buf + 28, pt->Z, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Z coordinate */
-	  gaiaExport64 (buf + 36, pt->M, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports M coordinate */
+	  *buflen = 36;
+	  buf = malloc (36);
+	  gaiaExport32 (buf + 0, GAIA_SHP_POINTZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT Z */
+	  gaiaExport64 (buf + 4, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
+	  gaiaExport64 (buf + 12, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
+	  gaiaExport64 (buf + 20, pt->Z, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Z coordinate */
+	  gaiaExport64 (buf + 28, pt->M, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports M coordinate */
 	  *bufshp = buf;
 	  return 1;
       }
@@ -2573,14 +2568,12 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
       {
 	  /* this one is expected to be a POINT M */
 	  gaiaPointPtr pt = geom->FirstPoint;
-	  *buflen = 36;
-	  buf = malloc (36);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, 14, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POINTM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT M */
-	  gaiaExport64 (buf + 12, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
-	  gaiaExport64 (buf + 20, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
-	  gaiaExport64 (buf + 28, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports M coordinate */
+	  *buflen = 28;
+	  buf = malloc (28);
+	  gaiaExport32 (buf + 0, GAIA_SHP_POINTM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POINT M */
+	  gaiaExport64 (buf + 4, pt->X, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports X coordinate */
+	  gaiaExport64 (buf + 12, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports Y coordinate */
+	  gaiaExport64 (buf + 20, pt->Y, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports M coordinate */
 	  *bufshp = buf;
 	  return 1;
       }
@@ -2598,20 +2591,18 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		tot_ln++;
 		line = line->Next;
 	    }
-	  this_size = 26 + (2 * tot_ln) + (tot_v * 8);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 22 + (2 * tot_ln) + (tot_v * 8);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYLINE, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYLINE, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  line = geom->FirstLinestring;
 	  while (line)
 	    {
@@ -2676,22 +2667,20 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 	  if (eff_dims == GAIA_XY_M || eff_dims == GAIA_XY_Z_M)
 	      hasM = 1;
 	  if (hasM)
-	      this_size = 42 + (2 * tot_ln) + (tot_v * 16);	/* size [in 16 bits words !!!] ZM */
+	      this_size = 38 + (2 * tot_ln) + (tot_v * 16);	/* size [in 16 bits words !!!] ZM */
 	  else
-	      this_size = 34 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] Z-only */
+	      this_size = 30 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] Z-only */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYLINEZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE Z */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYLINEZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE Z */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  line = geom->FirstLinestring;
 	  while (line)
 	    {
@@ -2827,20 +2816,18 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		tot_ln++;
 		line = line->Next;
 	    }
-	  this_size = 34 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 30 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYLINEM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE M */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYLINEM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYLINE M */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # lines in this polyline */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  line = geom->FirstLinestring;
 	  while (line)
 	    {
@@ -2945,20 +2932,18 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		  }
 		polyg = polyg->Next;
 	    }
-	  this_size = 26 + (2 * tot_ln) + (tot_v * 8);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 22 + (2 * tot_ln) + (tot_v * 8);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYGON, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYGON, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  polyg = geom->FirstPolygon;
 	  while (polyg)
 	    {
@@ -3079,22 +3064,20 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 	  if (eff_dims == GAIA_XY_M || eff_dims == GAIA_XY_Z_M)
 	      hasM = 1;
 	  if (hasM)
-	      this_size = 42 + (2 * tot_ln) + (tot_v * 16);	/* size [in 16 bits words !!!] ZM */
+	      this_size = 38 + (2 * tot_ln) + (tot_v * 16);	/* size [in 16 bits words !!!] ZM */
 	  else
-	      this_size = 34 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] Z-only */
+	      this_size = 30 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] Z-only */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYGONZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON Z */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYGONZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON Z */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  polyg = geom->FirstPolygon;
 	  while (polyg)
 	    {
@@ -3353,20 +3336,18 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		  }
 		polyg = polyg->Next;
 	    }
-	  this_size = 34 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 30 + (2 * tot_ln) + (tot_v * 12);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_POLYGONM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON M */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
-	  gaiaExport32 (buf + 48, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  gaiaExport32 (buf + 0, GAIA_SHP_POLYGONM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = POLYGON M */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_ln, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports # rings in this polygon */
+	  gaiaExport32 (buf + 40, tot_v, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
 	  tot_v = 0;		/* resets points counter */
-	  ix = 52;		/* sets current buffer offset */
+	  ix = 44;		/* sets current buffer offset */
 	  polyg = geom->FirstPolygon;
 	  while (polyg)
 	    {
@@ -3536,18 +3517,16 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		tot_pts++;
 		pt = pt->Next;
 	    }
-	  this_size = 24 + (tot_pts * 8);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 20 + (tot_pts * 8);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_MULTIPOINT, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
-	  ix = 48;		/* sets current buffer offset */
+	  gaiaExport32 (buf + 0, GAIA_SHP_MULTIPOINT, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  ix = 40;		/* sets current buffer offset */
 	  pt = geom->FirstPoint;
 	  while (pt)
 	    {
@@ -3579,20 +3558,18 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 	  if (eff_dims == GAIA_XY_M || eff_dims == GAIA_XY_Z_M)
 	      hasM = 1;
 	  if (hasM)
-	      this_size = 40 + (tot_pts * 16);	/* size [in 16 bits words !!!] ZM */
+	      this_size = 36 + (tot_pts * 16);	/* size [in 16 bits words !!!] ZM */
 	  else
-	      this_size = 32 + (tot_pts * 12);	/* size [in 16 bits words !!!] Z-only */
+	      this_size = 28 + (tot_pts * 12);	/* size [in 16 bits words !!!] Z-only */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_MULTIPOINTZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT Z */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
-	  ix = 48;		/* sets current buffer offset */
+	  gaiaExport32 (buf + 0, GAIA_SHP_MULTIPOINTZ, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT Z */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  ix = 40;		/* sets current buffer offset */
 	  pt = geom->FirstPoint;
 	  while (pt)
 	    {
@@ -3649,18 +3626,16 @@ do_export_geometry (gaiaGeomCollPtr geom, unsigned char **bufshp, int *buflen,
 		tot_pts++;
 		pt = pt->Next;
 	    }
-	  this_size = 32 + (tot_pts * 12);	/* size [in 16 bits words !!!] for this SHP entity */
+	  this_size = 28 + (tot_pts * 12);	/* size [in 16 bits words !!!] for this SHP entity */
 	  *buflen = this_size * 2;
 	  buf = malloc (this_size * 2);
-	  gaiaExport32 (buf, recno + 1, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity ID */
-	  gaiaExport32 (buf + 4, this_size, GAIA_BIG_ENDIAN, endian_arch);	/* exports entity size [in 16 bits words !!!] */
-	  gaiaExport32 (buf + 8, GAIA_SHP_MULTIPOINTM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT M */
-	  gaiaExport64 (buf + 12, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
-	  gaiaExport64 (buf + 20, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 28, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport64 (buf + 36, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
-	  gaiaExport32 (buf + 44, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
-	  ix = 48;		/* sets current buffer offset */
+	  gaiaExport32 (buf + 0, GAIA_SHP_MULTIPOINTM, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports geometry type = MULTIPOINT M */
+	  gaiaExport64 (buf + 4, geom->MinX, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports the MBR for this geometry */
+	  gaiaExport64 (buf + 12, geom->MinY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 20, geom->MaxX, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport64 (buf + 28, geom->MaxY, GAIA_LITTLE_ENDIAN, endian_arch);
+	  gaiaExport32 (buf + 36, tot_pts, GAIA_LITTLE_ENDIAN, endian_arch);	/* exports total # points */
+	  ix = 40;		/* sets current buffer offset */
 	  pt = geom->FirstPoint;
 	  while (pt)
 	    {
@@ -3837,7 +3812,6 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 				is_invalid = 1;
 			}
 
-
 #ifdef ENABLE_RTTOPO		/* only if RTTOPO is enabled */
 		      if (is_invalid)
 			{
@@ -3888,8 +3862,7 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 
 		      if (!do_export_geometry
 			  (geom, &bufshp, &buflen, shp_in->Shape,
-			   shp_out->DbfRecno, current_row,
-			   shp_out->EffectiveDims))
+			   current_row, shp_out->EffectiveDims))
 			{
 			    gaiaFreeGeomColl (geom);
 			    goto stop;
@@ -3900,8 +3873,7 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 		  {
 		      if (!do_export_geometry
 			  (geom, &bufshp, &buflen, shp_in->Shape,
-			   shp_out->DbfRecno, current_row,
-			   shp_out->EffectiveDims))
+			   current_row, shp_out->EffectiveDims))
 			{
 			    gaiaFreeGeomColl (geom);
 			    goto stop;
@@ -3914,7 +3886,7 @@ do_repair_shapefile (const void *cache, const char *shp_path,
 		/* exporting a NULL shape */
 		do_export_geometry
 		    (NULL, &bufshp, &buflen, shp_in->Shape,
-		     shp_out->DbfRecno, current_row, shp_out->EffectiveDims);
+		     current_row, shp_out->EffectiveDims);
 
 	      ok_geom:
 		ret = writeShpEntity

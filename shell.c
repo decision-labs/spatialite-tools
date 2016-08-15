@@ -2615,18 +2615,20 @@ static char zTimerHelp[] =
     ".loadshp <args>   Loads a SHAPEFILE into a SpatiaLite table\n"
     "                  arg_list: shp_path table_name charset [SRID] [column_name]\n"
     "                      [pk_column] [geom_type] [2d | 3d] [compressed]\n"
-    "                      [with_spatial_index] [text_dates]\n"
+    "                      [with_spatial_index] [text_dates] [colname_case]\n"
     "                      geom_type={ AUTO | LINESTRING[ Z | M | ZM ]\n"
     "                                 | MULTILINESTRING[ Z | M | ZM ]\n"
     "                                 | POLYGON[ Z | M | ZM ]\n"
     "                                 | MULTIPOLYGON[ Z | M | ZM ] }\n\n"
     ".dumpshp <args>   Dumps a SpatiaLite table into a SHAPEFILE\n"
     "                  arg_list: table_name column_name shp_path charset [geom_type]\n"
+    "                      [colname_case]\n"
     "                      geom_type={ POINT | LINESTRING | POLYGON | MULTIPOINT }\n\n"
     ".loaddbf <args>   Loads a DBF into a SpatiaLite table\n"
-    "                  arg_list: dbf_path table_name charset [pk_column] [text_dates]\n\n"
+    "                  arg_list: dbf_path table_name charset [pk_column]\n"
+    "                      [text_dates] [colname_case]\n\n"
     ".dumpdbf <args>   Dumps a SpatiaLite table into a DBF\n"
-    "                  arg_list: table_name dbf_path charset\n\n"
+    "                  arg_list: table_name dbf_path charset [colname_case]\n\n"
 #ifndef OMIT_FREEXL		/* FreeXL is enabled */
     ".loadxl <args>    Loads a XL spreadsheet (.xls) into a SpatiaLite table\n"
     "                  arg_list: xl_path table_name \n"
@@ -2946,7 +2948,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  create_utf8_converter (azArg[1]);
       }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpshp", n) == 0
-	     && (nArg == 5 || nArg == 6))
+	     && (nArg == 5 || nArg == 6 || nArg == 7))
       {
 	  /* dumping a spatial table to SHAPEFILE */
 	  char *table = azArg[1];
@@ -2955,21 +2957,49 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *outCS = azArg[4];
 	  char *type = NULL;
 	  int rows;
-	  if (nArg == 6)
+	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	  if (nArg >= 6)
 	      type = azArg[5];
+	  if (nArg >= 7)
+	    {
+		const char *pColnameCase = azArg[6];
+		if (strcasecmp (pColnameCase, "UPPER") == 0
+		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
+		else if (strcasecmp (pColnameCase, "SAME") == 0
+			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	    }
 	  open_db (p);
-	  dump_shapefile (p->db, table, column, shp_path, outCS, type, 1, &rows,
-			  NULL);
+	  dump_shapefile_ex (p->db, table, column, shp_path, outCS, type, 1,
+			     &rows, colname_case, NULL);
       }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpdbf", n) == 0
-	     && (nArg == 4))
+	     && (nArg == 4 || nArg == 5))
       {
 	  /* dumping a spatial table to DBF */
 	  char *table = azArg[1];
 	  char *dbf_path = azArg[2];
 	  char *outCS = azArg[3];
+	  int rows;
+	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	  if (nArg >= 5)
+	    {
+		const char *pColnameCase = azArg[4];
+		if (strcasecmp (pColnameCase, "UPPER") == 0
+		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
+		else if (strcasecmp (pColnameCase, "SAME") == 0
+			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	    }
 	  open_db (p);
-	  dump_dbf (p->db, table, dbf_path, outCS, NULL);
+	  dump_dbf_ex2 (p->db, table, dbf_path, outCS, &rows, colname_case,
+			NULL);
       }
     else if (c == 'd' && n > 1 && strncmp (azArg[0], "dumpkml", n) == 0
 	     && (nArg == 4 || nArg == 5 || nArg == 6 || nArg == 7))
@@ -3057,12 +3087,36 @@ do_meta_command (char *zLine, struct callback_data *p)
 	    {
 		if (strcasecmp (azArg[9], "compressed") == 0)
 		    compressed = 1;
+		if (strcasecmp (azArg[9], "yes") == 0)
+		    compressed = 1;
+		if (strcasecmp (azArg[9], "true") == 0)
+		    compressed = 1;
+		if (strcasecmp (azArg[9], "1") == 0)
+		    compressed = 1;
 	    }
-	  if (nArg == 11)
-	      with_spatial_index = 1;
-	  if (nArg == 12)
-	      text_dates = atoi (azArg[11]);
-	  if (nArg == 13)
+	  if (nArg >= 11)
+	    {
+		if (strcasecmp (azArg[10], "with_spatial_index") == 0)
+		    with_spatial_index = 1;
+		if (strcasecmp (azArg[10], "yes") == 0)
+		    with_spatial_index = 1;
+		if (strcasecmp (azArg[10], "true") == 0)
+		    with_spatial_index = 1;
+		if (strcasecmp (azArg[10], "1") == 0)
+		    with_spatial_index = 1;
+	    }
+	  if (nArg >= 12)
+	    {
+		if (strcasecmp (azArg[11], "text_dates") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[11], "yes") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[11], "true") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[11], "1") == 0)
+		    text_dates = 1;
+	    }
+	  if (nArg >= 13)
 	    {
 		const char *pColnameCase = azArg[12];
 		if (strcasecmp (pColnameCase, "UPPER") == 0
@@ -3089,11 +3143,20 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  int text_dates = 0;
 	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
 	  int rows;
-	  if (nArg == 5)
+	  if (nArg >= 5)
 	      pk = azArg[4];
-	  if (nArg == 6)
-	      text_dates = atoi (azArg[5]);
-	  if (nArg == 7)
+	  if (nArg >= 6)
+	    {
+		if (strcasecmp (azArg[5], "text_dates") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[5], "yes") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[5], "true") == 0)
+		    text_dates = 1;
+		if (strcasecmp (azArg[5], "1") == 0)
+		    text_dates = 1;
+	    }
+	  if (nArg >= 7)
 	    {
 		const char *pColnameCase = azArg[6];
 		if (strcasecmp (pColnameCase, "UPPER") == 0
