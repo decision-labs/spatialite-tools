@@ -2957,7 +2957,7 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *outCS = azArg[4];
 	  char *type = NULL;
 	  int rows;
-	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	  int colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
 	  if (nArg >= 6)
 	      type = azArg[5];
 	  if (nArg >= 7)
@@ -2966,11 +2966,11 @@ do_meta_command (char *zLine, struct callback_data *p)
 		if (strcasecmp (pColnameCase, "UPPER") == 0
 		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
 		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
-		else if (strcasecmp (pColnameCase, "SAME") == 0
-			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
-		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
-		else
+		else if (strcasecmp (pColnameCase, "LOWER") == 0
+			 || strcasecmp (pColnameCase, "LOWERCASE") == 0)
 		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
 	    }
 	  open_db (p);
 	  dump_shapefile_ex (p->db, table, column, shp_path, outCS, type, 1,
@@ -2984,18 +2984,18 @@ do_meta_command (char *zLine, struct callback_data *p)
 	  char *dbf_path = azArg[2];
 	  char *outCS = azArg[3];
 	  int rows;
-	  int colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+	  int colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
 	  if (nArg >= 5)
 	    {
 		const char *pColnameCase = azArg[4];
 		if (strcasecmp (pColnameCase, "UPPER") == 0
 		    || strcasecmp (pColnameCase, "UPPERCASE") == 0)
 		    colname_case = GAIA_DBF_COLNAME_UPPERCASE;
-		else if (strcasecmp (pColnameCase, "SAME") == 0
-			 || strcasecmp (pColnameCase, "SAMECASE") == 0)
-		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
-		else
+		else if (strcasecmp (pColnameCase, "LOWER") == 0
+			 || strcasecmp (pColnameCase, "LOWERCASE") == 0)
 		    colname_case = GAIA_DBF_COLNAME_LOWERCASE;
+		else
+		    colname_case = GAIA_DBF_COLNAME_CASE_IGNORE;
 	    }
 	  open_db (p);
 	  dump_dbf_ex2 (p->db, table, dbf_path, outCS, &rows, colname_case,
