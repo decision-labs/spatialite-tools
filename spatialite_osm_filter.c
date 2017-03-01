@@ -254,11 +254,14 @@ do_output_nodes (FILE * out, sqlite3 * handle)
 			    if (first)
 			      {
 				  /* first NODE row */
-				  char *timestamp = clean_xml (p_timestamp);
-				  char *changeset = clean_xml (p_changeset);
-				  char *user = NULL;
-				  if (p_user)
-				      user = clean_xml (p_user);
+				  char *timestamp =
+				      p_timestamp ? clean_xml (p_timestamp) :
+				      NULL;
+				  char *changeset =
+				      p_changeset ? clean_xml (p_changeset) :
+				      NULL;
+				  char *user =
+				      p_user ? clean_xml (p_user) : NULL;
 				  first = 0;
 #if defined(_WIN32) || defined(__MINGW32__)
 /* CAVEAT - M$ runtime doesn't supports %lld for 64 bits */
@@ -266,20 +269,29 @@ do_output_nodes (FILE * out, sqlite3 * handle)
 #else
 				  fprintf (out, "\t<node id=\"%lld\"", id);
 #endif
-				  if (!user)
-				      fprintf (out,
-					       " lat=\"%1.7f\" lon=\"%1.7f\" version=\"%d\" changeset=\"%s\" uid=\"%d\" timestamp=\"%s\"",
-					       y, x, version, changeset, uid,
-					       timestamp);
-				  else
-				      fprintf (out,
-					       " lat=\"%1.7f\" lon=\"%1.7f\" version=\"%d\" changeset=\"%s\" user=\"%s\" uid=\"%d\" timestamp=\"%s\"",
-					       y, x, version, changeset, user,
-					       uid, timestamp);
-				  free (changeset);
 				  if (user)
-				      free (user);
-				  free (timestamp);
+				    {
+					fprintf (out, " user=\"%s\"", user);
+					free (user);
+				    }
+				  if (changeset)
+				    {
+					fprintf (out, " changeset=\"%s\"",
+						 changeset);
+					free (changeset);
+				    }
+				  if (timestamp)
+				    {
+					fprintf (out, " timestamp=\"%s\"",
+						 timestamp);
+					free (timestamp);
+				    }
+				  if (!version)
+				      version = 1;
+				  fprintf (out, " version=\"%d\"", version);
+				  fprintf (out,
+					   " lat=\"%1.7f\" lon=\"%1.7f\" uid=\"%d\" ",
+					   y, x, uid);
 				  if (k == NULL && v == NULL)
 				      fprintf (out, "/>\n");
 				  else
@@ -421,8 +433,12 @@ do_output_ways (FILE * out, sqlite3 * handle)
 			    if (first)
 			      {
 				  /* first WAY row */
-				  char *timestamp = clean_xml (p_timestamp);
-				  char *changeset = clean_xml (p_changeset);
+				  char *timestamp =
+				      p_timestamp ? clean_xml (p_timestamp) :
+				      NULL;
+				  char *changeset =
+				      p_changeset ? clean_xml (p_changeset) :
+				      NULL;
 				  char *user = NULL;
 				  if (p_user)
 				      user = clean_xml (p_user);
@@ -433,20 +449,27 @@ do_output_ways (FILE * out, sqlite3 * handle)
 #else
 				  fprintf (out, "\t<way id=\"%lld\"", id);
 #endif
-				  if (!user)
-				      fprintf (out,
-					       " version=\"%d\" changeset=\"%s\" uid=\"%d\" timestamp=\"%s\">\n",
-					       version, changeset, uid,
-					       timestamp);
-				  else
-				      fprintf (out,
-					       " version=\"%d\" changeset=\"%s\" user=\"%s\" uid=\"%d\" timestamp=\"%s\">\n",
-					       version, changeset, user, uid,
-					       timestamp);
-				  free (changeset);
 				  if (user)
-				      free (user);
-				  free (timestamp);
+				    {
+					fprintf (out, " user=\"%s\"", user);
+					free (user);
+				    }
+				  if (changeset)
+				    {
+					fprintf (out, " changeset=\"%s\"",
+						 changeset);
+					free (changeset);
+				    }
+				  if (timestamp)
+				    {
+					fprintf (out, " timestamp=\"%s\"",
+						 timestamp);
+					free (timestamp);
+				    }
+				  if (!version)
+				      version = 1;
+				  fprintf (out, " version=\"%d\"", version);
+				  fprintf (out, " uid=\"%d\" >\n", uid);
 			      }
 			    /* NODE REF tag */
 #if defined(_WIN32) || defined(__MINGW32__)
@@ -661,9 +684,13 @@ do_output_relations (FILE * out, sqlite3 * handle)
 
 			    if (first)
 			      {
-				  /* first WAY row */
-				  char *timestamp = clean_xml (p_timestamp);
-				  char *changeset = clean_xml (p_changeset);
+				  /* first RELATION row */
+				  char *timestamp =
+				      p_timestamp ? clean_xml (p_timestamp) :
+				      NULL;
+				  char *changeset =
+				      p_changeset ? clean_xml (p_changeset) :
+				      NULL;
 				  char *user = NULL;
 				  if (p_user)
 				      user = clean_xml (p_user);
@@ -674,19 +701,27 @@ do_output_relations (FILE * out, sqlite3 * handle)
 #else
 				  fprintf (out, "\t<relation id=\"%lld\"", id);
 #endif
-				  if (!user)
-				      fprintf (out,
-					       " version=\"%d\" changeset=\"%s\" uid=\"%d\" timestamp=\"%s\">\n",
-					       version, changeset, uid,
-					       timestamp);
-				  else
-				      fprintf (out,
-					       " version=\"%d\" changeset=\"%s\" user=\"%s\" uid=\"%d\" timestamp=\"%s\">\n",
-					       version, changeset, user, uid,
-					       timestamp);
-				  free (changeset);
-				  free (user);
-				  free (timestamp);
+				  if (user)
+				    {
+					fprintf (out, " user=\"%s\"", user);
+					free (user);
+				    }
+				  if (changeset)
+				    {
+					fprintf (out, " changeset=\"%s\"",
+						 changeset);
+					free (changeset);
+				    }
+				  if (timestamp)
+				    {
+					fprintf (out, " timestamp=\"%s\"",
+						 timestamp);
+					free (timestamp);
+				    }
+				  if (!version)
+				      version = 1;
+				  fprintf (out, " version=\"%d\"", version);
+				  fprintf (out, " uid=\"%d\" >\n", uid);
 			      }
 			    /* NODE REF tag */
 #if defined(_WIN32) || defined(__MINGW32__)

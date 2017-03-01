@@ -367,6 +367,8 @@ iotracePrintf (const char *zFormat, ...)
 static void
 wfs_page_done (int features, void *ptr)
 {
+	if (ptr != NULL)
+	    ptr = NULL;		/* silencing stupid compiler warnings */
     if (isatty (1))
       {
 	  printf ("WFS Features loaded since now: %d\r", features);
@@ -4729,6 +4731,7 @@ process_input (struct callback_data *p, FILE * in, char *in_charset)
 
     while (errCnt == 0 || !bail_on_error || (in == 0 && stdin_is_interactive))
       {
+	  fflush(stderr);
 	  fflush (p->out);
 	  free (zLine);
 	  zLine = one_input_line (zSql, in);
