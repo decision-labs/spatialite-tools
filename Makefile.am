@@ -35,7 +35,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_osm_overpass
 endif
 
-AM_CPPFLAGS = @CFLAGS@ @LIBXML2_CFLAGS@
+AM_CPPFLAGS = @CFLAGS@ @CPPFLAGS@ @LIBXML2_CFLAGS@
 AM_CPPFLAGS += -I$(top_srcdir)
 
 spatialite_SOURCES = shell.c
