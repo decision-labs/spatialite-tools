@@ -1504,11 +1504,11 @@ spatialite_autocreate (sqlite3 * db)
     if (count > 0)
 	return;
 /* all right, it's empty: proceding to initialize */
-    strcpy (sql, "SELECT InitSpatialMetadata(1)");
+    strcpy (sql, "SELECT InitSpatialMetadataFull(1)");
     ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  fprintf (stderr, "InitSpatialMetadataFull() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return;
       }
@@ -2243,6 +2243,22 @@ print_template (const char *template_path, int railways)
 }
 
 static void
+do_version ()
+{
+/* printing version infos */
+	fprintf( stderr, "\nVersion infos\n");
+	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "spatialite_osm_net: %s\n", VERSION);
+	fprintf (stderr, "target CPU .......: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "libspatialite ....: %s\n", spatialite_version ());
+    fprintf (stderr, "libsqlite3 .......: %s\n", sqlite3_libversion ());
+    fprintf (stderr, "libreadosm .......: %s\n", readosm_version ());
+    fprintf (stderr, "libexpat .........: %s\n", readosm_expat_version ());
+    fprintf (stderr, "zlib .............: %s\n", readosm_zlib_version ());
+    fprintf (stderr, "\n");
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -2251,6 +2267,7 @@ do_help ()
 	     "==============================================================\n");
     fprintf (stderr,
 	     "-h or --help                    print this help message\n");
+    fprintf (stderr, "-v or --version                 print version infos\n");
     fprintf (stderr, "-o or --osm-path pathname       the OSM-XML file path\n");
     fprintf (stderr,
 	     "                 both OSM-XML (*.osm) and OSM-ProtoBuf\n");
@@ -2348,6 +2365,12 @@ main (int argc, char *argv[])
 	      || strcmp (argv[i], "-h") == 0)
 	    {
 		do_help ();
+		return -1;
+	    }
+	  if (strcasecmp (argv[i], "--version") == 0
+	      || strcmp (argv[i], "-v") == 0)
+	    {
+		do_version ();
 		return -1;
 	    }
 	  if (strcmp (argv[i], "-o") == 0)

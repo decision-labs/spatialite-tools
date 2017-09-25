@@ -4131,6 +4131,19 @@ do_scan_dir (const void *cache, const char *in_dir, const char *out_dir,
 }
 
 static void
+do_version ()
+{
+/* printing version infos */
+	fprintf( stderr, "\nVersion infos\n");
+	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "shp_sanitize : %s\n", VERSION);
+	fprintf (stderr, "target CPU ..: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "libspatialite: %s\n", spatialite_version ());
+    fprintf (stderr, "libsqlite3 ..: %s\n", sqlite3_libversion ());
+    fprintf (stderr, "\n");
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -4139,6 +4152,7 @@ do_help ()
 	     "=================================================================\n");
     fprintf (stderr,
 	     "-h or --help                      print this help message\n");
+    fprintf (stderr, "-v or --version                   print version infos\n");
     fprintf (stderr,
 	     "-idir or --in-dir   dir-path      directory expected to contain\n"
 	     "                                  all SHP to be checked\n");
@@ -4190,6 +4204,12 @@ main (int argc, char *argv[])
 	      || strcmp (argv[i], "-h") == 0)
 	    {
 		do_help ();
+		return -1;
+	    }
+	  if (strcasecmp (argv[i], "--version") == 0
+	      || strcmp (argv[i], "-v") == 0)
+	    {
+		do_version ();
 		return -1;
 	    }
 	  if (strcasecmp (argv[i], "-idir") == 0

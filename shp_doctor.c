@@ -48,6 +48,7 @@
 #endif
 
 #include <spatialite/gaiageo.h>
+#include <spatialite.h>
 
 #define ARG_NONE		0
 #define ARG_IN_PATH		1
@@ -1469,6 +1470,19 @@ do_analyze_dbf (char *base_path)
 }
 
 static void
+do_version ()
+{
+/* printing version infos */
+	fprintf( stderr, "\nVersion infos\n");
+	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "shp_doctor ..: %s\n", VERSION);
+	fprintf (stderr, "target CPU ..: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "libspatialite: %s\n", spatialite_version ());
+    fprintf (stderr, "libsqlite3 ..: %s\n", sqlite3_libversion ());
+    fprintf (stderr, "\n");
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -1477,6 +1491,7 @@ do_help ()
 	     "==============================================================\n");
     fprintf (stderr,
 	     "-h or --help                      print this help message\n");
+    fprintf (stderr, "-v or --version                   print version infos\n");
     fprintf (stderr,
 	     "-i or --in-path pathname          the SHP path [no suffix]\n");
     fprintf (stderr, "                                              or\n");
@@ -1521,6 +1536,12 @@ main (int argc, char *argv[])
 	      || strcmp (argv[i], "-h") == 0)
 	    {
 		do_help ();
+		return -1;
+	    }
+	  if (strcasecmp (argv[i], "--version") == 0
+	      || strcmp (argv[i], "-v") == 0)
+	    {
+		do_version ();
 		return -1;
 	    }
 	  if (strcasecmp (argv[i], "--in-path") == 0)

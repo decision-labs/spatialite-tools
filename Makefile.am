@@ -12,6 +12,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_dxf \
 	spatialite_xml_validator \
 	spatialite_xml_load \
+	spatialite_xml2utf8 \
 	spatialite_xml_collapse \
 	spatialite_xml_print \
 	spatialite_osm_overpass
@@ -30,6 +31,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_dxf \
 	spatialite_xml_validator \
 	spatialite_xml_load \
+	spatialite_xml2utf8 \
 	spatialite_xml_collapse \
 	spatialite_xml_print \
 	spatialite_osm_overpass
@@ -46,6 +48,7 @@ shp_sanitize_SOURCES = shp_sanitize.c
 exif_loader_SOURCES = exif_loader.c
 spatialite_xml_validator_SOURCES = spatialite_xml_validator.c
 spatialite_xml_load_SOURCES = spatialite_xml_load.c
+spatialite_xml2utf8_SOURCES = spatialite_xml2utf8.c
 spatialite_xml_collapse_SOURCES = spatialite_xml_collapse.c
 spatialite_xml_print_SOURCES = spatialite_xml_print.c 
 if NO_READOSM

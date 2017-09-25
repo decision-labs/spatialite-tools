@@ -197,6 +197,7 @@ AC_ARG_ENABLE(readosm, [AS_HELP_STRING(
   [], [enable_readosm=yes])
 if test x"$enable_readosm" != "xno"; then
   AC_SUBST(LIBREADOSM_LIBS)PKG_CHECK_MODULES([LIBREADOSM], [readosm], , AC_MSG_ERROR(['libreadosm' is required but it doesn't seem to be installed on this system.]))
+  AC_SEARCH_LIBS(readosm_version,readosm,,AC_MSG_ERROR(['libreadosm' (>= v.1.1.0) is required but an older version was found.]))
   AC_SUBST(LIBREADOSM_CFLAGS)
   AC_SUBST(LIBREADOSM_LIBS)
 else

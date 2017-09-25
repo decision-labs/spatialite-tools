@@ -1110,11 +1110,11 @@ spatialite_autocreate (sqlite3 * db)
 	return;
 
 /* all right, it's empty: proceding to initialize */
-    strcpy (sql, "SELECT InitSpatialMetadata(1)");
+    strcpy (sql, "SELECT InitSpatialMetadataFull(1)");
     ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  fprintf (stderr, "InitSpatialMetadataFull() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return;
       }
@@ -2552,6 +2552,19 @@ validate_no_geom (const char *path, const char *table, const char *from_column,
 }
 
 static void
+do_version ()
+{
+/* printing version infos */
+	fprintf( stderr, "\nVersion infos\n");
+	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "spatialite_network: %s\n", VERSION);
+	fprintf (stderr, "target CPU .......: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "libspatialite ....: %s\n", spatialite_version ());
+    fprintf (stderr, "libsqlite3 .......: %s\n", sqlite3_libversion ());
+    fprintf (stderr, "\n");
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -2560,6 +2573,7 @@ do_help ()
 	     "==============================================================\n");
     fprintf (stderr,
 	     "-h or --help                      print this help message\n");
+    fprintf (stderr, "-v or --version                   print version infos\n");
     fprintf (stderr,
 	     "-d or --db-path pathname          the SpatiaLite db path\n");
     fprintf (stderr,
@@ -2598,7 +2612,7 @@ do_help ()
     fprintf (stderr, "in order to create a permanent NETWORK-DATA table\n");
     fprintf (stderr, "you can select the following options:\n");
     fprintf (stderr, "-o or --output-table table_name\n");
-    fprintf (stderr, "-v or --virtual-table table_name\n");
+    fprintf (stderr, "-vt or --virtual-table table_name\n");
     fprintf (stderr, "--overwrite-output\n\n");
 }
 
@@ -2673,6 +2687,12 @@ main (int argc, char *argv[])
 		do_help ();
 		return -1;
 	    }
+	  if (strcasecmp (argv[i], "--version") == 0
+	      || strcmp (argv[i], "-v") == 0)
+	    {
+		do_version ();
+		return -1;
+	    }
 	  if (strcasecmp (argv[i], "--db-path") == 0)
 	    {
 		next_arg = ARG_DB_PATH;
@@ -2708,7 +2728,7 @@ main (int argc, char *argv[])
 		next_arg = ARG_VIRT_TABLE;
 		continue;
 	    }
-	  if (strcmp (argv[i], "-v") == 0)
+	  if (strcmp (argv[i], "-vt") == 0)
 	    {
 		next_arg = ARG_VIRT_TABLE;
 		continue;

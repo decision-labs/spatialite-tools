@@ -367,8 +367,8 @@ iotracePrintf (const char *zFormat, ...)
 static void
 wfs_page_done (int features, void *ptr)
 {
-	if (ptr != NULL)
-	    ptr = NULL;		/* silencing stupid compiler warnings */
+    if (ptr != NULL)
+	ptr = NULL;		/* silencing stupid compiler warnings */
     if (isatty (1))
       {
 	  printf ("WFS Features loaded since now: %d\r", features);
@@ -2483,11 +2483,11 @@ spatialite_autocreate (sqlite3 * db)
 	return;
 
 /* all right, it's empty: proceding to initialize */
-    strcpy (sql, "SELECT InitSpatialMetadata(1)");
+    strcpy (sql, "SELECT InitSpatialMetadataFull(1)");
     ret = sqlite3_exec (db, sql, NULL, NULL, &err_msg);
     if (ret != SQLITE_OK)
       {
-	  fprintf (stderr, "InitSpatialMetadata() error: %s\n", err_msg);
+	  fprintf (stderr, "InitSpatialMetadataFull() error: %s\n", err_msg);
 	  sqlite3_free (err_msg);
 	  return;
       }
@@ -4731,7 +4731,7 @@ process_input (struct callback_data *p, FILE * in, char *in_charset)
 
     while (errCnt == 0 || !bail_on_error || (in == 0 && stdin_is_interactive))
       {
-	  fflush(stderr);
+	  fflush (stderr);
 	  fflush (p->out);
 	  free (zLine);
 	  zLine = one_input_line (zSql, in);

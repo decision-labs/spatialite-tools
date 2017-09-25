@@ -15,6 +15,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_xml_collapse.exe \
 	./static_bin/spatialite_xml_validator.exe \
 	./static_bin/spatialite_xml_load.exe \
+	./static_bin/spatialite_xml2utf8.exe \
 	./static_bin/spatialite_xml_print.exe
 
 ./static_bin/spatialite.exe: shell.o 
@@ -293,6 +294,12 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_load.exe
 
+./static_bin/spatialite_xml2utf8.exe: spatialite_xml2utf8.o
+	$(CC) spatialite_xml2utf8.o -o ./static_bin/spatialite_xml2utf8.exe \
+	/mingw32/local/lib/libiconv.a \
+	-static-libgcc 
+	strip --strip-all ./static_bin/spatialite_xml2utf8.exe
+
 ./static_bin/spatialite_xml_print.exe: spatialite_xml_print.o
 	$(GG) spatialite_xml_print.o -o ./static_bin/spatialite_xml_print.exe \
 	/mingw32/local/lib/libspatialite.a \
@@ -353,6 +360,10 @@ spatialite_xml_validator.o:
 
 spatialite_xml_load.o:
 	$(CC) $(CFLAGS) spatialite_xml_load.c -c
+
+spatialite_xml2utf8.o:
+	$(CC) $(CFLAGS) spatialite_xml2utf8.c -c
+
 
 spatialite_xml_print.o:
 	$(CC) $(CFLAGS) spatialite_xml_print.c -c

@@ -6880,6 +6880,19 @@ open_db (const char *path, sqlite3 ** handle, void *cache)
 }
 
 static void
+do_version ()
+{
+/* printing version infos */
+	fprintf( stderr, "\nVersion infos\n");
+	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "spatialite_convert: %s\n", VERSION);
+	fprintf (stderr, "target CPU .......: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "libspatialite ....: %s\n", spatialite_version ());
+    fprintf (stderr, "libsqlite3 .......: %s\n", sqlite3_libversion ());
+    fprintf (stderr, "\n");
+}
+
+static void
 do_help ()
 {
 /* printing the argument list */
@@ -6888,10 +6901,11 @@ do_help ()
 	     "==============================================================\n");
     fprintf (stderr,
 	     "-h or --help                    print this help message\n");
+    fprintf (stderr, "-v or --version                 print version infos\n");
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr,
-	     "-v or --version    num          target Version (2, 3, 4)\n");
+	     "-tv or --target-version  num    target Version (2, 3, 4)\n");
 }
 
 int
@@ -6933,6 +6947,12 @@ main (int argc, char *argv[])
 		do_help ();
 		return -1;
 	    }
+	  if (strcasecmp (argv[i], "--version") == 0
+	      || strcmp (argv[i], "-v") == 0)
+	    {
+		do_version ();
+		return -1;
+	    }
 	  if (strcmp (argv[i], "-d") == 0)
 	    {
 		next_arg = ARG_DB_PATH;
@@ -6943,8 +6963,8 @@ main (int argc, char *argv[])
 		next_arg = ARG_DB_PATH;
 		continue;
 	    }
-	  if (strcasecmp (argv[i], "--version") == 0
-	      || strcmp (argv[i], "-v") == 0)
+	  if (strcasecmp (argv[i], "--target-version") == 0
+	      || strcmp (argv[i], "-tv") == 0)
 	    {
 		next_arg = ARG_VERSION;
 		continue;
