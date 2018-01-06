@@ -15,7 +15,8 @@ bin_PROGRAMS = spatialite \
 	spatialite_xml2utf8 \
 	spatialite_xml_collapse \
 	spatialite_xml_print \
-	spatialite_osm_overpass
+	spatialite_osm_overpass \
+	spatialite_dem
 else
 bin_PROGRAMS = spatialite \
 	spatialite_tool \
@@ -34,7 +35,8 @@ bin_PROGRAMS = spatialite \
 	spatialite_xml2utf8 \
 	spatialite_xml_collapse \
 	spatialite_xml_print \
-	spatialite_osm_overpass
+	spatialite_osm_overpass \
+	spatialite_dem
 endif
 
 AM_CPPFLAGS = @CFLAGS@ @CPPFLAGS@ @LIBXML2_CFLAGS@
@@ -60,6 +62,7 @@ endif
 spatialite_osm_filter_SOURCES = spatialite_osm_filter.c
 spatialite_gml_SOURCES = spatialite_gml.c
 spatialite_osm_overpass_SOURCES = spatialite_osm_overpass.c
+spatialite_dem_SOURCES = spatialite_dem.c
 
 spatialite_osm_map_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ @LIBREADOSM_LIBS@ 
@@ -72,6 +75,7 @@ spatialite_osm_net_LDADD = @LIBSPATIALITE_LIBS@ \
 spatialite_gml_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
 	-lexpat 
+spatialite_dem_LDADD = @LIBSPATIALITE_LIBS@ 
 spatialite_LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@ \
 	@READLINE_LIBS@
