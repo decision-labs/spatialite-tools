@@ -41,6 +41,11 @@
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include "config-msvc.h"
+#else
+#include "config.h"
+#endif
+
+#if defined(_WIN32)
 #include <io.h>
 #include <direct.h>
 #else
@@ -1965,14 +1970,14 @@ collect_xyz_files(sqlite3 *db_handle,const char *xyz_filename, int *count_xyz_fi
  } // Checking for a file
  else
  {
-#if defined(_WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32)
   /* Visual Studio .NET */
   struct _finddata_t c_file;
   intptr_t hFile;
   char *name;
   int len;
   int ret;
-  if (_chdir (in_dir) < 0)
+  if (_chdir (xyz_filename) < 0)
    return ret;
   if ((hFile = _findfirst ("*.xyz", &c_file)) == -1L)
    ;

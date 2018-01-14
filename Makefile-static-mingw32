@@ -16,7 +16,8 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	./static_bin/spatialite_xml_validator.exe \
 	./static_bin/spatialite_xml_load.exe \
 	./static_bin/spatialite_xml2utf8.exe \
-	./static_bin/spatialite_xml_print.exe
+	./static_bin/spatialite_xml_print.exe \
+	./static_bin/spatialite_dem.exe
 
 ./static_bin/spatialite.exe: shell.o 
 	$(GG) shell.o -o ./static_bin/spatialite.exe \
@@ -294,6 +295,22 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_load.exe
 
+./static_bin/spatialite_dem.exe: spatialite_dem.o
+	$(GG) spatialite_dem.o -o ./static_bin/spatialite_dem.exe \
+	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libsqlite3.a \
+	/mingw32/local/lib/librttopo.a \
+	/mingw32/local/lib/libxml2.a \
+	/mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libgeos_c.a \
+	/mingw32/local/lib/libgeos.a \
+	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libz.a \
+	/mingw32/local/lib/libiconv.a \
+	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	strip --strip-all ./static_bin/spatialite_dem.exe
+
 ./static_bin/spatialite_xml2utf8.exe: spatialite_xml2utf8.o
 	$(CC) spatialite_xml2utf8.o -o ./static_bin/spatialite_xml2utf8.exe \
 	/mingw32/local/lib/libiconv.a \
@@ -364,6 +381,8 @@ spatialite_xml_load.o:
 spatialite_xml2utf8.o:
 	$(CC) $(CFLAGS) spatialite_xml2utf8.c -c
 
-
 spatialite_xml_print.o:
 	$(CC) $(CFLAGS) spatialite_xml_print.c -c
+
+spatialite_dem.o:
+	$(CC) $(CFLAGS) spatialite_dem.c -c
