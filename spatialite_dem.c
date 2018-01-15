@@ -1893,7 +1893,11 @@ collect_xyz_files(sqlite3 *db_handle,const char *xyz_filename, int *count_xyz_fi
         point_z=strtod(token, &ptr_strtod);
         if ((int)strlen(ptr_strtod) == 0)
         {
-         i_count_fields++;
+			if (point_z < 0.0 || point_z > 0.0)
+			{
+			  // suppressing stupid compiler warnings
+              i_count_fields++;
+	        }
         }
         break;
       }
@@ -2382,6 +2386,10 @@ close_db(sqlite3 *db_handle, void *cache, const char *schema_dem)
  }
  sql_statement = sqlite3_mprintf("DETACH  DATABASE  db_memory");
  ret = sqlite3_exec(db_handle, sql_statement, NULL, NULL, NULL);
+ if (ret == SQLITE_OK)
+ {
+   // suppressing stupid compiler warnings
+ }
  sqlite3_free(sql_statement);
  sqlite3_close(db_handle);
  if (cache)
@@ -2407,7 +2415,6 @@ open_db(sqlite3 **handle, void *cache, struct config_dem *source_config, struct 
  char *sql_statement = NULL;
  const char *path_db=NULL;
  const char *path_attach=NULL;
- const char *schema_db=NULL;
  const char *schema_attach=NULL;
  *handle = NULL;
  if ( verbose )
@@ -2425,7 +2432,6 @@ open_db(sqlite3 **handle, void *cache, struct config_dem *source_config, struct 
  else
  {
   path_db=source_config->dem_path;
-  schema_db=source_config->schema;
   path_attach=dem_config->dem_path;
   schema_attach=dem_config->schema;
  }
@@ -2545,11 +2551,10 @@ do_help()
 // - used by differenct command types
 // -- -- ---------------------------------- --
 static int
-command_check_source_db(sqlite3 *db_handle, struct config_dem*source_config, struct config_dem*dem_config, int verbose)
+command_check_source_db(sqlite3 *db_handle, struct config_dem*source_config, int verbose)
 {
  int ret=0;
  int geometry_type=0;
- if (strlen(source_config->dem_path) > 0)
 // -- -- ---------------------------------- --
   if ((strlen(source_config->dem_path) > 0) && (strlen(source_config->dem_table) > 0) && (strlen(source_config->dem_geometry) > 0))
   {
@@ -3563,7 +3568,7 @@ main(int argc, char *argv[])
 // -- -- ---------------------------------- --
 // checking the Source-Database
 // -- -- ---------------------------------- --
- command_check_source_db(db_handle,&source_config, &dem_config, verbose);
+ command_check_source_db(db_handle,&source_config, verbose);
 // -- -- ---------------------------------- --
 // checking the Dem-Database
 // -- -- ---------------------------------- --
