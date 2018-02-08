@@ -778,12 +778,16 @@ getDemCollect(sqlite3 *db_handle, gaiaGeomCollPtr source_geom, gaiaGeomCollPtr d
  {
   isExtentWithin=1;
  }
+ else if ((right_x == left_x) && (top_y == bottom_y))
+ {
+  // This is a point
+  isExtentWithin=1;
+ }
 // -- -- ---------------------------------- --
 #if 0
- if ((extent_minx >= dem_config->dem_extent_minx) && (extent_maxx <= dem_config->dem_extent_maxx) &&
-     (extent_miny >= dem_config->dem_extent_miny) && (extent_maxy <= dem_config->dem_extent_maxy ) )
+ if (verbose)
  {
-  isExtentWithin=1;
+  fprintf(stderr, "-I-> getDemCollect: isExtentWithin[%d]  left_x[%d]  right_x[%d] bottom_y[%d]  top_y[%d]\n",isExtentWithin,left_x,right_x,bottom_y,top_y);
  }
 #endif
  if (!isExtentWithin)
@@ -1507,6 +1511,12 @@ retrieve_geometries(sqlite3 *db_handle, struct config_dem *source_config, struct
   sql_statement = sqlite3_mprintf("SELECT ROWID, \"%s\", ST_Transform(\"%s\",%d) FROM '%s'.'%s' WHERE \"%s\"  IS NOT NULL",
                                   source_config->dem_geometry,source_config->dem_geometry, dem_config->dem_srid, source_config->schema,source_config->dem_table,source_config->dem_geometry);
  }
+#if 0
+ if (verbose)
+ {
+  fprintf(stderr, "-I-> retrieve_geometries: sql[%s] \n",sql_statement);
+ }
+#endif
  ret = sqlite3_prepare_v2(db_handle, sql_statement, -1, &stmt, NULL );
  if ( ret == SQLITE_OK )
  {
@@ -1893,11 +1903,11 @@ collect_xyz_files(sqlite3 *db_handle,const char *xyz_filename, int *count_xyz_fi
         point_z=strtod(token, &ptr_strtod);
         if ((int)strlen(ptr_strtod) == 0)
         {
-			if (point_z < 0.0 || point_z > 0.0)
-			{
-			  // suppressing stupid compiler warnings
-              i_count_fields++;
-	        }
+         if (point_z < 0.0 || point_z > 0.0)
+         {
+          // suppressing stupid compiler warnings
+          i_count_fields++;
+         }
         }
         break;
       }
@@ -2388,7 +2398,7 @@ close_db(sqlite3 *db_handle, void *cache, const char *schema_dem)
  ret = sqlite3_exec(db_handle, sql_statement, NULL, NULL, NULL);
  if (ret == SQLITE_OK)
  {
-   // suppressing stupid compiler warnings
+  // suppressing stupid compiler warnings
  }
  sqlite3_free(sql_statement);
  sqlite3_close(db_handle);
@@ -2494,7 +2504,7 @@ do_help()
  fprintf(stderr, "\t the automatic resolution calculation is based on the row_count\n");
  fprintf(stderr, "\t within the extent, which may not be correct!\n");
  fprintf(stderr, "\t Use '-rdem' to set a realistic value\n");
- fprintf(stderr, "\n  -- -- ----------------- Source Database ----------------- --\n");
+ fprintf(stderr, "\n  -- -- -------------- Source-Update-Database ----------------- --\n");
  fprintf(stderr, "-d or --db-path pathname to the SpatiaLite DB\n");
  fprintf(stderr, "-t or --table table_name,  must be a SpatialTable\n");
  fprintf(stderr, "-g or --geometry-column the Geometry column to update\n");
@@ -2556,40 +2566,29 @@ command_check_source_db(sqlite3 *db_handle, struct config_dem*source_config, int
  int ret=0;
  int geometry_type=0;
 // -- -- ---------------------------------- --
-  if ((strlen(source_config->dem_path) > 0) && (strlen(source_config->dem_table) > 0) && (strlen(source_config->dem_geometry) > 0))
+ if ((strlen(source_config->dem_path) > 0) && (strlen(source_config->dem_table) > 0) && (strlen(source_config->dem_geometry) > 0))
+ {
+  if (check_geometry_dimension(db_handle,source_config, &geometry_type,verbose))
   {
-   if (check_geometry_dimension(db_handle,source_config, &geometry_type,verbose))
+   if (verbose)
    {
-    if (verbose)
-    {
-     fprintf(stderr,"Source: srid %d\n", source_config->default_srid);
-     fprintf(stderr,"Source: extent min x/y(%2.7f,%2.7f)\n\t       max x/y(%2.7f,%2.7f)\n",
-             source_config->dem_extent_minx,source_config->dem_extent_miny,
-             source_config->dem_extent_maxx,source_config->dem_extent_maxy);
-     fprintf(stderr,"Source: rows_count(%s) %d\n",source_config->dem_geometry, source_config->dem_rows_count);
-     fprintf(stderr,"Source: geometry_type(%d) has_z[%d]\n",geometry_type,source_config->has_z);
-     fprintf(stderr,"Source: spatial_index_enabled[%d]\n",source_config->has_spatial_index);
-    }
-    if (source_config->is_spatial_table == 1)
-    {
-     if (source_config->has_z)
-     {// The source Database Table and geometry-columns exists and contains a z-value dimension.
-      ret = 0;
-      if (verbose)
-      {
-       fprintf(stderr,"Source '%s'\n", source_config->dem_path);
-       fprintf(stderr," will set %s(%s) Z-Values\n\tfrom nearest POINT found in\n",source_config->dem_table, source_config->dem_geometry);
-      }
-     }
-     else
+    fprintf(stderr,"Source: srid %d\n", source_config->default_srid);
+    fprintf(stderr,"Source: extent min x/y(%2.7f,%2.7f)\n\t       max x/y(%2.7f,%2.7f)\n",
+            source_config->dem_extent_minx,source_config->dem_extent_miny,
+            source_config->dem_extent_maxx,source_config->dem_extent_maxy);
+    fprintf(stderr,"Source: rows_count(%s) %d\n",source_config->dem_geometry, source_config->dem_rows_count);
+    fprintf(stderr,"Source: geometry_type(%d) has_z[%d]\n",geometry_type,source_config->has_z);
+    fprintf(stderr,"Source: spatial_index_enabled[%d]\n",source_config->has_spatial_index);
+   }
+   if (source_config->is_spatial_table == 1)
+   {
+    if (source_config->has_z)
+    {// The source Database Table and geometry-columns exists and contains a z-value dimension.
+     ret = 0;
+     if (verbose)
      {
-      ret = -1;
-      if (verbose)
-      {
-       fprintf(stderr, "DB '%s'\n", source_config->dem_path);
-       fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] does not contained in a SpatialTable [will not update]\n",source_config->dem_table, source_config->dem_geometry);
-       fprintf(stderr, "\t command_check_source_db failed: sorry, cowardly quitting\n\n");
-      }
+      fprintf(stderr,"Source '%s'\n", source_config->dem_path);
+      fprintf(stderr," will set %s(%s) Z-Values\n\tfrom nearest POINT found in\n",source_config->dem_table, source_config->dem_geometry);
      }
     }
     else
@@ -2598,39 +2597,50 @@ command_check_source_db(sqlite3 *db_handle, struct config_dem*source_config, int
      if (verbose)
      {
       fprintf(stderr, "DB '%s'\n", source_config->dem_path);
-      fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] does not contain a Z-Dimension\n",source_config->dem_table, source_config->dem_geometry);
+      fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] does not contained in a SpatialTable [will not update]\n",source_config->dem_table, source_config->dem_geometry);
       fprintf(stderr, "\t command_check_source_db failed: sorry, cowardly quitting\n\n");
      }
     }
    }
    else
-   {// The source Database Table or geometry-columns does not exist.
+   {
     ret = -1;
     if (verbose)
     {
      fprintf(stderr, "DB '%s'\n", source_config->dem_path);
-     fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] not found\n",source_config->dem_table, source_config->dem_geometry);
-     fprintf(stderr, "\t check_geometry_dimension failed: sorry, cowardly quitting\n\n");
-    }
-   }
-   if (ret == 0)
-   {
-    if (verbose)
-    {
-     fprintf(stderr, "Source Database: has passed all checks.\n\n");
+     fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] does not contain a Z-Dimension\n",source_config->dem_table, source_config->dem_geometry);
+     fprintf(stderr, "\t command_check_source_db failed: sorry, cowardly quitting\n\n");
     }
    }
   }
   else
-  {
-   if ((strlen(source_config->dem_path) > 0) && (strcmp(source_config->dem_path,".xyz") != 1))
+  {// The source Database Table or geometry-columns does not exist.
+   ret = -1;
+   if (verbose)
    {
-    if (verbose)
-    {
-     fprintf(stderr,"-E-> command_check_source_db: preconditions failed for check_source_db [%s(%s)]\n\t source[%s] \n",source_config->dem_table, source_config->dem_geometry,source_config->dem_path);
-    }
+    fprintf(stderr, "DB '%s'\n", source_config->dem_path);
+    fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] not found\n",source_config->dem_table, source_config->dem_geometry);
+    fprintf(stderr, "\t check_geometry_dimension failed: sorry, cowardly quitting\n\n");
    }
   }
+  if (ret == 0)
+  {
+   if (verbose)
+   {
+    fprintf(stderr, "Source Database: has passed all checks.\n\n");
+   }
+  }
+ }
+ else
+ {
+  if ((strlen(source_config->dem_path) > 0) && (strcmp(source_config->dem_path,".xyz") != 1))
+  {
+   if (verbose)
+   {
+    fprintf(stderr,"-E-> command_check_source_db: preconditions failed for check_source_db [%s(%s)]\n\t source[%s] \n",source_config->dem_table, source_config->dem_geometry,source_config->dem_path);
+   }
+  }
+ }
 // -- -- ---------------------------------- --
  return ret;
 }
@@ -2657,6 +2667,10 @@ command_check_dem_db(sqlite3 *db_handle, struct config_dem*dem_config, struct co
    if (verbose)
    {
     fprintf(stderr,"Dem: srid %d\n", dem_config->dem_srid);
+    if ( (dem_config->default_srid > 0) &&  (dem_config->default_srid != dem_config->dem_srid) )
+    {
+     fprintf(stderr, "Dem: default_srid[%d]\n",dem_config->default_srid);
+    }
     fprintf(stderr,"Dem: extent min x/y(%2.7f,%2.7f)\n\t    max x/y(%2.7f,%2.7f)\n",
             dem_config->dem_extent_minx,dem_config->dem_extent_miny,
             dem_config->dem_extent_maxx,dem_config->dem_extent_maxy);
@@ -2794,6 +2808,7 @@ command_check_dem_db(sqlite3 *db_handle, struct config_dem*dem_config, struct co
      fprintf(stderr, "Dem Database: has passed all checks.\n");
     }
    }
+   ret=1;
   }
  }
  else
@@ -3231,6 +3246,7 @@ main(int argc, char *argv[])
  int copy_m = 1;
  int next_arg = ARG_NONE;
  int i_command_type=CMD_DEM_SNIFF;
+ int i_sniff_on=0;
  struct config_dem dem_config;
  struct config_dem source_config;
  int save_conf=0;
@@ -3420,6 +3436,7 @@ main(int argc, char *argv[])
   if (strcmp(argv[i], "-sniff") == 0)
   {
    i_command_type=CMD_DEM_SNIFF;
+   i_sniff_on=1;
    continue;
   }
   if (strcmp(argv[i], "-updatez") == 0)
@@ -3486,17 +3503,15 @@ main(int argc, char *argv[])
 // -- -- ---------------------------------- --
 // checking, resetting the arguments
 // -- -- ---------------------------------- --
- if (i_command_type == CMD_DEM_SNIFF)
+ if ( (i_command_type == CMD_DEM_SNIFF) || (i_sniff_on == 1) )
  {
   if ((strlen(dem_config.dem_path) > 0) && (strlen(dem_config.dem_table) > 0) && (strlen(dem_config.dem_geometry) > 0) &&
       (dem_config.fetchz_x != 0.0) && (dem_config.fetchz_x != dem_config.fetchz_y) )
   {// -fetchz was intended but forgotten, be tolerant to the lazy user
    i_command_type = CMD_DEM_FETCHZ;
   }
-  else
-  {// for -sniff -v is always active
-   verbose=1;
-  }
+  // for -sniff -v is always active
+  verbose=1;
  }
  if (verbose)
  {
@@ -3586,48 +3601,77 @@ main(int argc, char *argv[])
 // After checking, the called functions
 //  will check the result before running
 // -- -- ---------------------------------- --
- if ( (i_command_type == CMD_DEM_SNIFF) && (dem_config.has_z) && (source_config.has_z))
+ if ( (i_sniff_on == 1) && (dem_config.has_z) && (source_config.has_z) )
  {
   if (verbose)
   {
    fprintf(stderr, "Sniffing modus: All pre-conditions have been fulfilled.\n");
-   fprintf(stderr, "\t to start update, use the '-updatez' parameter.\n");
+   fprintf(stderr, "\t to start update, use the '-updatez' parameter without '-sniff'.\n");
    fprintf(stderr, "\t to save dem-conf,  use the '-save_conf' parameter.\n");
   }
   exit_code = 0; // correct
  }
-// -- -- ---------------------------------- --
-// Start --update
-// -- -- ---------------------------------- --
- if (i_command_type == CMD_DEM_UPDATEZ)
+ if (i_sniff_on == 0)
  {
-  if (!copy_m)
-  {// The User desires that m values be ignored
-   dem_config.has_m=0;
-  }
-  if (command_updatez_db(db_handle, &source_config,&dem_config, verbose) )
+  // -- -- ---------------------------------- --
+  // Run only if 'sniff' is off
+  // -- -- ---------------------------------- --
+  // Start --update
+  // -- -- ---------------------------------- --
+  if (i_command_type == CMD_DEM_UPDATEZ)
   {
-   exit_code = 0; // correct
+   if (!copy_m)
+   {// The User desires that m values be ignored
+    dem_config.has_m=0;
+   }
+   if (command_updatez_db(db_handle, &source_config,&dem_config, verbose) )
+   {
+    exit_code = 0; // correct
+   }
+  }
+  // -- -- ---------------------------------- --
+  // Start -import_xyz
+  // -- -- ---------------------------------- --
+  if (i_command_type == CMD_DEM_IMPORT_XYZ)
+  {
+   if (command_import_xyz(db_handle, &source_config, &dem_config, verbose))
+   {
+    exit_code = 0; // correct
+   }
+  }
+  // -- -- ---------------------------------- --
+  // Start -fetchz
+  // -- -- ---------------------------------- --
+  if (i_command_type == CMD_DEM_FETCHZ)
+  {
+   if (command_fetchz(db_handle, &dem_config, verbose) )
+   {
+    exit_code = 0; // correct
+   }
   }
  }
-// -- -- ---------------------------------- --
-// Start -import_xyz
-// -- -- ---------------------------------- --
- if (i_command_type == CMD_DEM_IMPORT_XYZ)
+ else
  {
-  if (command_import_xyz(db_handle, &source_config, &dem_config, verbose))
+  if (i_command_type == CMD_DEM_UPDATEZ)
   {
-   exit_code = 0; // correct
+   if (verbose)
+   {
+    fprintf(stderr, "Sniffing modus:  '-updatez' will not be called.\n");
+   }
   }
- }
-// -- -- ---------------------------------- --
-// Start -fetchz
-// -- -- ---------------------------------- --
- if (i_command_type == CMD_DEM_FETCHZ)
- {
-  if (command_fetchz(db_handle, &dem_config, verbose) )
+  else if (i_command_type == CMD_DEM_IMPORT_XYZ)
   {
-   exit_code = 0; // correct
+   if (verbose)
+   {
+    fprintf(stderr, "Sniffing modus:  '-import_xyz' will not be called.\n");
+   }
+  }
+  else if (i_command_type == CMD_DEM_FETCHZ)
+  {
+   if (verbose)
+   {
+    fprintf(stderr, "Sniffing modus:  '-fetchz' will not be called.\n");
+   }
   }
  }
 // -- -- ---------------------------------- --
