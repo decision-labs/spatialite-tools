@@ -227,6 +227,7 @@ parse_list (const char *path)
 	  free (line);
 	  line = NULL;
       }
+    fclose (in);
 
 /* final check */
     item = list->first;
