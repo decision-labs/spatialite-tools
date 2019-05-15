@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 4.5.0-devel, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 5.0.0-devel, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -21,6 +21,8 @@ AH_TEMPLATE([ENABLE_LIBXML2],
             [Should be defined in order to enable LIBXML2 support.])
 AH_TEMPLATE([ENABLE_RTTOPO],
             [Should be defined in order to enable RTTOPO support.])
+AH_TEMPLATE([PROJ_NEW],
+            [Should be defined in order to enable PROJ.6 support.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_CONFIG_URI],
             [depending on SQLite library version.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED],
@@ -123,7 +125,14 @@ AC_SUBST(READLINE_LIBS)
 
 AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 AC_CHECK_LIB(expat,XML_ParserCreate,,AC_MSG_ERROR(['expat' is required but it doesn't seem to be installed on this system.]))
-AC_CHECK_LIB(proj,pj_init_plus,,AC_MSG_ERROR(['libproj' is required but it doesn't seem to be installed on this system.]),-lm)
+
+AC_CHECK_HEADERS(proj.h, [proj_new_incl=1], 
+   [AC_CHECK_HEADERS(proj_api.h, [proj_new_incl=0], [AC_MSG_ERROR([cannot find proj_api.h, bailing out])])])
+AC_SEARCH_LIBS(proj_normalize_for_visualization, proj, [proj_new_lib=1],
+   [AC_SEARCH_LIBS(pj_init_plus, proj, [proj_new_lib=0], [AC_MSG_ERROR(['libproj' is required but it doesn't seem to be installed on this system.])], [-lm -lpthread -lsqlite3])])
+if test $proj_new_incl -eq 1 && test $proj_new_lib -eq 1; then
+   AC_DEFINE(PROJ_NEW)
+fi
 
 #-----------------------------------------------------------------------
 #   --with-geosconfig

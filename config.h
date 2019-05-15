@@ -88,9 +88,6 @@
 /* Define to 1 if you have the `expat' library (-lexpat). */
 #define HAVE_LIBEXPAT 1
 
-/* Define to 1 if you have the `proj' library (-lproj). */
-#define HAVE_LIBPROJ 1
-
 /* Define to 1 if you have the `sqlite3' library (-lsqlite3). */
 #define HAVE_LIBSQLITE3 1
 
@@ -112,6 +109,12 @@
 
 /* Define to 1 if you have the `memset' function. */
 #define HAVE_MEMSET 1
+
+/* Define to 1 if you have the <proj_api.h> header file. */
+/* #undef HAVE_PROJ_API_H */
+
+/* Define to 1 if you have the <proj.h> header file. */
+#define HAVE_PROJ_H 1
 
 /* Define to 1 if you have the `readline' function. */
 #define HAVE_READLINE 1
@@ -198,7 +201,7 @@
 #define PACKAGE_NAME "spatialite-tools"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "spatialite-tools 4.5.0-devel"
+#define PACKAGE_STRING "spatialite-tools 5.0.0-devel"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "spatialite-tools"
@@ -207,7 +210,10 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "4.5.0-devel"
+#define PACKAGE_VERSION "5.0.0-devel"
+
+/* Should be defined in order to enable PROJ.6 support. */
+#define PROJ_NEW 1
 
 /* must be defined when using libspatialite-amalgamation */
 /* #undef SPATIALITE_AMALGAMATION */
@@ -222,7 +228,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "4.5.0-devel"
+#define VERSION "5.0.0-devel"
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

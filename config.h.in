@@ -87,9 +87,6 @@
 /* Define to 1 if you have the `expat' library (-lexpat). */
 #undef HAVE_LIBEXPAT
 
-/* Define to 1 if you have the `proj' library (-lproj). */
-#undef HAVE_LIBPROJ
-
 /* Define to 1 if you have the `sqlite3' library (-lsqlite3). */
 #undef HAVE_LIBSQLITE3
 
@@ -111,6 +108,12 @@
 
 /* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMSET
+
+/* Define to 1 if you have the <proj_api.h> header file. */
+#undef HAVE_PROJ_API_H
+
+/* Define to 1 if you have the <proj.h> header file. */
+#undef HAVE_PROJ_H
 
 /* Define to 1 if you have the `readline' function. */
 #undef HAVE_READLINE
@@ -207,6 +210,9 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Should be defined in order to enable PROJ.6 support. */
+#undef PROJ_NEW
 
 /* must be defined when using libspatialite-amalgamation */
 #undef SPATIALITE_AMALGAMATION
