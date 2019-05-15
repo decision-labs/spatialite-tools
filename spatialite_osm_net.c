@@ -2276,7 +2276,7 @@ do_help ()
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n");
     fprintf (stderr,
-	     "-T or --table    table_name     the db table to be feeded\n\n");
+	     "-T or --table    table_name     the db table to be fed\n\n");
     fprintf (stderr, "you can specify the following options as well\n");
     fprintf (stderr,
 	     "-cs or --cache-size    num      DB cache size (how many pages)\n");

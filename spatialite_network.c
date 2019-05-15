@@ -2753,6 +2753,11 @@ main (int argc, char *argv[])
 		next_arg = ARG_TO_COLUMN;
 		continue;
 	    }
+	  if (strcmp (argv[i], "--cost-column") == 0)
+	    {
+		next_arg = ARG_COST_COLUMN;
+		continue;
+	    }
 	  if (strcmp (argv[i], "-c") == 0)
 	    {
 		next_arg = ARG_COST_COLUMN;
