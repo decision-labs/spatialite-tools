@@ -6447,7 +6447,6 @@ copy_spatial_ref_sys_4_3 (sqlite3 * handle)
 		if (strcasecmp (txt_value, "Undefined") == 0)
 		    sqlite3_bind_null (stmt_out, 6);
 		else
-
 		    sqlite3_bind_text (stmt_out, 6, txt_value,
 				       strlen (txt_value), SQLITE_STATIC);
 		ret = sqlite3_step (stmt_out);
@@ -6626,6 +6625,100 @@ cvt_spatial_ref_sys (sqlite3 * handle, int in_version, int version)
 }
 
 static int
+do_execute_sql_with_retval (sqlite3 * sqlite, const char *sql, char **errMsg)
+{
+/* helper function for InitSpatialMetaDataFull */
+    int retval = 0;
+    int ret;
+    int i;
+    char **results;
+    int rows;
+    int columns;
+    char *msg = NULL;
+
+    ret = sqlite3_get_table (sqlite, sql, &results, &rows, &columns, &msg);
+    if (ret != SQLITE_OK)
+	goto end;
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	    {
+		if (atoi (results[(i * columns) + 0]) == 1)
+		    retval = 1;
+	    }
+      }
+    sqlite3_free_table (results);
+
+  end:
+    *errMsg = msg;
+    return retval;
+}
+
+static int
+create_v5_extra_stuff (sqlite3 * sqlite)
+{
+/* creating all the v.5 extra tables */
+    int retval;
+    const char *sql;
+    char *errMsg;
+
+/* Advanced Metadata */
+    sql = "SELECT InitAdvancedMetaData()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* ISO Metadata */
+    sql = "SELECT CreateIsoMetadataTables()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* RasterCoverages */
+    sql = "SELECT CreateRasterCoveragesTable()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* VectorCoverages */
+    sql = "SELECT CreateVectorCoveragesTables()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* Topologies */
+    sql = "SELECT CreateTopoTables()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* Styling */
+    sql = "SELECT CreateStylingTables()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* WMS */
+    sql = "SELECT WMS_CreateTables()";
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+
+/* StoredProc */
+    sql = "SELECT StoredProc_CreateTables()";
+fprintf(stderr, "%s\n", sql);
+    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
+    if (retval != 1)
+	goto error;
+    return 1;
+
+  error:
+    return 0;
+}
+
+static int
 check_3d_v3 (sqlite3 * handle, int *has_3d)
 {
 /* checking for 3D geometries - version 4 */
@@ -6726,6 +6819,45 @@ check_3d_v4 (sqlite3 * handle, int *has_3d)
       }
     sqlite3_free_table (results);
     return 1;
+  unknown:
+    return 0;
+}
+
+static int
+check_v5 (sqlite3 * handle)
+{
+/* checking version 5 tables */
+    int ret;
+    const char *sql;
+    int value;
+    int i;
+    char **results;
+    int rows;
+    int columns;
+    int is5 = 0;
+
+/* checking the GEOMETRY_COLUMNS table */
+    sql = "SELECT Count(*) FROM sqlite_master WHERE type = 'table' "
+	"AND name in ('raster_coverages', 'raster_coverages_srid', 'raster_coverages_keyword', "
+	"'vector_coverages', 'vector_coverages_srid', 'vector_coverages_keyword', "
+	"'wms_get_capabilities', 'wms_getmap', 'wms_settings', 'wms_ref_sys', 'data_license', "
+	"'topologies', 'networks', 'stored_procedures', 'stored_variables')";
+    ret = sqlite3_get_table (handle, sql, &results, &rows, &columns, NULL);
+    if (ret != SQLITE_OK)
+	goto unknown;
+    if (rows < 1)
+	;
+    else
+      {
+	  for (i = 1; i <= rows; i++)
+	    {
+		value = atoi (results[(i * columns) + 0]);
+		if (value == 13)
+		    is5 = 1;
+	    }
+      }
+    sqlite3_free_table (results);
+    return is5;
   unknown:
     return 0;
 }
@@ -6849,6 +6981,9 @@ check_version (sqlite3 * handle, int *version, int *has_3d)
 	  if (!check_3d_v4 (handle, has_3d))
 	      return 0;
 	  *version = 4;
+	  /* more tests required to check V.5 */
+	  if (check_v5 (handle))
+	      *version = 5;
 	  return 1;
       }
   unknown:
@@ -6883,10 +7018,10 @@ static void
 do_version ()
 {
 /* printing version infos */
-	fprintf( stderr, "\nVersion infos\n");
-	fprintf( stderr, "===========================================\n");
+    fprintf (stderr, "\nVersion infos\n");
+    fprintf (stderr, "===========================================\n");
     fprintf (stderr, "spatialite_convert: %s\n", VERSION);
-	fprintf (stderr, "target CPU .......: %s\n", spatialite_target_cpu ());
+    fprintf (stderr, "target CPU .......: %s\n", spatialite_target_cpu ());
     fprintf (stderr, "libspatialite ....: %s\n", spatialite_version ());
     fprintf (stderr, "libsqlite3 .......: %s\n", sqlite3_libversion ());
     fprintf (stderr, "\n");
@@ -6905,7 +7040,7 @@ do_help ()
     fprintf (stderr,
 	     "-d or --db-path  pathname       the SpatiaLite DB path\n\n");
     fprintf (stderr,
-	     "-tv or --target-version  num    target Version (2, 3, 4)\n");
+	     "-tv or --target-version  num    target Version (2, 3, 4, 5)\n");
 }
 
 int
@@ -6984,11 +7119,12 @@ main (int argc, char *argv[])
 	  fprintf (stderr, "did you forget setting the --db-path argument ?\n");
 	  error = 1;
       }
-    if (version == 2 || version == 3 || version == 4)
+    if (version == 2 || version == 3 || version == 4 || version == 5)
 	;
     else
       {
-	  fprintf (stderr, "wrong --version argument (%d): should be 2, 3, 4\n",
+	  fprintf (stderr,
+		   "wrong --version argument (%d): should be 2, 3, 4, 5\n",
 		   version);
 	  error = 1;
       }
@@ -7012,6 +7148,15 @@ main (int argc, char *argv[])
 	  fprintf (stderr,
 		   "doesn't seems to contain valid Spatial Metadata ...\n");
 	  fprintf (stderr, "sorry, cowardly quitting\n\n");
+	  goto stop;
+      }
+    if (in_version == 5 && version == 4)
+      {
+	  fprintf (stderr, "DB '%s'\n", db_path);
+	  fprintf (stderr,
+		   "seems to be Version=%d and already contains Version=%d compatible Spatial Metadata ...\n",
+		   in_version, version);
+	  fprintf (stderr, "No conversion is required\n\n");
 	  goto stop;
       }
     if (in_version == version)
@@ -7045,6 +7190,9 @@ main (int argc, char *argv[])
 	  goto stop;
       }
 
+    if (in_version == 4 && version == 5)
+	goto v5_tables;
+
     if (!cvt_spatial_ref_sys (handle, in_version, version))
 	goto stop;
     fprintf (stderr, "\t* converted: spatial_ref_sys\n");
@@ -7071,6 +7219,14 @@ main (int argc, char *argv[])
     fprintf (stderr, "\t* converted: MetaData views\n");
     if (!update_history (handle, in_version, version))
 	goto stop;
+
+  v5_tables:
+    if (version == 5)
+      {
+	  /* creating all the v.5 extra stuff */
+	  if (!create_v5_extra_stuff (handle))
+	      goto stop;
+      }
 
 /* committing the pending SQL Transaction */
     ret = sqlite3_exec (handle, "COMMIT", NULL, NULL, &sql_err);

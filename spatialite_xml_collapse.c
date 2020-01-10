@@ -57,6 +57,10 @@ Regione Toscana - Settore Sistema Informativo Territoriale ed Ambientale
 #define ARG_CACHE_SIZE 2
 #define ARG_NAME_LEVEL 3
 
+#ifdef _WIN32
+#define strcasecmp	_stricmp
+#endif /* not WIN32 */
+
 struct resultset_values
 {
 /* a struct wrapping values from a resultset */

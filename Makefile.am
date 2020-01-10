@@ -87,7 +87,7 @@ spatialite_xml_print_LADD = @LIBSPATIALIATE_LIBS@
 LDADD = @LIBSPATIALITE_LIBS@ \
 	@LIBFREEXL_LIBS@
 
-EXTRA_DIST = makefile.vc nmake.opt \
+EXTRA_DIST = makefile.vc nmake.opt makefile64.vc nmake64.opt \
 	config-msvc.h \
 	Makefile-static-MinGW \
 	Makefile-static-mingw32 \

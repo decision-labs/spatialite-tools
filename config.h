@@ -117,7 +117,7 @@
 #define HAVE_PROJ_H 1
 
 /* Define to 1 if you have the `readline' function. */
-#define HAVE_READLINE 1
+/* #undef HAVE_READLINE */
 
 /* Define to 1 if you have the <sqlite3ext.h> header file. */
 #define HAVE_SQLITE3EXT_H 1
@@ -213,7 +213,7 @@
 #define PACKAGE_VERSION "5.0.0-devel"
 
 /* Should be defined in order to enable PROJ.6 support. */
-#define PROJ_NEW 1
+/* #undef PROJ_NEW */
 
 /* must be defined when using libspatialite-amalgamation */
 /* #undef SPATIALITE_AMALGAMATION */
