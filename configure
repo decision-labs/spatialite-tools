@@ -795,6 +795,7 @@ with_geosconfig
 enable_freexl
 enable_readosm
 enable_libxml2
+enable_minizip
 enable_rttopo
 '
       ac_precious_vars='build_alias
@@ -1460,6 +1461,7 @@ Optional Features:
   --enable-freexl         enables FreeXL inclusion [default=yes]
   --enable-readosm        enables ReadOSM inclusion [default=yes]
   --enable-libxml2        enables libxml2 inclusion [default=yes]
+  --enable-minizip        enables MiniZIP inclusion [default=yes]
   --enable-rttopo         enables librttopo inclusion [default=yes]
 
 Optional Packages:
@@ -3156,6 +3158,7 @@ ac_config_headers="$ac_config_headers config.h"
 
 
 # supporting SPATIALITE_AMALGAMATION
+
 
 
 
@@ -18378,6 +18381,93 @@ fi
 
 
   $as_echo "#define ENABLE_LIBXML2 1" >>confdefs.h
+
+fi
+
+#-----------------------------------------------------------------------
+#   --enable-minizip
+#
+# Check whether --enable-minizip was given.
+if test "${enable_minizip+set}" = set; then :
+  enableval=$enable_minizip;
+else
+  enable_minizip=yes
+fi
+
+if test x"$enable_minizip" != "xno"; then
+  for ac_header in minizip/unzip.h
+do :
+  ac_fn_c_check_header_mongrel "$LINENO" "minizip/unzip.h" "ac_cv_header_minizip_unzip_h" "$ac_includes_default"
+if test "x$ac_cv_header_minizip_unzip_h" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_MINIZIP_UNZIP_H 1
+_ACEOF
+
+else
+  as_fn_error $? "cannot find minizip/unzip.h, bailing out" "$LINENO" 5
+fi
+
+done
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing unzLocateFile" >&5
+$as_echo_n "checking for library containing unzLocateFile... " >&6; }
+if ${ac_cv_search_unzLocateFile+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_func_search_save_LIBS=$LIBS
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char unzLocateFile ();
+int
+main ()
+{
+return unzLocateFile ();
+  ;
+  return 0;
+}
+_ACEOF
+for ac_lib in '' minizip; do
+  if test -z "$ac_lib"; then
+    ac_res="none required"
+  else
+    ac_res=-l$ac_lib
+    LIBS="-l$ac_lib  $ac_func_search_save_LIBS"
+  fi
+  if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_search_unzLocateFile=$ac_res
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext
+  if ${ac_cv_search_unzLocateFile+:} false; then :
+  break
+fi
+done
+if ${ac_cv_search_unzLocateFile+:} false; then :
+
+else
+  ac_cv_search_unzLocateFile=no
+fi
+rm conftest.$ac_ext
+LIBS=$ac_func_search_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_search_unzLocateFile" >&5
+$as_echo "$ac_cv_search_unzLocateFile" >&6; }
+ac_res=$ac_cv_search_unzLocateFile
+if test "$ac_res" != no; then :
+  test "$ac_res" = "none required" || LIBS="$ac_res $LIBS"
+
+else
+  as_fn_error $? "'libminizip' is required but it doesn't seem to be installed on this system." "$LINENO" 5
+fi
+
+  $as_echo "#define ENABLE_MINIZIP 1" >>confdefs.h
 
 fi
 

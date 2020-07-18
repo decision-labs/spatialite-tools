@@ -22,142 +22,196 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 ./static_bin/spatialite.exe: shell.o 
 	$(GG) shell.o -o ./static_bin/spatialite.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite.exe
 
 ./static_bin/spatialite_tool.exe: spatialite_tool.o
 	$(GG) spatialite_tool.o -o \
 	./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_tool.exe
 
 ./static_bin/spatialite_convert.exe: spatialite_convert.o
 	$(GG) spatialite_convert.o -o \
 	./static_bin/spatialite_convert.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_convert.exe
 
 ./static_bin/spatialite_dxf.exe: spatialite_dxf.o
 	$(GG) spatialite_dxf.o -o \
 	./static_bin/spatialite_dxf.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_dxf.exe
 
 ./static_bin/spatialite_network.exe: spatialite_network.o
 	$(GG) spatialite_network.o -o ./static_bin/spatialite_network.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_network.exe
 
 ./static_bin/shp_doctor.exe: shp_doctor.o
 	$(GG) shp_doctor.o -o ./static_bin/shp_doctor.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/shp_doctor.exe
 	
 ./static_bin/shp_sanitize.exe: shp_sanitize.o
 	$(GG) shp_sanitize.o -o ./static_bin/shp_sanitize.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/shp_sanitize.exe
 	
 ./static_bin/exif_loader.exe: exif_loader.o
 	$(GG) exif_loader.o -o ./static_bin/exif_loader.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/exif_loader.exe
 	
 ./static_bin/spatialite_osm_net.exe: spatialite_osm_net.o
 	$(GG) spatialite_osm_net.o -o ./static_bin/spatialite_osm_net.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
@@ -165,17 +219,23 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libiconv.a \
 	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_net.exe
 
 ./static_bin/spatialite_osm_map.exe: spatialite_osm_map.o
 	$(GG) spatialite_osm_map.o -o ./static_bin/spatialite_osm_map.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libiconv.a \
@@ -183,34 +243,46 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libreadosm.a \
 	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_map.exe
 
 ./static_bin/spatialite_gml.exe: spatialite_gml.o
 	$(GG) spatialite_gml.o -o ./static_bin/spatialite_gml.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	/mingw32/local/lib/libexpat.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_gml.exe
 
 ./static_bin/spatialite_osm_raw.exe: spatialite_osm_raw.o
 	$(GG) spatialite_osm_raw.o -o ./static_bin/spatialite_osm_raw.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
@@ -218,55 +290,73 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libiconv.a \
 	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_raw.exe
 
 ./static_bin/spatialite_osm_filter.exe: spatialite_osm_filter.o
 	$(GG) spatialite_osm_filter.o -o ./static_bin/spatialite_osm_filter.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_osm_filter.exe
 
 ./static_bin/spatialite_osm_overpass.exe: spatialite_osm_overpass.o
 	$(GG) spatialite_osm_overpass.o -o ./static_bin/spatialite_osm_overpass.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_osm_overpass.exe
 
 ./static_bin/spatialite_xml_collapse.exe: spatialite_xml_collapse.o
 	$(GG) spatialite_xml_collapse.o -o ./static_bin/spatialite_xml_collapse.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_collapse.exe
 
 ./static_bin/spatialite_xml_validator.exe: spatialite_xml_validator.o
@@ -281,34 +371,46 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 ./static_bin/spatialite_xml_load.exe: spatialite_xml_load.o
 	$(GG) spatialite_xml_load.o -o ./static_bin/spatialite_xml_load.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_load.exe
 
 ./static_bin/spatialite_dem.exe: spatialite_dem.o
 	$(GG) spatialite_dem.o -o ./static_bin/spatialite_dem.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_dem.exe
 
 ./static_bin/spatialite_xml2utf8.exe: spatialite_xml2utf8.o
@@ -320,17 +422,23 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 ./static_bin/spatialite_xml_print.exe: spatialite_xml_print.o
 	$(GG) spatialite_xml_print.o -o ./static_bin/spatialite_xml_print.exe \
 	/mingw32/local/lib/libspatialite.a \
+	/mingw32/local/lib/libminizip.a \
 	/mingw32/local/lib/libsqlite3.a \
 	/mingw32/local/lib/librttopo.a \
 	/mingw32/local/lib/libxml2.a \
-	/mingw32/local/lib/liblzma.a \
 	/mingw32/local/lib/libproj.a \
+	/mingw32/local/lib/libtiff.a \
+	/mingw32/local/lib/libwebp.a \
+	/mingw32/local/lib/libjpeg.a \
+	/mingw32/local/lib/libzstd.a /mingw32/local/lib/liblzma.a \
+	/mingw32/local/lib/libcurl.a \
+	/mingw32/local/lib/libssl.a /mingw32/local/lib/libcrypto.a \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_print.exe
 
 shell.o: 

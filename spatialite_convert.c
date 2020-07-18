@@ -6663,52 +6663,7 @@ create_v5_extra_stuff (sqlite3 * sqlite)
     int retval;
     const char *sql;
     char *errMsg;
-
-/* Advanced Metadata */
-    sql = "SELECT InitAdvancedMetaData()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* ISO Metadata */
-    sql = "SELECT CreateIsoMetadataTables()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* RasterCoverages */
-    sql = "SELECT CreateRasterCoveragesTable()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* VectorCoverages */
-    sql = "SELECT CreateVectorCoveragesTables()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* Topologies */
-    sql = "SELECT CreateTopoTables()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* Styling */
-    sql = "SELECT CreateStylingTables()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* WMS */
-    sql = "SELECT WMS_CreateTables()";
-    retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
-    if (retval != 1)
-	goto error;
-
-/* StoredProc */
-    sql = "SELECT StoredProc_CreateTables()";
-fprintf(stderr, "%s\n", sql);
+    sql = "SELECT CreateMissingSystemTables()";
     retval = do_execute_sql_with_retval (sqlite, sql, &errMsg);
     if (retval != 1)
 	goto error;
