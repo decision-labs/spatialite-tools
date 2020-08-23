@@ -1612,7 +1612,7 @@ retrieve_geometries(sqlite3 *db_handle, struct config_dem *source_config, struct
       remainder_calc=procent_diff*100;
       if (transaction_count_loops == 0)
       {// Show only once
-       fprintf(stderr,"-I-> converted geometries commited to Database: \n");
+       fprintf(stderr,"-I-> converted geometries committed to Database: \n");
       }
       transaction_count_loops++;
       if (dem_config->has_m)
@@ -2205,7 +2205,7 @@ import_xyz(sqlite3 *db_handle, struct config_dem *dem_config, int count_xyz_file
          ret=1;
          if (verbose)
          {
-          fprintf(stderr,"\r file%d: inserting compleated [%u]\n",i_file_count, dem_config->dem_rows_count);
+          fprintf(stderr,"\r file%d: inserting completed [%u]\n",i_file_count, dem_config->dem_rows_count);
          }
         }
        }
@@ -2519,7 +2519,7 @@ do_help()
  fprintf(stderr, "-I-> the Z value will be copied from the nearest point found\n");
  fprintf(stderr, "-I-> the Srid of the source Geometry and the Dem-POINT can be different\n");
  fprintf(stderr, "-I-> when -fetchz_xy is used in a bash script, -v should not be used\n");
- fprintf(stderr, "\t the z-value will then be retured as the result\n");
+ fprintf(stderr, "\t the z-value will then be returned as the result\n");
  fprintf(stderr, "\n  -- -- -------------------- Conf file:  ------------------- --\n");
  fprintf(stderr, "-I-> if 'SPATIALITE_DEM' is set with the path to a file\n");
  fprintf(stderr, "-I--> 'export SPATIALITE_DEM=/long/path/to/file/berlin_dhh92.conf'\n");
@@ -2894,7 +2894,7 @@ command_updatez_db(sqlite3 *db_handle, struct config_dem*source_config, struct c
     if (verbose)
     {
      fprintf(stderr, "DB '%s'\n", source_config->dem_path);
-     fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] error durring UPDATE\n",source_config->dem_table, source_config->dem_geometry);
+     fprintf(stderr, "TABLE[%s] or GEOMETRY-Column[%s] error during UPDATE\n",source_config->dem_table, source_config->dem_geometry);
      fprintf(stderr, "*** ERROR: conversion failed\n\n");
     }
    }

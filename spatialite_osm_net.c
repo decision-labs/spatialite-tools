@@ -2218,7 +2218,7 @@ print_template (const char *template_path, int railways)
     fprintf (out, "#\n");
     fprintf (out, "# - tokens are delimited by colons ':'\n");
     fprintf (out, "# - the second token represents the Road Class-name\n");
-    fprintf (out, "#   [no name, i.e. '::' identifies the defaul value\n");
+    fprintf (out, "#   [no name, i.e. '::' identifies the default value\n");
     fprintf (out, "#   to be applied when no specific class match is found]\n");
     fprintf (out, "# - the third token represents the corresponding speed\n");
     fprintf (out, "#   [expressed in Km/h]\n");
