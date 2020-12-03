@@ -1,14 +1,5 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Should be defined in order to enable LIBXML2 support. */
-#undef ENABLE_LIBXML2
-
-/* Should be defined in order to enable MiniZIP support. */
-#undef ENABLE_MINIZIP
-
-/* Should be defined in order to enable RTTOPO support. */
-#undef ENABLE_RTTOPO
-
 /* depending on SQLite library version. */
 #undef HAVE_DECL_SQLITE_CONFIG_URI
 
@@ -75,9 +66,6 @@
 /* Define to 1 if you have the `ftruncate' function. */
 #undef HAVE_FTRUNCATE
 
-/* Define to 1 if you have the <geos_c.h> header file. */
-#undef HAVE_GEOS_C_H
-
 /* Define to 1 if you have the `getcwd' function. */
 #undef HAVE_GETCWD
 
@@ -111,15 +99,6 @@
 
 /* Define to 1 if you have the `memset' function. */
 #undef HAVE_MEMSET
-
-/* Define to 1 if you have the <minizip/unzip.h> header file. */
-#undef HAVE_MINIZIP_UNZIP_H
-
-/* Define to 1 if you have the <proj_api.h> header file. */
-#undef HAVE_PROJ_API_H
-
-/* Define to 1 if you have the <proj.h> header file. */
-#undef HAVE_PROJ_H
 
 /* Define to 1 if you have the `readline' function. */
 #undef HAVE_READLINE
@@ -190,9 +169,6 @@
    */
 #undef LT_OBJDIR
 
-/* Should be defined in order to disable FREEXL support. */
-#undef OMIT_FREEXL
-
 /* Should be defined in order to disable ReadOSM support. */
 #undef OMIT_READOSM
 
@@ -217,9 +193,6 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
-/* Should be defined in order to enable PROJ.6 support. */
-#undef PROJ_NEW
-
 /* must be defined when using libspatialite-amalgamation */
 #undef SPATIALITE_AMALGAMATION
 
@@ -234,6 +207,15 @@
 
 /* Version number of package */
 #undef VERSION
+
+/* Must be =64 in order to enable huge-file support. */
+#undef _FILE_OFFSET_BITS
+
+/* Must be defined in order to enable huge-file support. */
+#undef _LARGEFILE_SOURCE
+
+/* Must be defined in order to enable huge-file support. */
+#undef _LARGE_FILE
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

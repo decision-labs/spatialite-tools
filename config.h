@@ -1,15 +1,6 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Should be defined in order to enable LIBXML2 support. */
-#define ENABLE_LIBXML2 1
-
-/* Should be defined in order to enable MiniZIP support. */
-#define ENABLE_MINIZIP 1
-
-/* Should be defined in order to enable RTTOPO support. */
-#define ENABLE_RTTOPO 1
-
 /* depending on SQLite library version. */
 #define HAVE_DECL_SQLITE_CONFIG_URI 1
 
@@ -76,9 +67,6 @@
 /* Define to 1 if you have the `ftruncate' function. */
 #define HAVE_FTRUNCATE 1
 
-/* Define to 1 if you have the <geos_c.h> header file. */
-#define HAVE_GEOS_C_H 1
-
 /* Define to 1 if you have the `getcwd' function. */
 #define HAVE_GETCWD 1
 
@@ -113,17 +101,8 @@
 /* Define to 1 if you have the `memset' function. */
 #define HAVE_MEMSET 1
 
-/* Define to 1 if you have the <minizip/unzip.h> header file. */
-#define HAVE_MINIZIP_UNZIP_H 1
-
-/* Define to 1 if you have the <proj_api.h> header file. */
-/* #undef HAVE_PROJ_API_H */
-
-/* Define to 1 if you have the <proj.h> header file. */
-#define HAVE_PROJ_H 1
-
 /* Define to 1 if you have the `readline' function. */
-/* #undef HAVE_READLINE */
+#define HAVE_READLINE 1
 
 /* Define to 1 if you have the <sqlite3ext.h> header file. */
 #define HAVE_SQLITE3EXT_H 1
@@ -191,9 +170,6 @@
    */
 #define LT_OBJDIR ".libs/"
 
-/* Should be defined in order to disable FREEXL support. */
-/* #undef OMIT_FREEXL */
-
 /* Should be defined in order to disable ReadOSM support. */
 /* #undef OMIT_READOSM */
 
@@ -207,7 +183,7 @@
 #define PACKAGE_NAME "spatialite-tools"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "spatialite-tools 5.0.0"
+#define PACKAGE_STRING "spatialite-tools 5.0.1-devel"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "spatialite-tools"
@@ -216,10 +192,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.0.0"
-
-/* Should be defined in order to enable PROJ.6 support. */
-/* #undef PROJ_NEW */
+#define PACKAGE_VERSION "5.0.1-devel"
 
 /* must be defined when using libspatialite-amalgamation */
 /* #undef SPATIALITE_AMALGAMATION */
@@ -234,7 +207,16 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "5.0.0"
+#define VERSION "5.0.1-devel"
+
+/* Must be =64 in order to enable huge-file support. */
+#define _FILE_OFFSET_BITS 64
+
+/* Must be defined in order to enable huge-file support. */
+#define _LARGEFILE_SOURCE 1
+
+/* Must be defined in order to enable huge-file support. */
+#define _LARGE_FILE 1
 
 /* Define to empty if `const' does not conform to ANSI C. */
 /* #undef const */

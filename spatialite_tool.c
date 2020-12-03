@@ -235,7 +235,7 @@ do_version ()
 /* printing version infos */
 	fprintf( stderr, "\nVersion infos\n");
 	fprintf( stderr, "===========================================\n");
-    fprintf (stderr, "exif_loader .: %s\n", VERSION);
+    fprintf (stderr, "exif_loader .: %s\n", SPATIALITE_VERSION);
 	fprintf (stderr, "target CPU ..: %s\n", spatialite_target_cpu ());
     fprintf (stderr, "libspatialite: %s\n", spatialite_version ());
     fprintf (stderr, "libsqlite3 ..: %s\n", sqlite3_libversion ());

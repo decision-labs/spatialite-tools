@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 5.0.0, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 5.0.1-devel, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -10,21 +10,22 @@ AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE
 AM_CONFIG_HEADER(config.h)
 
+# enabling huge-file support (64 bit file pointers)
+AH_TEMPLATE([_LARGE_FILE],
+            [Must be defined in order to enable huge-file support.])
+AC_DEFINE(_LARGE_FILE)
+AH_TEMPLATE([_FILE_OFFSET_BITS],
+            [Must be =64 in order to enable huge-file support.])
+AC_DEFINE(_FILE_OFFSET_BITS, 64)
+AH_TEMPLATE([_LARGEFILE_SOURCE],
+            [Must be defined in order to enable huge-file support.])
+AC_DEFINE(_LARGEFILE_SOURCE)
+
 # supporting SPATIALITE_AMALGAMATION
 AH_TEMPLATE([SPATIALITE_AMALGAMATION],
 	    [must be defined when using libspatialite-amalgamation])
-AH_TEMPLATE([OMIT_FREEXL],
-            [Should be defined in order to disable FREEXL support.])
 AH_TEMPLATE([OMIT_READOSM],
             [Should be defined in order to disable ReadOSM support.])
-AH_TEMPLATE([ENABLE_LIBXML2],
-            [Should be defined in order to enable LIBXML2 support.])
-AH_TEMPLATE([ENABLE_MINIZIP],
-            [Should be defined in order to enable MiniZIP support.])
-AH_TEMPLATE([ENABLE_RTTOPO],
-            [Should be defined in order to enable RTTOPO support.])
-AH_TEMPLATE([PROJ_NEW],
-            [Should be defined in order to enable PROJ.6 support.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_CONFIG_URI],
             [depending on SQLite library version.])
 AH_TEMPLATE([HAVE_DECL_SQLITE_DBSTATUS_LOOKASIDE_USED],
@@ -128,56 +129,6 @@ AC_SUBST(READLINE_LIBS)
 AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 AC_CHECK_LIB(expat,XML_ParserCreate,,AC_MSG_ERROR(['expat' is required but it doesn't seem to be installed on this system.]))
 
-AC_CHECK_HEADERS(proj.h, [proj_new_incl=1], 
-   [AC_CHECK_HEADERS(proj_api.h, [proj_new_incl=0], [AC_MSG_ERROR([cannot find proj_api.h, bailing out])])])
-AC_SEARCH_LIBS(proj_normalize_for_visualization, proj, [proj_new_lib=1],
-   [AC_SEARCH_LIBS(pj_init_plus, proj, [proj_new_lib=0], [AC_MSG_ERROR(['libproj' is required but it doesn't seem to be installed on this system.])], [-lm -lpthread -lsqlite3])])
-if test $proj_new_incl -eq 1 && test $proj_new_lib -eq 1; then
-   AC_DEFINE(PROJ_NEW)
-fi
-
-#-----------------------------------------------------------------------
-#   --with-geosconfig
-#
-AC_ARG_WITH([geosconfig],
-      [AS_HELP_STRING([--with-geosconfig=FILE], [specify an alternative geos-config file])],
-	[GEOSCONFIG="$withval"], [GEOSCONFIG=""])
-if test "x$GEOSCONFIG" = "x"; then
-      # GEOSCONFIG was not specified, so search within the current path
-      AC_PATH_PROG([GEOSCONFIG], [geos-config])	
-      # If we couldn't find geos-config, display an error
-      if test "x$GEOSCONFIG" = "x"; then
-              AC_MSG_ERROR([could not find geos-config within the current path. You may need to try re-running configure with a --with-geosconfig parameter.])
-      fi
-else
-      # GEOSCONFIG was specified; display a message to the user
-      if test "x$GEOSCONFIG" = "xyes"; then
-              AC_MSG_ERROR([you must specify a parameter to --with-geosconfig, e.g. --with-geosconfig=/path/to/geos-config])
-      else
-              if test -f $GEOSCONFIG; then
-                      AC_MSG_RESULT([Using user-specified geos-config file: $GEOSCONFIG])
-              else
-                      AC_MSG_ERROR([the user-specified geos-config file $GEOSCONFIG does not exist])
-              fi     
-      fi
-fi
-# Extract the linker and include flags
-GEOS_LDFLAGS=`$GEOSCONFIG --ldflags`
-GEOS_CPPFLAGS=-I`$GEOSCONFIG --includes`
-AC_SUBST([GEOS_LDFLAGS])
-AC_SUBST([GEOS_CPPFLAGS])	
-# Ensure that we can parse geos_c.h
-CPPFLAGS_SAVE="$CPPFLAGS"
-CPPFLAGS="$GEOS_CPPFLAGS"
-AC_CHECK_HEADERS([geos_c.h],, [AC_MSG_ERROR([could not find geos_c.h - you may need to specify the directory of a geos-config file using --with-geosconfig])])
-CPPFLAGS="$CPPFLAGS_SAVE"	
-# Ensure we can link against libgeos_c
-LIBS_SAVE="$LIBS"
-LIBS="$GEOS_LDFLAGS"
-AC_SEARCH_LIBS(GEOSTopologyPreserveSimplify,geos_c,,AC_MSG_ERROR([could not find libgeos_c - you may need to specify the directory of a geos-config file using --with-geosconfig]))
-LIBS="$LIBS_SAVE"
-LIBS=$LIBS$GEOS_LDFLAGS' -lgeos_c'
-
 PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
 # testing for libspatialite-amalgamation
@@ -185,20 +136,6 @@ if test "x$(pkg-config --cflags spatialite|grep "DSPATIALITE_AMALGAMATION=1")" !
   AC_DEFINE(SPATIALITE_AMALGAMATION, 1)
 fi
 AC_SUBST(LIBSPATIALITE_LIBS)
-
-#-----------------------------------------------------------------------
-#   --enable-freexl
-#
-AC_ARG_ENABLE(freexl, [AS_HELP_STRING(
-  [--enable-freexl], [enables FreeXL inclusion [default=yes]])],
-  [], [enable_freexl=yes])
-if test x"$enable_freexl" != "xno"; then
-  PKG_CHECK_MODULES([LIBFREEXL], [freexl], , AC_MSG_ERROR(['libfreexl' is required but it doesn't seem to be installed on this system.]))
-  AC_SUBST(LIBFREEXL_CFLAGS)
-  AC_SUBST(LIBFREEXL_LIBS)
-else
-  AC_DEFINE(OMIT_FREEXL)
-fi
 
 #-----------------------------------------------------------------------
 #   --enable-readosm
@@ -213,48 +150,8 @@ if test x"$enable_readosm" != "xno"; then
   AC_SUBST(LIBREADOSM_LIBS)
 else
   AC_DEFINE(OMIT_READOSM)
-  NOREADOSM="true"
 fi
-
-AM_CONDITIONAL([NO_READOSM], [test "$NOREADOSM" = "true"])
-
-#-----------------------------------------------------------------------
-#   --enable-libxml2
-#
-AC_ARG_ENABLE(libxml2, [AS_HELP_STRING(
-  [--enable-libxml2], [enables libxml2 inclusion [default=yes]])],
-  [], [enable_libxml2=yes])
-if test x"$enable_libxml2" != "xno"; then
-  PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], , AC_MSG_ERROR(['libxml2' is required but it doesn't seem to be installed on this system.]))
-  AC_SUBST(LIBXML2_CFLAGS)
-  AC_SUBST(LIBXML2_LIBS)
-  AC_DEFINE(ENABLE_LIBXML2)
-fi
-
-#-----------------------------------------------------------------------
-#   --enable-minizip
-#
-AC_ARG_ENABLE(minizip, [AS_HELP_STRING(
-  [--enable-minizip], [enables MiniZIP inclusion [default=yes]])],
-  [], [enable_minizip=yes])
-if test x"$enable_minizip" != "xno"; then
-  AC_CHECK_HEADERS(minizip/unzip.h,, [AC_MSG_ERROR([cannot find minizip/unzip.h, bailing out])])
-  AC_SEARCH_LIBS(unzLocateFile, minizip,,AC_MSG_ERROR(['libminizip' is required but it doesn't seem to be installed on this system.]))
-  AC_DEFINE(ENABLE_MINIZIP)
-fi
-
-#-----------------------------------------------------------------------
-#   --enable-rttopo
-#
-AC_ARG_ENABLE(rttopo, [AS_HELP_STRING(
-  [--enable-rttopo], [enables librttopo inclusion [default=yes]])],
-  [], [enable_rttopo=yes])
-if test x"$enable_rttopo" != "xno"; then
-  PKG_CHECK_MODULES([RTTOPO], [rttopo], , AC_MSG_ERROR(['librttopo' is required but it doesn't seem to be installed on this system.]))
-  AC_SUBST(RTTOPO_CFLAGS)
-  AC_SUBST(RTTOPO_LIBS)
-  AC_DEFINE(ENABLE_RTTOPO)
-fi
+AM_CONDITIONAL([READOSM], [test x$readosm = xtrue])
 
 # checks for SQLite version-depending constants
 AC_CHECK_DECL([SQLITE_CONFIG_URI],
