@@ -39,7 +39,7 @@ bin_PROGRAMS = spatialite \
 	spatialite_dem
 endif
 
-AM_CPPFLAGS = @CFLAGS@ @CPPFLAGS@
+AM_CPPFLAGS = @CFLAGS@ @CPPFLAGS@ @LIBXML2_CFLAGS@
 AM_CPPFLAGS += -I$(top_srcdir)
 
 spatialite_SOURCES = shell.c

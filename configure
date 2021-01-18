@@ -634,6 +634,8 @@ ac_includes_default="\
 ac_subst_vars='am__EXEEXT_FALSE
 am__EXEEXT_TRUE
 LTLIBOBJS
+LIBXML2_LIBS
+LIBXML2_CFLAGS
 READOSM_FALSE
 READOSM_TRUE
 LIBREADOSM_CFLAGS
@@ -803,7 +805,9 @@ PKG_CONFIG_LIBDIR
 LIBSPATIALITE_CFLAGS
 LIBSPATIALITE_LIBS
 LIBREADOSM_CFLAGS
-LIBREADOSM_LIBS'
+LIBREADOSM_LIBS
+LIBXML2_CFLAGS
+LIBXML2_LIBS'
 
 
 # Initialize some variables set by options.
@@ -1474,6 +1478,10 @@ Some influential environment variables:
               C compiler flags for LIBREADOSM, overriding pkg-config
   LIBREADOSM_LIBS
               linker flags for LIBREADOSM, overriding pkg-config
+  LIBXML2_CFLAGS
+              C compiler flags for LIBXML2, overriding pkg-config
+  LIBXML2_LIBS
+              linker flags for LIBXML2, overriding pkg-config
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -17869,6 +17877,80 @@ else
   READOSM_TRUE='#'
   READOSM_FALSE=
 fi
+
+
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for LIBXML2" >&5
+$as_echo_n "checking for LIBXML2... " >&6; }
+
+if test -n "$LIBXML2_CFLAGS"; then
+    pkg_cv_LIBXML2_CFLAGS="$LIBXML2_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxml-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libxml-2.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBXML2_CFLAGS=`$PKG_CONFIG --cflags "libxml-2.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$LIBXML2_LIBS"; then
+    pkg_cv_LIBXML2_LIBS="$LIBXML2_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"libxml-2.0\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "libxml-2.0") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_LIBXML2_LIBS=`$PKG_CONFIG --libs "libxml-2.0" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+   	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        LIBXML2_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "libxml-2.0" 2>&1`
+        else
+	        LIBXML2_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "libxml-2.0" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$LIBXML2_PKG_ERRORS" >&5
+
+	as_fn_error $? "'libxml2' is required but it doesn't seem to be installed on this system." "$LINENO" 5
+elif test $pkg_failed = untried; then
+     	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	as_fn_error $? "'libxml2' is required but it doesn't seem to be installed on this system." "$LINENO" 5
+else
+	LIBXML2_CFLAGS=$pkg_cv_LIBXML2_CFLAGS
+	LIBXML2_LIBS=$pkg_cv_LIBXML2_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
 
 
 # checks for SQLite version-depending constants

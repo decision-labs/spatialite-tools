@@ -34,6 +34,8 @@
 #include "config.h"
 #endif
 
+#include <spatialite/gaiaconfig.h>
+
 #ifdef ENABLE_LIBXML2		/* only if LIBXML2 is enabled */
 
 #include <libxml/parser.h>

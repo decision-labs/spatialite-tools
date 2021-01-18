@@ -153,6 +153,10 @@ else
 fi
 AM_CONDITIONAL([READOSM], [test x$readosm = xtrue])
 
+PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], , AC_MSG_ERROR(['libxml2' is required but it doesn't seem to be installed on this system.]))
+AC_SUBST(LIBXML2_CFLAGS)
+AC_SUBST(LIBXML2_LIBS)
+
 # checks for SQLite version-depending constants
 AC_CHECK_DECL([SQLITE_CONFIG_URI],
   [AC_DEFINE(HAVE_DECL_SQLITE_CONFIG_URI)],[],[[#include <sqlite3.h>]])
