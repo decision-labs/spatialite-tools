@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 5.0.1-rc0, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 5.0.1-rc1, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -151,7 +151,7 @@ if test x"$enable_readosm" != "xno"; then
 else
   AC_DEFINE(OMIT_READOSM)
 fi
-AM_CONDITIONAL([READOSM], [test x$readosm = xtrue])
+AM_CONDITIONAL([READOSM], [test x$enable_readosm != xno])
 
 PKG_CHECK_MODULES([LIBXML2], [libxml-2.0], , AC_MSG_ERROR(['libxml2' is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBXML2_CFLAGS)
