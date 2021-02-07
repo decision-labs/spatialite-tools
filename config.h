@@ -183,7 +183,7 @@
 #define PACKAGE_NAME "spatialite-tools"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "spatialite-tools 5.0.1-rc1"
+#define PACKAGE_STRING "spatialite-tools 5.0.1"
 
 /* Define to the one symbol short name of this package. */
 #define PACKAGE_TARNAME "spatialite-tools"
@@ -192,7 +192,7 @@
 #define PACKAGE_URL ""
 
 /* Define to the version of this package. */
-#define PACKAGE_VERSION "5.0.1-rc1"
+#define PACKAGE_VERSION "5.0.1"
 
 /* must be defined when using libspatialite-amalgamation */
 /* #undef SPATIALITE_AMALGAMATION */
@@ -207,7 +207,7 @@
 /* #undef TM_IN_SYS_TIME */
 
 /* Version number of package */
-#define VERSION "5.0.1-rc1"
+#define VERSION "5.0.1"
 
 /* Must be =64 in order to enable huge-file support. */
 #define _FILE_OFFSET_BITS 64
