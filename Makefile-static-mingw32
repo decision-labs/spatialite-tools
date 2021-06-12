@@ -36,6 +36,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -59,6 +60,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -82,6 +84,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -105,6 +108,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -127,6 +131,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -171,6 +176,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -193,6 +199,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
@@ -310,6 +317,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
@@ -354,6 +362,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
@@ -408,6 +417,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
@@ -436,6 +446,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw32/local/lib/libgeos_c.a \
 	/mingw32/local/lib/libgeos.a \
 	/mingw32/local/lib/libfreexl.a \
+	/mingw32/local/lib/libexpat.a \
 	/mingw32/local/lib/libz.a \
 	/mingw32/local/lib/libiconv.a \
 	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
