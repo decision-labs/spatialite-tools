@@ -36,9 +36,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite.exe
 
 ./static_bin/spatialite_tool.exe: spatialite_tool.o
@@ -59,9 +60,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_tool.exe
 
 ./static_bin/spatialite_convert.exe: spatialite_convert.o
@@ -82,9 +84,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_convert.exe
 
 ./static_bin/spatialite_dxf.exe: spatialite_dxf.o
@@ -105,9 +108,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_dxf.exe
 
 ./static_bin/spatialite_network.exe: spatialite_network.o
@@ -127,9 +131,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_network.exe
 
 ./static_bin/shp_doctor.exe: shp_doctor.o
@@ -171,9 +176,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/shp_sanitize.exe
 	
 ./static_bin/exif_loader.exe: exif_loader.o
@@ -193,9 +199,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/exif_loader.exe
 	
 ./static_bin/spatialite_osm_net.exe: spatialite_osm_net.o
@@ -219,7 +226,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libiconv.a \
 	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_net.exe
 
 ./static_bin/spatialite_osm_map.exe: spatialite_osm_map.o
@@ -243,7 +250,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libreadosm.a \
 	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_map.exe
 
 ./static_bin/spatialite_gml.exe: spatialite_gml.o
@@ -266,7 +273,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
 	/mingw64/local/lib/libexpat.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_gml.exe
 
 ./static_bin/spatialite_osm_raw.exe: spatialite_osm_raw.o
@@ -290,7 +297,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libiconv.a \
 	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc
 	strip --strip-all ./static_bin/spatialite_osm_raw.exe
 
 ./static_bin/spatialite_osm_filter.exe: spatialite_osm_filter.o
@@ -310,9 +317,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_osm_filter.exe
 
 ./static_bin/spatialite_osm_overpass.exe: spatialite_osm_overpass.o
@@ -354,9 +362,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_collapse.exe
 
 ./static_bin/spatialite_xml_validator.exe: spatialite_xml_validator.o
@@ -388,7 +397,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_load.exe
 
 ./static_bin/spatialite_xml2utf8.exe: spatialite_xml2utf8.o
@@ -414,9 +423,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_xml_print.exe
 
 ./static_bin/spatialite_dem.exe: spatialite_dem.o
@@ -436,9 +446,10 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
+	/mingw64/local/lib/libexpat.a \
 	/mingw64/local/lib/libz.a \
 	/mingw64/local/lib/libiconv.a \
-	-lm -lmsimg32 -lws2_32 -lwldap32 -static-libstdc++ -static-libgcc 
+	-lm -lmsimg32 -lws2_32 -lwldap32 -lcrypt32 -static-libstdc++ -static-libgcc 
 	strip --strip-all ./static_bin/spatialite_dem.exe
 
 shell.o: 

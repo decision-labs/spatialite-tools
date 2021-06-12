@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(spatialite-tools, 5.0.1, a.furieri@lqt.it)
+AC_INIT(spatialite-tools, 5.1.0-devel, a.furieri@lqt.it)
 AC_LANG(C)
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -129,7 +129,7 @@ AC_SUBST(READLINE_LIBS)
 AC_CHECK_HEADERS(expat.h,, [AC_MSG_ERROR([cannot find expat.h, bailing out])])
 AC_CHECK_LIB(expat,XML_ParserCreate,,AC_MSG_ERROR(['expat' is required but it doesn't seem to be installed on this system.]))
 
-PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite], , AC_MSG_ERROR(['libspatialite' is required but it doesn't seem to be installed on this system.]))
+PKG_CHECK_MODULES([LIBSPATIALITE], [spatialite >= 5.1], , AC_MSG_ERROR(['libspatialite' >= 5.1.0 is required but it doesn't seem to be installed on this system.]))
 AC_SUBST(LIBSPATIALITE_CFLAGS)
 # testing for libspatialite-amalgamation
 if test "x$(pkg-config --cflags spatialite|grep "DSPATIALITE_AMALGAMATION=1")" != "x"; then

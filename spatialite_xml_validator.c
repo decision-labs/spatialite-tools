@@ -567,7 +567,7 @@ validate_xml_document (struct schema_cache *cache, const char *path)
     saved = find_cached_schema (cache, schemaURI);
     if (saved == NULL)
       {
-	  /* not already cache XSD */
+	  /* not already cached XSD */
 	  new_schema = 1;
 	  fprintf (stderr,
 		   "step #3) attempting to load and parse the XML Schema Definition (XSD)\n");
