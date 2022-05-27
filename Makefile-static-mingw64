@@ -32,7 +32,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -56,7 +56,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -80,7 +80,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -104,7 +104,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -127,7 +127,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -150,7 +150,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -172,7 +172,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -195,7 +195,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -218,7 +218,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -242,7 +242,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libiconv.a \
@@ -266,7 +266,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -289,7 +289,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -313,7 +313,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -336,7 +336,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -358,7 +358,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -390,7 +390,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -419,7 +419,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
@@ -442,7 +442,7 @@ all: ./static_bin/spatialite.exe ./static_bin/spatialite_tool.exe \
 	/mingw64/local/lib/libjpeg.a \
 	/mingw64/local/lib/libzstd.a /mingw64/local/lib/liblzma.a \
 	/mingw64/local/lib/libcurl.a \
-	/mingw64/local/lib/libssl.a /mingw64/local/lib/libcrypto.a \
+	/mingw64/local/lib64/libssl.a /mingw64/local/lib64/libcrypto.a \
 	/mingw64/local/lib/libgeos_c.a \
 	/mingw64/local/lib/libgeos.a \
 	/mingw64/local/lib/libfreexl.a \
