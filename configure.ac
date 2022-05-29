@@ -8,7 +8,7 @@ AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE
 AM_MAINTAINER_MODE
-AM_CONFIG_HEADER(config.h)
+AC_CONFIG_HEADERS(config.h)
 
 # enabling huge-file support (64 bit file pointers)
 AH_TEMPLATE([_LARGE_FILE],
@@ -84,14 +84,12 @@ AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AC_LIBTOOL_WIN32_DLL
-AC_PROG_LIBTOOL
+LT_INIT(win32-dll)
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_OFF_T
 AC_TYPE_SIZE_T
-AC_HEADER_TIME
 AC_STRUCT_TM
 AC_C_VOLATILE
 
